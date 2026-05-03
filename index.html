@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aprende a leer QR — visualización paso a paso</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>Aprende a leer códigos QR</h1>
+    <p class="subtitle">
+      Generador con visualización paso a paso. Cada <strong>codeword</strong> son 8 bits que se
+      colocan en una zona de 2×4 módulos formando una "letra visual".
+      Tu objetivo: aprender a reconocer la <em>forma</em> de cada codeword y traducirla al byte
+      original.
+    </p>
+  </header>
+
+  <section class="controls card">
+    <div class="row">
+      <label>
+        <span>Texto a codificar</span>
+        <input id="text" type="text" value="HOLA" maxlength="80">
+      </label>
+      <label>
+        <span>Modo</span>
+        <select id="mode">
+          <option value="byte" selected>Byte (cualquier carácter)</option>
+          <option value="numeric">Numérico (0–9)</option>
+          <option value="alphanumeric">Alfanumérico (0-9 A-Z $%*+-./: y espacio)</option>
+        </select>
+      </label>
+      <label>
+        <span>Versión</span>
+        <select id="version">
+          <option value="auto" selected>Auto</option>
+          <option value="1">1 (21×21)</option>
+          <option value="2">2 (25×25)</option>
+          <option value="3">3 (29×29)</option>
+          <option value="4">4 (33×33)</option>
+          <option value="5">5 (37×37)</option>
+        </select>
+      </label>
+      <label>
+        <span>Nivel EC</span>
+        <select id="ecLevel">
+          <option value="L" selected>L (~7%)</option>
+          <option value="M">M (~15%)</option>
+          <option value="Q">Q (~25%)</option>
+          <option value="H">H (~30%)</option>
+        </select>
+      </label>
+      <label>
+        <span>Máscara (ofuscación)</span>
+        <select id="mask">
+          <option value="auto" selected>Auto (mejor puntuación)</option>
+          <option value="none">Ninguna (ver bits "crudos")</option>
+          <option value="0">0 — (i+j) mod 2</option>
+          <option value="1">1 — i mod 2</option>
+          <option value="2">2 — j mod 3</option>
+          <option value="3">3 — (i+j) mod 3</option>
+          <option value="4">4 — (⌊i/2⌋+⌊j/3⌋) mod 2</option>
+          <option value="5">5 — (i·j) mod 2 + (i·j) mod 3</option>
+          <option value="6">6 — ((i·j) mod 2 + (i·j) mod 3) mod 2</option>
+          <option value="7">7 — ((i+j) mod 2 + (i·j) mod 3) mod 2</option>
+        </select>
+      </label>
+    </div>
+    <div class="row">
+      <button id="generate">Generar</button>
+      <label class="checkbox">
+        <input type="checkbox" id="showLabels" checked>
+        <span>Mostrar índice del codeword sobre los módulos</span>
+      </label>
+      <label class="checkbox">
+        <input type="checkbox" id="colorize" checked>
+        <span>Colorear cada codeword</span>
+      </label>
+    </div>
+  </section>
+
+  <section id="step1" class="card step">
+    <h2>Paso 1 — De texto a bytes</h2>
+    <p class="explain">
+      El texto se convierte en una secuencia de bytes según el modo elegido. En modo
+      <strong>Byte</strong> se usa UTF-8 (cada carácter ocupa entre 1 y 4 bytes).
+    </p>
+    <div id="step1-content" class="step-content"></div>
+  </section>
+
+  <section id="step2" class="card step">
+    <h2>Paso 2 — Construir el bitstream</h2>
+    <p class="explain">
+      El bitstream se compone de: <strong>indicador de modo</strong> (4 bits) +
+      <strong>contador de caracteres</strong> + <strong>datos</strong> +
+      <strong>terminador</strong> (hasta 4 ceros) + <strong>relleno a byte</strong> +
+      bytes de padding alternados <code>0xEC</code> / <code>0x11</code>.
+    </p>
+    <div id="step2-content" class="step-content"></div>
+  </section>
+
+  <section id="step3" class="card step">
+    <h2>Paso 3 — Codewords de datos y corrección de errores</h2>
+    <p class="explain">
+      Los bits se agrupan en bytes (codewords). Reed-Solomon añade codewords extra para
+      poder recuperar el mensaje aunque parte se dañe. Si hay varios bloques, se intercalan.
+    </p>
+    <div id="step3-content" class="step-content"></div>
+  </section>
+
+  <section id="step4" class="card step">
+    <h2>Paso 4 — Colocación en la matriz (zigzag desde abajo-derecha)</h2>
+    <p class="explain">
+      Los bits se escriben en columnas de 2 módulos de ancho, subiendo y bajando.
+      Cada codeword (8 bits) ocupa típicamente un bloque de 2×4. <strong>Aquí ves cada
+      codeword pintado en su propio color</strong> con el orden de los bits (7 = MSB, 0 = LSB).
+      Esta es la "letra visual" que aprenderás a reconocer.
+    </p>
+    <div id="step4-content" class="step-content"></div>
+  </section>
+
+  <section id="step5" class="card step">
+    <h2>Paso 5 — Aplicar máscara (ofuscación XOR)</h2>
+    <p class="explain">
+      Para evitar zonas demasiado uniformes (que confundirían al lector), se aplica un patrón
+      XOR a los módulos de datos. Cambia la <em>apariencia</em> pero no los bits originales.
+      Comparar la matriz antes y después te ayuda a "des-enmascarar" mentalmente.
+    </p>
+    <div id="step5-content" class="step-content"></div>
+  </section>
+
+  <section id="step6" class="card step">
+    <h2>Paso 6 — QR final con información de formato</h2>
+    <p class="explain">
+      Se añaden los 15 bits de formato (nivel EC + número de máscara, con BCH) alrededor de
+      los buscadores. Este es el código que un lector escanearía.
+    </p>
+    <div id="step6-content" class="step-content"></div>
+  </section>
+
+  <section id="legend" class="card step">
+    <h2>Tabla de referencia — formas de codeword</h2>
+    <p class="explain">
+      Cada codeword es un byte (0–255) y tiene una forma visual única en su bloque 2×4.
+      Aquí tienes las 256 formas. Si memorizas grupos comunes (letras ASCII A–Z, dígitos,
+      etc.) podrás traducir a ojo. Recuerda que la máscara altera la forma — para "leer"
+      hay que invertirla mentalmente.
+    </p>
+    <div class="row">
+      <label class="checkbox">
+        <input type="checkbox" id="legendAscii" checked>
+        <span>Mostrar solo bytes imprimibles ASCII (32–126)</span>
+      </label>
+    </div>
+    <div id="legend-content" class="step-content"></div>
+  </section>
+
+  <footer>
+    <p>
+      Implementación didáctica. Soporta versiones 1–5 con modos Byte/Numérico/Alfanumérico.
+      Algoritmo Reed-Solomon basado en el estándar ISO/IEC 18004.
+    </p>
+  </footer>
+
+  <script src="qr.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
