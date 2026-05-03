@@ -8,19 +8,86 @@
   const MODULE = 18;
   const MODULE_SMALL = 8;
 
-  // Paleta para codewords (HSL rotando matiz)
-  function codewordColor(idx, ecStart) {
+  // Paleta tipo resaltador (pastel translúcido sobre blanco)
+  const HIGHLIGHTER_PALETTE = [
+    [55,  95, 75],   // amarillo
+    [200, 80, 78],   // azul claro
+    [325, 80, 80],   // rosa
+    [120, 60, 78],   // verde
+    [30,  90, 78],   // naranja
+    [270, 70, 82],   // lavanda
+    [180, 70, 75],   // turquesa
+    [340, 80, 80],   // coral
+    [80,  70, 75],   // lima
+    [240, 60, 82],   // periwinkle
+    [15,  85, 78],   // melocotón
+    [160, 60, 76],   // menta
+  ];
+
+  function codewordColor(idx, ecStart, alpha) {
+    const a = alpha != null ? alpha : 0.62;
     if (idx >= ecStart) {
-      // Codewords de EC: tonos morados / rosados
       const k = idx - ecStart;
-      const h = (260 + k * 23) % 360;
-      return `hsl(${h}, 55%, 70%)`;
+      const h = (250 + k * 31) % 360;
+      return `hsla(${h}, 45%, 82%, ${a * 0.7})`;
     }
-    const h = (idx * 47) % 360;
-    return `hsl(${h}, 75%, 65%)`;
+    const [h, s, l] = HIGHLIGHTER_PALETTE[idx % HIGHLIGHTER_PALETTE.length];
+    // Variación sutil entre codewords de la misma posición de paleta
+    const dl = Math.floor(idx / HIGHLIGHTER_PALETTE.length) * 4;
+    return `hsla(${h}, ${s}%, ${l - dl}%, ${a})`;
+  }
+
+  function codewordSolidColor(idx, ecStart) {
+    if (idx >= ecStart) {
+      const k = idx - ecStart;
+      const h = (250 + k * 31) % 360;
+      return `hsl(${h}, 45%, 65%)`;
+    }
+    const [h, s, l] = HIGHLIGHTER_PALETTE[idx % HIGHLIGHTER_PALETTE.length];
+    return `hsl(${h}, ${s}%, ${Math.max(40, l - 25)}%)`;
   }
 
   function bitChar(b) { return b ? '1' : '0'; }
+
+  // Etiqueta para un codeword (byte) — muestra hex y char ASCII si es imprimible
+  function codewordLabel(byte) {
+    const hex = '0x' + byte.toString(16).padStart(2, '0').toUpperCase();
+    if (byte >= 32 && byte < 127) {
+      const ch = String.fromCharCode(byte);
+      return { hex, ch };
+    }
+    return { hex, ch: null };
+  }
+
+  // En modo byte, describe qué caracteres del texto original aporta este codeword.
+  // El bitstream es: 4(modo) + 8(count) + 8N(datos), así que cada codeword (excepto el primero)
+  // contiene la nibble baja del byte anterior y la nibble alta del siguiente.
+  function describeCodewordOrigin(idx, result) {
+    if (result.input.mode !== 'byte') return null;
+    if (result.codewords.blocks.length !== 1) return null;
+    const bytes = result.bytes;
+    const numData = result.codewords.dataInterleaved.length;
+    if (idx >= numData) return null;
+    if (idx === 0) return 'cabecera (modo + nibble alta de count)';
+    if (idx === 1) {
+      if (bytes.length === 0) return 'nibble baja de count';
+      return `count baja + nibble alta de '${visible(bytes[0])}'`;
+    }
+    const aIdx = idx - 2;
+    const bIdx = idx - 1;
+    if (aIdx < bytes.length && bIdx < bytes.length) {
+      return `nibble baja de '${visible(bytes[aIdx])}' + nibble alta de '${visible(bytes[bIdx])}'`;
+    }
+    if (aIdx < bytes.length && bIdx === bytes.length) {
+      return `nibble baja de '${visible(bytes[aIdx])}' + terminador`;
+    }
+    return 'padding';
+  }
+
+  function visible(byteVal) {
+    if (byteVal >= 32 && byteVal < 127) return String.fromCharCode(byteVal);
+    return '0x' + byteVal.toString(16).padStart(2, '0').toUpperCase();
+  }
 
   // ---------------------------------------------------------------------
   // Paso 1: bytes
@@ -184,12 +251,17 @@
       showLabels,
       ecStart: result.codewords.dataInterleaved.length,
       placement: result.placement,
+      codewords: result.codewords.finalSequence,
+      showCodewordTags: true,
     });
     const block = document.createElement('div');
     block.className = 'qr-block';
-    block.innerHTML = `<h3>Matriz con datos colocados (sin máscara)</h3>`;
+    block.innerHTML = `<h3>Matriz con datos colocados (sin máscara) — cada bloque resaltado con su byte</h3>`;
     block.appendChild(svg);
     c.appendChild(block);
+
+    // Sidebar / tabla de codewords con su color, byte y origen
+    c.appendChild(renderCodewordIndex(result));
 
     const tip = document.createElement('p');
     tip.style.color = 'var(--muted)';
@@ -199,8 +271,52 @@
       El orden de recorrido va de abajo-derecha hacia arriba en columnas de 2.
       Cuando una columna sube y choca con el borde superior, se gira y baja por las
       siguientes 2 columnas. Los buscadores y la zona de timing se "saltan".
+      <br><br>
+      <strong>Importante</strong>: en modo Byte, los datos empiezan en el bit 12
+      (después de 4 bits de modo + 8 de count). Por eso cada codeword combina la
+      <em>nibble baja</em> de un carácter con la <em>nibble alta</em> del siguiente
+      — la tabla siguiente lo detalla.
     `;
     c.appendChild(tip);
+  }
+
+  function renderCodewordIndex(result) {
+    const wrap = document.createElement('div');
+    wrap.className = 'qr-block';
+    wrap.innerHTML = `<h3>Tabla de codewords — color, byte y de qué letra(s) procede</h3>`;
+    const grid = document.createElement('div');
+    grid.className = 'codeword-list';
+    grid.style.gridTemplateColumns = 'repeat(auto-fill, minmax(180px, 1fr))';
+
+    const final = result.codewords.finalSequence;
+    const ecStart = result.codewords.dataInterleaved.length;
+    final.forEach((b, i) => {
+      const isEc = i >= ecStart;
+      const cell = document.createElement('div');
+      cell.className = 'cw' + (isEc ? ' ec' : '');
+      cell.style.background = codewordColor(i, ecStart, 0.55);
+      cell.style.color = '#0a0a0a';
+      cell.style.borderColor = codewordSolidColor(i, ecStart);
+      cell.style.textAlign = 'left';
+      cell.style.padding = '6px 8px';
+
+      const lbl = codewordLabel(b);
+      const origin = isEc
+        ? 'corrección de errores (Reed-Solomon)'
+        : (describeCodewordOrigin(i, result) || 'datos');
+
+      cell.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:baseline">
+          <strong>#${i}${isEc ? ' EC' : ''}</strong>
+          <span style="font-size:14px">${lbl.hex}${lbl.ch ? ' · <strong>' + escapeHtml(lbl.ch) + '</strong>' : ''}</span>
+        </div>
+        <div style="font-size:10px;opacity:0.85;margin-top:2px">${b.toString(2).padStart(8,'0')}</div>
+        <div style="font-size:10px;opacity:0.8;margin-top:3px">${origin}</div>
+      `;
+      grid.appendChild(cell);
+    });
+    wrap.appendChild(grid);
+    return wrap;
   }
 
   // ---------------------------------------------------------------------
@@ -221,6 +337,12 @@
       showLabels: false,
       highlightMask: result.dataMatrix,
     });
+    const delim = renderMatrixSVG(result.maskedMatrix, {
+      moduleSize: MODULE,
+      colorize: false,
+      showLabels: false,
+      delimitMask: result.dataMatrix,
+    });
 
     const row = document.createElement('div');
     row.className = 'qr-row';
@@ -237,7 +359,23 @@
     b2.appendChild(after);
     row.appendChild(b2);
 
+    const b3 = document.createElement('div'); b3.className = 'qr-block';
+    b3.innerHTML = `<h3>Líneas de la máscara delimitadas
+      <span style="color:var(--muted)">— borde fucsia = celda volteada</span></h3>`;
+    b3.appendChild(delim);
+    row.appendChild(b3);
+
     c.appendChild(row);
+
+    // Patrón puro de la máscara (sin datos), para visualizar la "rejilla" de ofuscación
+    if (result.chosenMask >= 0) {
+      const pureBlock = document.createElement('div');
+      pureBlock.className = 'qr-block';
+      pureBlock.innerHTML = `<h3>Patrón puro de la máscara ${result.chosenMask}
+        <span style="color:var(--muted)">— solo se aplica a los módulos de datos</span></h3>`;
+      pureBlock.appendChild(renderPureMaskSVG(result.size, result.chosenMask, result.dataMatrix));
+      c.appendChild(pureBlock);
+    }
 
     // Mosaico de las 8 máscaras con su puntuación
     const mosaic = document.createElement('div');
@@ -281,10 +419,12 @@
       showLabels: $('showLabels').checked,
       placement: result.placement,
       ecStart: result.codewords.dataInterleaved.length,
+      codewords: result.codewords.finalSequence,
+      showCodewordTags: true,
       quietZone: 4,
     });
     const block2 = document.createElement('div'); block2.className = 'qr-block';
-    block2.innerHTML = `<h3>El mismo QR con cada codeword resaltado</h3>`;
+    block2.innerHTML = `<h3>El mismo QR con cada codeword resaltado y etiquetado</h3>`;
     block2.appendChild(colored);
 
     const row = document.createElement('div'); row.className = 'qr-row';
@@ -314,6 +454,8 @@
     bg.setAttribute('fill', 'white');
     svg.appendChild(bg);
 
+    const cwGroupCells = new Map(); // codewordIndex → [{r,c,cell}]
+
     for (let r = 0; r < n; r++) {
       for (let c = 0; c < n; c++) {
         const cell = matrix[r][c];
@@ -321,42 +463,43 @@
         const y = (r + quiet) * m;
 
         let fill = cell.v ? '#111' : '#ffffff';
-        let stroke = null;
 
         if (opts.colorize && cell.data && !cell.padding) {
           const idx = cell.codewordIndex;
           const ecStart = opts.ecStart || 0;
           const baseColor = codewordColor(idx, ecStart);
-          // Fondo coloreado, bit on/off como punto interior
+          // Fondo tipo resaltador
           const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
           rect.setAttribute('x', x); rect.setAttribute('y', y);
           rect.setAttribute('width', m); rect.setAttribute('height', m);
           rect.setAttribute('fill', baseColor);
-          rect.setAttribute('stroke', 'rgba(0,0,0,0.15)');
-          rect.setAttribute('stroke-width', '0.5');
           svg.appendChild(rect);
 
-          // Indicador del bit
+          // Indicador del bit on/off como punto interior
           const dot = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-          const pad = m * 0.2;
+          const pad = m * 0.18;
           dot.setAttribute('x', x + pad); dot.setAttribute('y', y + pad);
           dot.setAttribute('width', m - 2 * pad); dot.setAttribute('height', m - 2 * pad);
-          dot.setAttribute('fill', cell.v ? '#111' : '#fff');
-          dot.setAttribute('stroke', cell.v ? 'none' : 'rgba(0,0,0,0.4)');
+          dot.setAttribute('fill', cell.v ? '#111' : 'rgba(255,255,255,0.85)');
+          dot.setAttribute('stroke', cell.v ? 'none' : 'rgba(0,0,0,0.25)');
           dot.setAttribute('stroke-width', '0.5');
           svg.appendChild(dot);
 
           if (opts.showLabels && m >= 14) {
             const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
             txt.setAttribute('x', x + m / 2);
-            txt.setAttribute('y', y + m * 0.85);
+            txt.setAttribute('y', y + m * 0.84);
             txt.setAttribute('text-anchor', 'middle');
-            txt.setAttribute('font-size', m * 0.42);
+            txt.setAttribute('font-size', m * 0.38);
             txt.setAttribute('fill', cell.v ? '#fff' : '#222');
             txt.setAttribute('font-family', 'monospace');
             txt.textContent = cell.bitIndex;
             svg.appendChild(txt);
           }
+
+          // Guardar para etiqueta posterior y bordes de codeword
+          if (!cwGroupCells.has(idx)) cwGroupCells.set(idx, []);
+          cwGroupCells.get(idx).push({ r, c, cell });
           continue;
         }
 
@@ -370,8 +513,71 @@
         rect.setAttribute('x', x); rect.setAttribute('y', y);
         rect.setAttribute('width', m); rect.setAttribute('height', m);
         rect.setAttribute('fill', fill);
-        if (stroke) { rect.setAttribute('stroke', stroke); rect.setAttribute('stroke-width', '0.5'); }
         svg.appendChild(rect);
+      }
+    }
+
+    // Delimitar las celdas afectadas por la máscara con un borde fucsia
+    if (opts.delimitMask) {
+      const ref = opts.delimitMask; // matriz original (sin máscara) para saber celdas data
+      for (let r = 0; r < n; r++) {
+        for (let c = 0; c < n; c++) {
+          const cell = matrix[r][c];
+          if (!cell.masked) continue;
+          const x = (c + quiet) * m;
+          const y = (r + quiet) * m;
+          const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          const off = 1;
+          rect.setAttribute('x', x + off); rect.setAttribute('y', y + off);
+          rect.setAttribute('width', m - 2 * off); rect.setAttribute('height', m - 2 * off);
+          rect.setAttribute('fill', 'none');
+          rect.setAttribute('stroke', '#e91e63');
+          rect.setAttribute('stroke-width', Math.max(1, m * 0.12));
+          rect.setAttribute('stroke-dasharray', `${m * 0.25},${m * 0.15}`);
+          svg.appendChild(rect);
+        }
+      }
+    }
+
+    // Etiquetas de codeword (hex + carácter ASCII si lo hay)
+    if (opts.colorize && opts.showCodewordTags && opts.codewords && m >= 14) {
+      const ecStart = opts.ecStart || 0;
+      for (const [idx, cells] of cwGroupCells) {
+        if (idx >= ecStart) continue; // etiquetar solo los de datos para no saturar
+        const byte = opts.codewords[idx];
+        if (byte === undefined) continue;
+        const lbl = codewordLabel(byte);
+
+        // Centro de masa
+        let sx = 0, sy = 0;
+        for (const ce of cells) { sx += ce.c; sy += ce.r; }
+        const cx = ((sx / cells.length) + quiet) * m + m / 2;
+        const cy = ((sy / cells.length) + quiet) * m + m / 2;
+
+        // Fondo del badge
+        const text = lbl.ch ? `${lbl.hex} ${lbl.ch}` : lbl.hex;
+        const charW = m * 0.42;
+        const padX = m * 0.25, padY = m * 0.15;
+        const boxW = text.length * charW * 0.62 + 2 * padX;
+        const boxH = m * 0.85;
+        const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        bg.setAttribute('x', cx - boxW / 2); bg.setAttribute('y', cy - boxH / 2);
+        bg.setAttribute('width', boxW); bg.setAttribute('height', boxH);
+        bg.setAttribute('rx', 4); bg.setAttribute('ry', 4);
+        bg.setAttribute('fill', 'rgba(255,255,255,0.92)');
+        bg.setAttribute('stroke', codewordSolidColor(idx, ecStart));
+        bg.setAttribute('stroke-width', '1.2');
+        svg.appendChild(bg);
+
+        const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        txt.setAttribute('x', cx); txt.setAttribute('y', cy + boxH * 0.15);
+        txt.setAttribute('text-anchor', 'middle');
+        txt.setAttribute('font-size', charW);
+        txt.setAttribute('fill', '#0a0a0a');
+        txt.setAttribute('font-family', 'ui-monospace, "SF Mono", Menlo, monospace');
+        txt.setAttribute('font-weight', '600');
+        txt.textContent = text;
+        svg.appendChild(txt);
       }
     }
 
@@ -384,6 +590,53 @@
         line1.setAttribute('stroke', 'rgba(0,0,0,0.05)');
         line1.setAttribute('stroke-width', '0.4');
         svg.appendChild(line1);
+      }
+    }
+
+    return svg;
+  }
+
+  // ---------------------------------------------------------------------
+  // Render del patrón puro de la máscara (solo donde aplica = celdas de datos)
+  // ---------------------------------------------------------------------
+  function renderPureMaskSVG(n, maskNum, dataMatrix) {
+    const m = MODULE;
+    const total = n * m;
+    const fn = QRLearn.MASK_FUNCS[maskNum];
+
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('class', 'qr-svg');
+    svg.setAttribute('viewBox', `0 0 ${total} ${total}`);
+    svg.setAttribute('width', total); svg.setAttribute('height', total);
+
+    const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    bg.setAttribute('width', total); bg.setAttribute('height', total);
+    bg.setAttribute('fill', '#fff');
+    svg.appendChild(bg);
+
+    for (let r = 0; r < n; r++) {
+      for (let c = 0; c < n; c++) {
+        const cell = dataMatrix[r][c];
+        const x = c * m, y = r * m;
+
+        // Las celdas de patrones funcionales no se enmascaran — las pintamos en gris claro
+        if (cell.fn) {
+          const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+          rect.setAttribute('x', x); rect.setAttribute('y', y);
+          rect.setAttribute('width', m); rect.setAttribute('height', m);
+          rect.setAttribute('fill', '#f4f5f7');
+          svg.appendChild(rect);
+          continue;
+        }
+        // Celda de datos: si la máscara la afecta, fucsia; si no, blanco con borde sutil
+        const active = fn(r, c);
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        rect.setAttribute('x', x); rect.setAttribute('y', y);
+        rect.setAttribute('width', m); rect.setAttribute('height', m);
+        rect.setAttribute('fill', active ? '#e91e63' : '#fff');
+        rect.setAttribute('stroke', '#ccc');
+        rect.setAttribute('stroke-width', '0.4');
+        svg.appendChild(rect);
       }
     }
 
