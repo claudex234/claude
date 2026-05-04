@@ -236,7 +236,7 @@
   }
 
   // ---------------------------------------------------------------------
-  // Paso 4: matriz con codewords coloreados y orden de bits
+  // Paso 4: matriz con codewords delimitados
   // ---------------------------------------------------------------------
   function renderStep4(result) {
     const c = $('step4-content');
@@ -245,20 +245,32 @@
     const showLabels = $('showLabels').checked;
     const colorize = $('colorize').checked;
 
-    const svg = renderMatrixSVG(result.dataMatrix, {
-      moduleSize: MODULE,
-      colorize,
-      showLabels,
-      ecStart: result.codewords.dataInterleaved.length,
-      placement: result.placement,
-      codewords: result.codewords.finalSequence,
-      showCodewordTags: true,
-    });
-    const block = document.createElement('div');
-    block.className = 'qr-block';
-    block.innerHTML = `<h3>Matriz con datos colocados (sin máscara) — cada bloque resaltado con su byte</h3>`;
-    block.appendChild(svg);
-    c.appendChild(block);
+    const row = document.createElement('div'); row.className = 'qr-row';
+
+    // Vista 1: el QR a esta altura (B&N), datos sin máscara
+    const bw = renderMatrixSVG(result.dataMatrix, { moduleSize: MODULE });
+    const bwBlock = document.createElement('div'); bwBlock.className = 'qr-block';
+    bwBlock.innerHTML = `<h3>QR a esta altura — datos colocados, <strong>sin máscara</strong>, sin formato</h3>`;
+    bwBlock.appendChild(bw);
+    row.appendChild(bwBlock);
+
+    // Vista 2: misma matriz con cada codeword delimitado y etiquetado
+    if (colorize) {
+      const annot = renderMatrixSVG(result.dataMatrix, {
+        moduleSize: MODULE,
+        outlineCodewords: true,
+        tintCodewords: true,
+        showCodewordTags: true,
+        showBitIndices: showLabels,
+        codewords: result.codewords.finalSequence,
+        ecStart: result.codewords.dataInterleaved.length,
+      });
+      const aBlock = document.createElement('div'); aBlock.className = 'qr-block';
+      aBlock.innerHTML = `<h3>Cada codeword (8 bits) delimitado con borde grueso + su byte/letra</h3>`;
+      aBlock.appendChild(annot);
+      row.appendChild(aBlock);
+    }
+    c.appendChild(row);
 
     // Sidebar / tabla de codewords con su color, byte y origen
     c.appendChild(renderCodewordIndex(result));
@@ -326,43 +338,33 @@
     const c = $('step5-content');
     c.innerHTML = '';
 
-    const before = renderMatrixSVG(result.dataMatrix, {
+    const before = renderMatrixSVG(result.dataMatrix, { moduleSize: MODULE });
+    const after = renderMatrixSVG(result.maskedMatrix, { moduleSize: MODULE });
+    const diff = renderMatrixSVG(result.maskedMatrix, {
       moduleSize: MODULE,
-      colorize: false,
-      showLabels: false,
-    });
-    const after = renderMatrixSVG(result.maskedMatrix, {
-      moduleSize: MODULE,
-      colorize: false,
-      showLabels: false,
-      highlightMask: result.dataMatrix,
-    });
-    const delim = renderMatrixSVG(result.maskedMatrix, {
-      moduleSize: MODULE,
-      colorize: false,
-      showLabels: false,
-      delimitMask: result.dataMatrix,
+      highlightMask: true,
+      delimitMask: true,
     });
 
     const row = document.createElement('div');
     row.className = 'qr-row';
 
     const b1 = document.createElement('div'); b1.className = 'qr-block';
-    b1.innerHTML = `<h3>Antes de la máscara</h3>`;
+    b1.innerHTML = `<h3>Antes de la máscara <span style="color:var(--muted)">— bits "crudos"</span></h3>`;
     b1.appendChild(before);
     row.appendChild(b1);
 
     const b2 = document.createElement('div'); b2.className = 'qr-block';
-    b2.innerHTML = `<h3>Tras aplicar máscara
+    b2.innerHTML = `<h3>Después de la máscara
       ${result.chosenMask >= 0 ? `<strong>${result.chosenMask}</strong>` : '<em>(ninguna)</em>'}
-      <span style="color:var(--muted)">— módulos volteados en amarillo</span></h3>`;
+      <span style="color:var(--muted)">— ya tiene aspecto de QR ofuscado</span></h3>`;
     b2.appendChild(after);
     row.appendChild(b2);
 
     const b3 = document.createElement('div'); b3.className = 'qr-block';
-    b3.innerHTML = `<h3>Líneas de la máscara delimitadas
-      <span style="color:var(--muted)">— borde fucsia = celda volteada</span></h3>`;
-    b3.appendChild(delim);
+    b3.innerHTML = `<h3>Diff: celdas volteadas
+      <span style="color:var(--muted)">— relleno amarillo + borde fucsia discontinuo</span></h3>`;
+    b3.appendChild(diff);
     row.appendChild(b3);
 
     c.appendChild(row);
@@ -384,7 +386,7 @@
       const masked = QRLearn.applyMask(result.dataMatrix, i);
       const card = document.createElement('div');
       card.className = 'mask-card' + (i === result.chosenMask ? ' selected' : '');
-      const svg = renderMatrixSVG(masked, { moduleSize: MODULE_SMALL, colorize: false, showLabels: false });
+      const svg = renderMatrixSVG(masked, { moduleSize: MODULE_SMALL });
       card.appendChild(svg);
       const score = result.maskScores[i].score;
       card.innerHTML += `<div class="label">Máscara ${i} · score ${score}</div>`;
@@ -403,28 +405,32 @@
     const c = $('step6-content');
     c.innerHTML = '';
 
+    const showLabels = $('showLabels').checked;
+    const colorize = $('colorize').checked;
+
+    // Vista final escaneable (B&N puro con quiet zone)
     const big = renderMatrixSVG(result.finalMatrix, {
       moduleSize: MODULE,
-      colorize: false,
-      showLabels: false,
       quietZone: 4,
     });
     const block = document.createElement('div'); block.className = 'qr-block';
-    block.innerHTML = `<h3>Código QR completo</h3>`;
+    block.innerHTML = `<h3>QR final escaneable
+      <span style="color:var(--muted)">— ya con bits de formato (15 bits BCH)</span></h3>`;
     block.appendChild(big);
 
+    // Vista anotada
     const colored = renderMatrixSVG(result.finalMatrix, {
       moduleSize: MODULE,
-      colorize: true,
-      showLabels: $('showLabels').checked,
-      placement: result.placement,
-      ecStart: result.codewords.dataInterleaved.length,
+      outlineCodewords: colorize,
+      tintCodewords: colorize,
+      showCodewordTags: colorize,
+      showBitIndices: showLabels,
+      highlightFormat: true,
       codewords: result.codewords.finalSequence,
-      showCodewordTags: true,
-      quietZone: 4,
+      ecStart: result.codewords.dataInterleaved.length,
     });
     const block2 = document.createElement('div'); block2.className = 'qr-block';
-    block2.innerHTML = `<h3>El mismo QR con cada codeword resaltado y etiquetado</h3>`;
+    block2.innerHTML = `<h3>Mismo QR con codewords delimitados + bits de formato en naranja</h3>`;
     block2.appendChild(colored);
 
     const row = document.createElement('div'); row.className = 'qr-row';
@@ -434,6 +440,11 @@
 
   // ---------------------------------------------------------------------
   // Renderizador SVG de la matriz
+  // Capas (de abajo arriba):
+  //   1) fondo blanco  2) módulos B&N (función vs datos diferenciados)
+  //   3) tinta de codeword (translúcida)  4) tinte amarillo de máscara
+  //   5) bordes gruesos por codeword  6) borde fucsia de máscara
+  //   7) borde naranja de info de formato  8) etiquetas de codeword
   // ---------------------------------------------------------------------
   function renderMatrixSVG(matrix, opts) {
     opts = opts || {};
@@ -441,75 +452,33 @@
     const n = matrix.length;
     const quiet = opts.quietZone || 0;
     const total = (n + 2 * quiet) * m;
+    const NS = 'http://www.w3.org/2000/svg';
+    const ecStart = opts.ecStart || 0;
 
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    const svg = document.createElementNS(NS, 'svg');
     svg.setAttribute('class', 'qr-svg');
     svg.setAttribute('viewBox', `0 0 ${total} ${total}`);
     svg.setAttribute('width', total);
     svg.setAttribute('height', total);
 
-    // Fondo blanco
-    const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    const bg = document.createElementNS(NS, 'rect');
     bg.setAttribute('width', total); bg.setAttribute('height', total);
-    bg.setAttribute('fill', 'white');
+    bg.setAttribute('fill', '#ffffff');
     svg.appendChild(bg);
 
-    const cwGroupCells = new Map(); // codewordIndex → [{r,c,cell}]
-
+    // 2) módulos
     for (let r = 0; r < n; r++) {
       for (let c = 0; c < n; c++) {
         const cell = matrix[r][c];
         const x = (c + quiet) * m;
         const y = (r + quiet) * m;
-
-        let fill = cell.v ? '#111' : '#ffffff';
-
-        if (opts.colorize && cell.data && !cell.padding) {
-          const idx = cell.codewordIndex;
-          const ecStart = opts.ecStart || 0;
-          const baseColor = codewordColor(idx, ecStart);
-          // Fondo tipo resaltador
-          const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-          rect.setAttribute('x', x); rect.setAttribute('y', y);
-          rect.setAttribute('width', m); rect.setAttribute('height', m);
-          rect.setAttribute('fill', baseColor);
-          svg.appendChild(rect);
-
-          // Indicador del bit on/off como punto interior
-          const dot = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-          const pad = m * 0.18;
-          dot.setAttribute('x', x + pad); dot.setAttribute('y', y + pad);
-          dot.setAttribute('width', m - 2 * pad); dot.setAttribute('height', m - 2 * pad);
-          dot.setAttribute('fill', cell.v ? '#111' : 'rgba(255,255,255,0.85)');
-          dot.setAttribute('stroke', cell.v ? 'none' : 'rgba(0,0,0,0.25)');
-          dot.setAttribute('stroke-width', '0.5');
-          svg.appendChild(dot);
-
-          if (opts.showLabels && m >= 14) {
-            const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-            txt.setAttribute('x', x + m / 2);
-            txt.setAttribute('y', y + m * 0.84);
-            txt.setAttribute('text-anchor', 'middle');
-            txt.setAttribute('font-size', m * 0.38);
-            txt.setAttribute('fill', cell.v ? '#fff' : '#222');
-            txt.setAttribute('font-family', 'monospace');
-            txt.textContent = cell.bitIndex;
-            svg.appendChild(txt);
-          }
-
-          // Guardar para etiqueta posterior y bordes de codeword
-          if (!cwGroupCells.has(idx)) cwGroupCells.set(idx, []);
-          cwGroupCells.get(idx).push({ r, c, cell });
-          continue;
+        let fill;
+        if (cell.fn) {
+          fill = cell.v ? '#1d2330' : '#e8ecf2'; // patrón funcional levemente azulado
+        } else {
+          fill = cell.v ? '#000000' : '#ffffff';
         }
-
-        if (opts.highlightMask && cell.masked) {
-          fill = cell.v ? '#b88800' : '#fff3a8';
-        } else if (cell.fn) {
-          fill = cell.v ? '#222' : '#e8edf3';
-        }
-
-        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        const rect = document.createElementNS(NS, 'rect');
         rect.setAttribute('x', x); rect.setAttribute('y', y);
         rect.setAttribute('width', m); rect.setAttribute('height', m);
         rect.setAttribute('fill', fill);
@@ -517,79 +486,201 @@
       }
     }
 
-    // Delimitar las celdas afectadas por la máscara con un borde fucsia
-    if (opts.delimitMask) {
-      const ref = opts.delimitMask; // matriz original (sin máscara) para saber celdas data
+    // 3) tinta de codeword (overlay translúcido sobre los módulos para ver bits debajo)
+    if (opts.tintCodewords) {
+      for (let r = 0; r < n; r++) {
+        for (let c = 0; c < n; c++) {
+          const cell = matrix[r][c];
+          if (!cell.data || cell.padding) continue;
+          const x = (c + quiet) * m;
+          const y = (r + quiet) * m;
+          const rect = document.createElementNS(NS, 'rect');
+          rect.setAttribute('x', x); rect.setAttribute('y', y);
+          rect.setAttribute('width', m); rect.setAttribute('height', m);
+          rect.setAttribute('fill', codewordColor(cell.codewordIndex, ecStart, 0.32));
+          svg.appendChild(rect);
+        }
+      }
+    }
+
+    // 4) tinte amarillo en celdas volteadas por la máscara
+    if (opts.highlightMask) {
       for (let r = 0; r < n; r++) {
         for (let c = 0; c < n; c++) {
           const cell = matrix[r][c];
           if (!cell.masked) continue;
           const x = (c + quiet) * m;
           const y = (r + quiet) * m;
-          const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-          const off = 1;
-          rect.setAttribute('x', x + off); rect.setAttribute('y', y + off);
-          rect.setAttribute('width', m - 2 * off); rect.setAttribute('height', m - 2 * off);
-          rect.setAttribute('fill', 'none');
-          rect.setAttribute('stroke', '#e91e63');
-          rect.setAttribute('stroke-width', Math.max(1, m * 0.12));
-          rect.setAttribute('stroke-dasharray', `${m * 0.25},${m * 0.15}`);
+          const rect = document.createElementNS(NS, 'rect');
+          rect.setAttribute('x', x); rect.setAttribute('y', y);
+          rect.setAttribute('width', m); rect.setAttribute('height', m);
+          rect.setAttribute('fill', 'rgba(255, 213, 0, 0.42)');
           svg.appendChild(rect);
         }
       }
     }
 
-    // Etiquetas de codeword (hex + carácter ASCII si lo hay)
-    if (opts.colorize && opts.showCodewordTags && opts.codewords && m >= 14) {
-      const ecStart = opts.ecStart || 0;
-      for (const [idx, cells] of cwGroupCells) {
-        if (idx >= ecStart) continue; // etiquetar solo los de datos para no saturar
+    // 5) bordes gruesos conectados delimitando cada codeword
+    if (opts.outlineCodewords) {
+      const sw = Math.max(2.5, m * 0.18);
+      for (let r = 0; r < n; r++) {
+        for (let c = 0; c < n; c++) {
+          const cell = matrix[r][c];
+          if (!cell.data || cell.padding) continue;
+          const idx = cell.codewordIndex;
+          const color = codewordSolidColor(idx, ecStart);
+          const x = (c + quiet) * m;
+          const y = (r + quiet) * m;
+          const sides = [
+            [-1, 0, x, y, x + m, y],         // arriba
+            [ 1, 0, x, y + m, x + m, y + m], // abajo
+            [ 0,-1, x, y, x, y + m],         // izda
+            [ 0, 1, x + m, y, x + m, y + m]  // dcha
+          ];
+          for (const [dr, dc, x1, y1, x2, y2] of sides) {
+            const nr = r + dr, nc = c + dc;
+            const inside = nr >= 0 && nc >= 0 && nr < n && nc < n;
+            const sameCw = inside && matrix[nr][nc].data && !matrix[nr][nc].padding
+                            && matrix[nr][nc].codewordIndex === idx;
+            if (sameCw) continue;
+            const line = document.createElementNS(NS, 'line');
+            line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+            line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+            line.setAttribute('stroke', color);
+            line.setAttribute('stroke-width', sw);
+            line.setAttribute('stroke-linecap', 'square');
+            svg.appendChild(line);
+          }
+        }
+      }
+    }
+
+    // 6) borde fucsia discontinuo en celdas volteadas por la máscara
+    if (opts.delimitMask) {
+      for (let r = 0; r < n; r++) {
+        for (let c = 0; c < n; c++) {
+          const cell = matrix[r][c];
+          if (!cell.masked) continue;
+          const x = (c + quiet) * m;
+          const y = (r + quiet) * m;
+          const off = m * 0.08;
+          const rect = document.createElementNS(NS, 'rect');
+          rect.setAttribute('x', x + off); rect.setAttribute('y', y + off);
+          rect.setAttribute('width', m - 2 * off); rect.setAttribute('height', m - 2 * off);
+          rect.setAttribute('fill', 'none');
+          rect.setAttribute('stroke', '#e91e63');
+          rect.setAttribute('stroke-width', Math.max(1.5, m * 0.14));
+          rect.setAttribute('stroke-dasharray', `${m * 0.3} ${m * 0.18}`);
+          svg.appendChild(rect);
+        }
+      }
+    }
+
+    // 7) borde naranja resaltando info de formato
+    if (opts.highlightFormat) {
+      for (let r = 0; r < n; r++) {
+        for (let c = 0; c < n; c++) {
+          const cell = matrix[r][c];
+          if (!cell.format) continue;
+          const x = (c + quiet) * m;
+          const y = (r + quiet) * m;
+          const rect = document.createElementNS(NS, 'rect');
+          const off = m * 0.06;
+          rect.setAttribute('x', x + off); rect.setAttribute('y', y + off);
+          rect.setAttribute('width', m - 2 * off); rect.setAttribute('height', m - 2 * off);
+          rect.setAttribute('fill', 'none');
+          rect.setAttribute('stroke', '#ff7a00');
+          rect.setAttribute('stroke-width', Math.max(1.2, m * 0.11));
+          svg.appendChild(rect);
+        }
+      }
+    }
+
+    // bit indices (opcional, útil si el módulo es grande)
+    if (opts.showBitIndices && m >= 16) {
+      for (let r = 0; r < n; r++) {
+        for (let c = 0; c < n; c++) {
+          const cell = matrix[r][c];
+          if (!cell.data || cell.padding) continue;
+          const x = (c + quiet) * m;
+          const y = (r + quiet) * m;
+          const txt = document.createElementNS(NS, 'text');
+          txt.setAttribute('x', x + m * 0.5);
+          txt.setAttribute('y', y + m * 0.32);
+          txt.setAttribute('text-anchor', 'middle');
+          txt.setAttribute('font-size', m * 0.28);
+          txt.setAttribute('fill', cell.v ? 'rgba(255,255,255,0.65)' : 'rgba(0,0,0,0.5)');
+          txt.setAttribute('font-family', 'monospace');
+          txt.textContent = cell.bitIndex;
+          svg.appendChild(txt);
+        }
+      }
+    }
+
+    // 8) etiquetas (badge) por codeword en el centro de masa
+    if (opts.showCodewordTags && opts.codewords && m >= 12) {
+      const cwGroups = new Map();
+      for (let r = 0; r < n; r++) {
+        for (let c = 0; c < n; c++) {
+          const cell = matrix[r][c];
+          if (!cell.data || cell.padding) continue;
+          const idx = cell.codewordIndex;
+          if (!cwGroups.has(idx)) cwGroups.set(idx, []);
+          cwGroups.get(idx).push({ r, c });
+        }
+      }
+      for (const [idx, cells] of cwGroups) {
         const byte = opts.codewords[idx];
         if (byte === undefined) continue;
         const lbl = codewordLabel(byte);
-
-        // Centro de masa
         let sx = 0, sy = 0;
         for (const ce of cells) { sx += ce.c; sy += ce.r; }
         const cx = ((sx / cells.length) + quiet) * m + m / 2;
         const cy = ((sy / cells.length) + quiet) * m + m / 2;
 
-        // Fondo del badge
-        const text = lbl.ch ? `${lbl.hex} ${lbl.ch}` : lbl.hex;
-        const charW = m * 0.42;
-        const padX = m * 0.25, padY = m * 0.15;
-        const boxW = text.length * charW * 0.62 + 2 * padX;
-        const boxH = m * 0.85;
-        const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-        bg.setAttribute('x', cx - boxW / 2); bg.setAttribute('y', cy - boxH / 2);
-        bg.setAttribute('width', boxW); bg.setAttribute('height', boxH);
-        bg.setAttribute('rx', 4); bg.setAttribute('ry', 4);
-        bg.setAttribute('fill', 'rgba(255,255,255,0.92)');
-        bg.setAttribute('stroke', codewordSolidColor(idx, ecStart));
-        bg.setAttribute('stroke-width', '1.2');
-        svg.appendChild(bg);
+        const isEc = idx >= ecStart;
+        const big = lbl.ch || lbl.hex;
+        const small = isEc ? `#${idx} EC` : `#${idx} ${lbl.hex}`;
 
-        const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-        txt.setAttribute('x', cx); txt.setAttribute('y', cy + boxH * 0.15);
-        txt.setAttribute('text-anchor', 'middle');
-        txt.setAttribute('font-size', charW);
-        txt.setAttribute('fill', '#0a0a0a');
-        txt.setAttribute('font-family', 'ui-monospace, "SF Mono", Menlo, monospace');
-        txt.setAttribute('font-weight', '600');
-        txt.textContent = text;
-        svg.appendChild(txt);
-      }
-    }
+        const fontBig = lbl.ch ? m * 0.95 : m * 0.5;
+        const fontSmall = m * 0.3;
+        const padX = m * 0.18, padY = m * 0.1;
+        const w1 = big.length * fontBig * 0.62;
+        const w2 = small.length * fontSmall * 0.62;
+        const boxW = Math.max(w1, w2) + 2 * padX;
+        const boxH = fontBig + fontSmall + 3 * padY;
 
-    // Líneas de cuadrícula sutiles para versiones grandes con módulos pequeños
-    if (opts.colorize && m >= 12) {
-      for (let i = 0; i <= n; i++) {
-        const line1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        line1.setAttribute('x1', (i + quiet) * m); line1.setAttribute('y1', quiet * m);
-        line1.setAttribute('x2', (i + quiet) * m); line1.setAttribute('y2', (n + quiet) * m);
-        line1.setAttribute('stroke', 'rgba(0,0,0,0.05)');
-        line1.setAttribute('stroke-width', '0.4');
-        svg.appendChild(line1);
+        const bgRect = document.createElementNS(NS, 'rect');
+        bgRect.setAttribute('x', cx - boxW / 2);
+        bgRect.setAttribute('y', cy - boxH / 2);
+        bgRect.setAttribute('width', boxW);
+        bgRect.setAttribute('height', boxH);
+        bgRect.setAttribute('rx', m * 0.18);
+        bgRect.setAttribute('fill', 'rgba(255,255,255,0.96)');
+        bgRect.setAttribute('stroke', codewordSolidColor(idx, ecStart));
+        bgRect.setAttribute('stroke-width', '2');
+        svg.appendChild(bgRect);
+
+        const t1 = document.createElementNS(NS, 'text');
+        t1.setAttribute('x', cx);
+        t1.setAttribute('y', cy - boxH / 2 + padY + fontBig * 0.85);
+        t1.setAttribute('text-anchor', 'middle');
+        t1.setAttribute('font-size', fontBig);
+        t1.setAttribute('font-family', 'ui-monospace, monospace');
+        t1.setAttribute('font-weight', '700');
+        t1.setAttribute('fill', '#0a0a0a');
+        t1.textContent = big;
+        svg.appendChild(t1);
+
+        const t2 = document.createElementNS(NS, 'text');
+        t2.setAttribute('x', cx);
+        t2.setAttribute('y', cy - boxH / 2 + 2 * padY + fontBig + fontSmall * 0.9);
+        t2.setAttribute('text-anchor', 'middle');
+        t2.setAttribute('font-size', fontSmall);
+        t2.setAttribute('font-family', 'ui-monospace, monospace');
+        t2.setAttribute('fill', codewordSolidColor(idx, ecStart));
+        t2.textContent = small;
+        svg.appendChild(t2);
       }
     }
 
