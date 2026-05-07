@@ -621,8 +621,7 @@ body {
 
 .gen-split { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(380px, 460px) 1fr; }
 .gen-editor { padding: 4px 18px 40px; overflow-y: auto; border-right: 1px solid var(--border); background: var(--surface); }
-.gen-preview { padding: 24px; overflow-y: auto; background: var(--bg-sunken); }
-.gen-preview .pv-doc { width: 100%; }
+.gen-preview { padding: 24px; overflow: auto; background: var(--bg-sunken); }
 
 .gen-section { padding: 14px 0; border-top: 1px solid var(--border); }
 .gen-section:first-child { border-top: 0; padding-top: 12px; }
@@ -659,9 +658,14 @@ body {
 .prod-del { background: transparent; border: 0; color: var(--text-mute); font-size: 16px; cursor: pointer; padding: 0; }
 .prod-del:hover { color: var(--danger); }
 
-/* ============ Preview "PDF" (hoja A4) ============ */
-.pv-doc { display: flex; flex-direction: column; gap: 18px; }
-/* La hoja A4 vive en su propio "tema claro" sin importar el tema de la app */
+/* ============ Preview "PDF" (hoja A4 fija + zoom-to-fit) ============
+   Página renderizada SIEMPRE a 794x1123px (A4 a 96dpi). Todo el contenido
+   adentro es px fijo. La columna .gen-preview aplica un `zoom` calculado
+   por JS para que la hoja entre completa en el ancho disponible (igual
+   que un visor PDF). Así, el contenido jamás se reorganiza al cambiar
+   el tamaño del panel: solo cambia la escala visual. */
+.gen-preview .pv-doc { width: 794px; }
+.pv-doc { display: flex; flex-direction: column; gap: 24px; }
 .pv-page {
   --bg: #ffffff;
   --surface: #ffffff;
@@ -681,14 +685,16 @@ body {
   --danger-soft: #fef2f2;
   --info: #2563eb;
   --info-soft: #eff6ff;
+  width: 794px;
+  height: 1123px;
+  padding: 56px 60px;
+  box-sizing: border-box;
   background: #fff;
   color: #1a1d23;
   border: 1px solid #e2e5ea;
   border-radius: 4px;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
   position: relative;
-  aspect-ratio: 1 / 1.4142;
-  padding: 7.4% 6.5%;
   display: flex;
   flex-direction: column;
 }

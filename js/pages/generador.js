@@ -270,6 +270,22 @@ export const render = (root) => {
   const node = el(renderEditor(s));
   root.appendChild(node);
 
+  // Escala la hoja A4 (794px) para que entre en la columna. Como un visor
+  // PDF: el layout interno NUNCA se reorganiza, solo cambia el zoom visual.
+  const PAGE_W = 794;
+  const fitPreview = () => {
+    const container = node.querySelector(".gen-preview");
+    const doc = container?.querySelector(".pv-doc");
+    if (!container || !doc) return;
+    const cw = container.clientWidth - 48; // padding lateral 24+24
+    if (cw <= 0) return;
+    doc.style.zoom = Math.max(0.3, cw / PAGE_W);
+  };
+
+  const ro = new ResizeObserver(() => fitPreview());
+  ro.observe(node.querySelector(".gen-preview"));
+  requestAnimationFrame(fitPreview);
+
   const refreshChips = () => {
     const target = node.querySelector("[data-chips]");
     if (!target) return;
@@ -295,7 +311,10 @@ export const render = (root) => {
 
   const refreshPreview = () => {
     const target = node.querySelector("[data-preview]");
-    if (target) target.innerHTML = renderPreview(s);
+    if (target) {
+      target.innerHTML = renderPreview(s);
+      fitPreview();
+    }
   };
 
   const refreshAll = () => { refreshChips(); refreshProductos(); refreshPreview(); };
@@ -419,4 +438,6 @@ export const render = (root) => {
     window.open(`https://wa.me/${tel.replace(/^\+/, "")}?text=${msg}`, "_blank");
   });
 
+  // Cleanup al cambiar de ruta
+  return () => ro.disconnect();
 };
