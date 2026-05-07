@@ -558,3 +558,19 @@ body {
 .dash-handle:hover { background: var(--bg-soft); color: var(--text-2); }
 .dash-card:hover .dash-handle { opacity: 1; }
 .dash-card.dragging .dash-handle { cursor: grabbing; }
+
+/* ===== Tweaks panel (slide-in) ===== */
+.tweaks-panel {
+  position: fixed; top: 0; right: 0; bottom: 0;
+  width: 320px; background: var(--surface); border-left: 1px solid var(--border);
+  box-shadow: -8px 0 24px rgba(0,0,0,.25); z-index: 50;
+  display: flex; flex-direction: column;
+}
+.tweaks-header {
+  padding: 14px 16px; border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.tweaks-title { font-size: 14px; font-weight: 650; }
+.tweaks-body { padding: 16px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 18px; }
+.tweak-section { display: flex; flex-direction: column; gap: 8px; }
+.tweak-section-title { font-size: 11px; font-weight: 600; color: var(--text-mute); text-transform: uppercase; letter-spacing: .5px; }

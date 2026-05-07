@@ -1,0 +1,21 @@
+export const PROFORMAS_PRODUCTOS = {
+  "PRF-2026-0142": { PLUS: 3 },
+  "PRF-2026-0141": { PRO: 1, PLUS: 2 },
+  "PRF-2026-0140": { ELITE: 2, PLUS: 1 },
+  "PRF-2026-0139": { PRO: 4 },
+  "PRF-2026-0138": { PRO: 1 },
+  "PRF-2026-0137": { PLUS: 2 },
+  "PRF-2026-0136": { ELITE: 1 },
+  "PRF-2026-0135": { PRO: 3 },
+};
+
+export const PROFORMAS = [
+  { id: "PRF-2026-0142", cliente: "I.E.P. San Agustín", contacto: "Carmen Vásquez", cargo: "Directora Administrativa", ruc: "20512345678", email: "cvasquez@sanagustin.edu.pe", telefono: "+51 987 654 321", monto: 48750.00, moneda: "PEN", items: 8, emitida: "2026-04-28", validez: "2026-05-28", estado: "vista", aperturas: 7, tiempoTotal: 1842, ultimaVista: "hace 2 horas", paginas: 6, descargas: 1, impresiones: 0, reenvios: 2, giroscopio: true, asunto: "12 pantallas interactivas 75\" + instalación" },
+  { id: "PRF-2026-0141", cliente: "Colegio Innova Schools - Sede La Molina", contacto: "Roberto Salazar", cargo: "Jefe de TI", ruc: "20554321987", email: "rsalazar@innovaschools.edu.pe", telefono: "+51 998 123 456", monto: 124300.00, moneda: "PEN", items: 14, emitida: "2026-04-26", validez: "2026-05-26", estado: "vista", aperturas: 12, tiempoTotal: 3120, ultimaVista: "hace 18 minutos", paginas: 9, descargas: 3, impresiones: 2, reenvios: 4, giroscopio: true, asunto: "Renovación tecnológica primaria - 24 pantallas" },
+  { id: "PRF-2026-0140", cliente: "Universidad Continental", contacto: "Ing. Patricia Llerena", cargo: "Coordinadora de Aulas", ruc: "20486272169", email: "pllerena@continental.edu.pe", telefono: "+51 945 887 233", monto: 287500.00, moneda: "PEN", items: 22, emitida: "2026-04-24", validez: "2026-05-24", estado: "vista", aperturas: 23, tiempoTotal: 5430, ultimaVista: "hace 1 día", paginas: 12, descargas: 5, impresiones: 4, reenvios: 7, giroscopio: false, asunto: "Aulas híbridas Campus Huancayo - Fase 2" },
+  { id: "PRF-2026-0139", cliente: "Cibertec", contacto: "Luis Mendoza", cargo: "Gerente de Operaciones", ruc: "20100100100", email: "lmendoza@cibertec.edu.pe", telefono: "+51 912 345 678", monto: 67200.00, moneda: "PEN", items: 10, emitida: "2026-04-22", validez: "2026-05-22", estado: "enviada", aperturas: 0, tiempoTotal: 0, ultimaVista: "—", paginas: 7, descargas: 0, impresiones: 0, reenvios: 0, giroscopio: false, asunto: "Laboratorio de cómputo - sede San Borja" },
+  { id: "PRF-2026-0138", cliente: "Constructora Andina S.A.C.", contacto: "María Quispe", cargo: "Jefa de Proyectos", ruc: "20512345678", email: "mquispe@andina.com.pe", telefono: "+51 987 654 321", monto: 18900.00, moneda: "PEN", items: 4, emitida: "2026-04-20", validez: "2026-05-20", estado: "vista", aperturas: 3, tiempoTotal: 412, ultimaVista: "hace 3 días", paginas: 5, descargas: 0, impresiones: 1, reenvios: 1, giroscopio: true, asunto: "2 pantallas sala de capacitación obra" },
+  { id: "PRF-2026-0137", cliente: "Colegio Trilce", contacto: "Andrea Paredes", cargo: "Subdirectora Académica", ruc: "20100200300", email: "aparedes@trilce.edu.pe", telefono: "+51 956 778 990", monto: 32400.00, moneda: "PEN", items: 6, emitida: "2026-04-18", validez: "2026-05-18", estado: "vista", aperturas: 15, tiempoTotal: 2890, ultimaVista: "hace 5 horas", paginas: 7, descargas: 2, impresiones: 3, reenvios: 3, giroscopio: true, asunto: "Renovación aulas 4to-5to secundaria" },
+  { id: "PRF-2026-0136", cliente: "TECSUP", contacto: "Ing. Carlos Ramírez", cargo: "Director Académico", ruc: "20131367089", email: "cramirez@tecsup.edu.pe", telefono: "+51 944 112 233", monto: 156800.00, moneda: "PEN", items: 18, emitida: "2026-04-15", validez: "2026-05-15", estado: "enviada", aperturas: 0, tiempoTotal: 0, ultimaVista: "—", paginas: 11, descargas: 0, impresiones: 0, reenvios: 0, giroscopio: false, asunto: "Laboratorios de electrónica - 8 pantallas" },
+  { id: "PRF-2026-0135", cliente: "I.E. Saco Oliveros", contacto: "Pedro Aguilar", cargo: "Administrador", ruc: "20445566778", email: "paguilar@sacoliveros.edu.pe", telefono: "+51 967 543 210", monto: 41250.00, moneda: "PEN", items: 7, emitida: "2026-04-12", validez: "2026-05-12", estado: "vista", aperturas: 4, tiempoTotal: 678, ultimaVista: "hace 6 días", paginas: 6, descargas: 1, impresiones: 0, reenvios: 0, giroscopio: false, asunto: "5 pantallas aulas inicial" },
+];
