@@ -2,6 +2,7 @@ import { html, raw, el, on } from "../lib/utils.js";
 import { icon } from "../lib/icons.js";
 import { currentRoute } from "../lib/router.js";
 import { signOut } from "../lib/auth.js";
+import { APP_VERSION, clearCacheAndReload } from "../lib/version.js";
 
 const titleFor = (name) => ({
   proformas: "Proformas",
@@ -29,12 +30,19 @@ export const mountTopbar = (container) => {
             ${raw(icon("bell"))}
             <span style="position:absolute;top:4px;right:4px;width:7px;height:7px;border-radius:50%;background:var(--danger)"></span>
           </button>
+          <button class="btn btn-ghost btn-icon" title="Borrar caché y recargar" data-action="clear-cache">${raw(icon("refresh"))}</button>
+          <span class="topbar-ver" title="Versión de la app">v${APP_VERSION}</span>
           <button class="btn btn-ghost btn-icon" title="Tweaks" data-action="tweaks">${raw(icon("settings"))}</button>
           <button class="btn btn-ghost" title="Cerrar sesión" data-action="signout" style="font-size:12px">Salir</button>
         </div>
       </div>
     `);
     on(node, "click", "[data-action='tweaks']", () => document.dispatchEvent(new CustomEvent("tweaks:toggle")));
+    on(node, "click", "[data-action='clear-cache']", async () => {
+      if (confirm("Borrar caché local y recargar? Vas a tener que iniciar sesión de nuevo.")) {
+        await clearCacheAndReload();
+      }
+    });
     on(node, "click", "[data-action='signout']", () => signOut());
     return node;
   };

@@ -72,5 +72,5 @@ export const mountSidebar = (container) => {
   };
 
   document.addEventListener("route:change", rerender);
-  document.addEventListener("store:sidebar", rerender);
+  document.addEventListener("store:sidebarCollapsed", rerender);
 };

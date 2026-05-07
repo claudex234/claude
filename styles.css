@@ -269,6 +269,7 @@ body {
 .crumb { color: var(--text-mute); font-size: 13px; display: flex; align-items: center; gap: 8px; }
 .crumb b { color: var(--text); font-weight: 600; }
 .topbar-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.topbar-ver { font-family: var(--font-mono); font-size: 11px; color: var(--text-mute); padding: 0 4px; }
 
 .page { padding: 24px 32px 80px; max-width: 1440px; }
 .page-header {
@@ -620,8 +621,8 @@ body {
 
 .gen-split { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(380px, 460px) 1fr; }
 .gen-editor { padding: 4px 18px 40px; overflow-y: auto; border-right: 1px solid var(--border); background: var(--surface); }
-.gen-preview { padding: 24px; overflow-y: auto; background: var(--bg-sunken); display: flex; justify-content: center; }
-.gen-preview .pv-doc { width: 100%; max-width: 720px; }
+.gen-preview { padding: 24px; overflow-y: auto; background: var(--bg-sunken); }
+.gen-preview .pv-doc { width: 100%; }
 
 .gen-section { padding: 14px 0; border-top: 1px solid var(--border); }
 .gen-section:first-child { border-top: 0; padding-top: 12px; }
