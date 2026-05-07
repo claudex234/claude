@@ -1,7 +1,10 @@
 import { html, raw, el, on, fmtMoney } from "../lib/utils.js";
 import { icon } from "../lib/icons.js";
 import { PRODUCTOS } from "../data/productos.js";
+import { PROFORMAS } from "../data/proformas.js";
 import { navigate } from "../lib/router.js";
+import { createProforma } from "../data/api.js";
+import { toast } from "../lib/toast.js";
 
 // Parser para "3PRO6000", "1PLUS", "pro"
 const parseLine = (line) => {
@@ -21,9 +24,9 @@ const parseLine = (line) => {
 };
 
 export const render = (root) => {
-  let cliente = "Colegio Innova Schools";
-  let ruc = "20554321987";
-  let asunto = "Renovación tecnológica primaria - 24 pantallas";
+  let cliente = "";
+  let ruc = "";
+  let asunto = "";
   let lines = "1PLUS\n2PRO\n1ELITE";
 
   const items = () => lines.split("\n").map(parseLine).filter(Boolean);
@@ -78,7 +81,7 @@ export const render = (root) => {
           <p class="page-sub">Editor split-view · escribí los productos en formato compacto y se previsualizan en vivo.</p>
         </div>
         <div style="display:flex;gap:8px">
-          <button class="btn">Guardar borrador</button>
+          <button class="btn" data-action="borrador">Guardar borrador</button>
           <button class="btn btn-primary" data-action="enviar">${raw(icon("send"))} Enviar</button>
         </div>
       </div>
@@ -86,9 +89,9 @@ export const render = (root) => {
       <div style="display:grid;grid-template-columns:1fr 1.2fr;gap:20px;flex:1;min-height:0">
         <div class="card" style="padding:20px;overflow-y:auto">
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
-            <div><label class="field-label">Cliente</label><input class="input" data-f="cliente" value="${cliente}"></div>
-            <div><label class="field-label">RUC</label><input class="input" data-f="ruc" value="${ruc}"></div>
-            <div style="grid-column:1 / -1"><label class="field-label">Asunto</label><input class="input" data-f="asunto" value="${asunto}"></div>
+            <div><label class="field-label">Cliente</label><input class="input" data-f="cliente" value="${cliente}" placeholder="Razón social"></div>
+            <div><label class="field-label">RUC</label><input class="input" data-f="ruc" value="${ruc}" placeholder="11 dígitos"></div>
+            <div style="grid-column:1 / -1"><label class="field-label">Asunto</label><input class="input" data-f="asunto" value="${asunto}" placeholder="p.ej. 12 pantallas para primaria"></div>
           </div>
           <div style="margin-top:18px">
             <label class="field-label">Ítems (1 por línea: <code style="font-family:var(--font-mono)">2PRO6500</code> = 2× PRO a S/ 6500)</label>
@@ -122,5 +125,44 @@ export const render = (root) => {
     if (f === "lines") lines = v;
     refreshPreview();
   });
-  on(node, "click", "[data-action='enviar']", () => navigate("detalle/PRF-2026-0141"));
+
+  const save = async (estado, btn) => {
+    const its = items();
+    if (!cliente.trim()) return toast("Completá el cliente", { type: "err" });
+    if (!its.length) return toast("Agregá al menos un ítem válido", { type: "err" });
+
+    const buttons = node.querySelectorAll("[data-action]");
+    buttons.forEach((b) => (b.disabled = true));
+    const original = btn.innerHTML;
+    btn.textContent = estado === "enviada" ? "Enviando…" : "Guardando…";
+
+    try {
+      const { proforma, slug, totals } = await createProforma({
+        estado, cliente, ruc, asunto, items: its,
+      });
+      // Inyectar en el store en memoria para que el listado lo vea sin recargar.
+      PROFORMAS.unshift({
+        id: proforma.numero,
+        cliente, contacto: "", cargo: "", ruc, email: "", telefono: "",
+        monto: totals.total, moneda: "PEN", items: its.length,
+        emitida: proforma.emitida, validez: proforma.validez,
+        estado: proforma.estado,
+        aperturas: 0, tiempoTotal: 0, ultimaVista: "—",
+        paginas: 0, descargas: 0, impresiones: 0, reenvios: 0,
+        giroscopio: false, asunto: asunto || "",
+      });
+      toast(estado === "enviada"
+        ? `${proforma.numero} enviada · slug ${slug}`
+        : `${proforma.numero} guardada como borrador`, { type: "ok" });
+      navigate("proformas");
+    } catch (err) {
+      console.error(err);
+      toast(err.message || "No pude guardar", { type: "err" });
+      buttons.forEach((b) => (b.disabled = false));
+      btn.innerHTML = original;
+    }
+  };
+
+  on(node, "click", "[data-action='borrador']", (e) => save("borrador", e.target.closest("button")));
+  on(node, "click", "[data-action='enviar']", (e) => save("enviada", e.target.closest("button")));
 };
