@@ -1,6 +1,7 @@
 import { html, raw, el, on } from "../lib/utils.js";
 import { icon } from "../lib/icons.js";
 import { currentRoute } from "../lib/router.js";
+import { signOut } from "../lib/auth.js";
 
 const titleFor = (name) => ({
   dashboard: "Dashboard",
@@ -30,10 +31,12 @@ export const mountTopbar = (container) => {
             <span style="position:absolute;top:4px;right:4px;width:7px;height:7px;border-radius:50%;background:var(--danger)"></span>
           </button>
           <button class="btn btn-ghost btn-icon" title="Tweaks" data-action="tweaks">${raw(icon("settings"))}</button>
+          <button class="btn btn-ghost" title="Cerrar sesión" data-action="signout" style="font-size:12px">Salir</button>
         </div>
       </div>
     `);
     on(node, "click", "[data-action='tweaks']", () => document.dispatchEvent(new CustomEvent("tweaks:toggle")));
+    on(node, "click", "[data-action='signout']", () => signOut());
     return node;
   };
 
