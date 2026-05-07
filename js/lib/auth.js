@@ -2,6 +2,10 @@
 // Solo magic link por email (Supabase OTP).
 import { supabase } from "./supabase.js";
 
+// El magic link siempre vuelve a la app desplegada en GitHub Pages,
+// aunque solicites el correo desde localhost u otro entorno.
+const REDIRECT_URL = "https://duecaz.github.io/test/";
+
 const renderLoginScreen = (root, { onSignedIn }) => {
   root.innerHTML = `
     <div class="auth-shell">
@@ -40,7 +44,7 @@ const renderLoginScreen = (root, { onSignedIn }) => {
     try {
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: location.origin + location.pathname },
+        options: { emailRedirectTo: REDIRECT_URL },
       });
       if (error) throw error;
       msg.textContent = `Revisa ${email} y abrí el enlace en este mismo navegador.`;
