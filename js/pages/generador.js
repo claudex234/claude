@@ -20,6 +20,7 @@ const initialState = () => ({
   raw: "",
   asunto: "Pantallas interactivas - 3 unidades",
   cliente: { razonSocial: "", ruc: "", contacto: "", email: "", telefono: "" },
+  rucSeguro: false,
   productos: [],
   terminos: {
     validez: EMISOR.defaults.validezDias,
@@ -298,8 +299,14 @@ export const render = (root) => {
   const refreshChips = () => {
     const target = node.querySelector("[data-chips]");
     if (!target) return;
+    const ruc = s.cliente.ruc;
+    const rucChip = !ruc
+      ? `<span class="chip chip-mute">· RUC</span>`
+      : s.rucSeguro
+        ? `<span class="chip chip-ok" title="RUC empieza por 20: empresa">✓ RUC</span>`
+        : `<span class="chip chip-warn" title="RUC válido pero no empieza por 20 (revisá)">? RUC</span>`;
     target.innerHTML = [
-      chipHtml("RUC", !!s.cliente.ruc),
+      rucChip,
       chipHtml("Email", !!s.cliente.email),
       chipHtml("Teléfono", !!s.cliente.telefono),
       chipHtml("Contacto", !!s.cliente.contacto),
@@ -338,12 +345,9 @@ export const render = (root) => {
     if (f === "raw") {
       s.raw = v;
       const parsed = parsePaste(v, PRODUCTOS);
-      // Textarea = fuente de verdad. Lo detectado gana, lo no detectado
-      // vacía. Si querés preservar un valor que el parser no encuentra,
-      // editalo en el input directamente DESPUÉS de tocar el textarea.
       CLIENTE_FIELDS.forEach((k) => { s.cliente[k] = parsed[k] || ""; });
+      s.rucSeguro = parsed.rucSeguro;
       s.productos = parsed.productos.slice();
-      // Sincronizar los inputs visibles (siempre, sin chequeo de igualdad).
       CLIENTE_FIELDS.forEach((k) => {
         const i = node.querySelector(`[data-f='${k}']`);
         if (i) i.value = s.cliente[k];
@@ -352,7 +356,10 @@ export const render = (root) => {
       return;
     }
     if (f === "asunto") s.asunto = v;
-    else if (CLIENTE_FIELDS.includes(f)) s.cliente[f] = v;
+    else if (CLIENTE_FIELDS.includes(f)) {
+      s.cliente[f] = v;
+      if (f === "ruc") s.rucSeguro = /^20\d{9}$/.test(v.trim());
+    }
     else if (f === "validez") s.terminos.validez = parseInt(v, 10) || 0;
     else if (f === "formaPago") s.terminos.formaPago = v;
     else if (f === "tiempoEntrega") s.terminos.tiempoEntrega = v;
