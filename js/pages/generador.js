@@ -338,9 +338,11 @@ export const render = (root) => {
     if (f === "raw") {
       s.raw = v;
       const parsed = parsePaste(v, PRODUCTOS);
-      // Sólo llenamos lo que esté vacío para no pisar ediciones manuales.
+      // El textarea es la fuente de verdad: si el parser detectó algo,
+      // pisa el valor actual. Lo que el parser no detecta, queda como está
+      // (eso protege ediciones manuales en campos no tocados por el paste).
       CLIENTE_FIELDS.forEach((k) => {
-        if (parsed[k] && !s.cliente[k]) s.cliente[k] = parsed[k];
+        if (parsed[k]) s.cliente[k] = parsed[k];
       });
       if (parsed.productos.length) s.productos = parsed.productos.slice();
       // Reflejar en los inputs visibles.
