@@ -271,7 +271,7 @@ body {
 .topbar-actions { margin-left: auto; display: flex; gap: 8px; align-items: center; }
 .topbar-ver { font-family: var(--font-mono); font-size: 11px; color: var(--text-mute); padding: 0 4px; }
 
-.page { padding: 24px 32px 80px; max-width: 1440px; }
+.page { padding: 24px 32px 80px; }
 .page-header {
   display: flex;
   align-items: flex-end;
