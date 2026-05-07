@@ -175,7 +175,6 @@ const chipHtml = (label, ok) =>
 const renderEditor = (s) => `
   <div class="gen-shell fade-in">
     <header class="gen-bar">
-      <button class="gen-back" data-action="back" title="Volver">←</button>
       <div class="gen-bar-title">
         <input class="gen-title-input" data-f="asunto" value="${e(s.asunto)}" placeholder="Asunto">
         <div class="gen-bar-meta">
@@ -254,7 +253,6 @@ const renderEditor = (s) => `
 // ====== Mount ======
 export const render = (root) => {
   const s = initialState();
-  document.body.classList.add("fullscreen-page");
 
   // Próximo número (no bloquea)
   (async () => {
@@ -361,8 +359,6 @@ export const render = (root) => {
   });
 
   // Acciones
-  on(node, "click", "[data-action='back']", () => navigate("proformas"));
-
   const validate = () => {
     if (!s.cliente.razonSocial.trim()) { toast("Falta el cliente", { type: "err" }); return false; }
     if (!s.productos.length) { toast("Agregá al menos un producto", { type: "err" }); return false; }
@@ -423,6 +419,4 @@ export const render = (root) => {
     window.open(`https://wa.me/${tel.replace(/^\+/, "")}?text=${msg}`, "_blank");
   });
 
-  // Cleanup: restaurar la app shell al salir
-  return () => document.body.classList.remove("fullscreen-page");
 };

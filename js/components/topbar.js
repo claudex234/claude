@@ -4,7 +4,6 @@ import { currentRoute } from "../lib/router.js";
 import { signOut } from "../lib/auth.js";
 
 const titleFor = (name) => ({
-  dashboard: "Dashboard",
   proformas: "Proformas",
   detalle: "Proformas",
   generador: "Nueva proforma",
@@ -13,7 +12,7 @@ const titleFor = (name) => ({
   adjuntos: "Adjuntos",
   templates: "Plantillas",
   config: "Configuración",
-}[name] || "Dashboard");
+}[name] || "Proformas");
 
 export const mountTopbar = (container) => {
   const build = () => {

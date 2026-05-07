@@ -601,16 +601,9 @@ body {
 .toast-err { border-left-color: var(--danger); }
 
 
-/* ============ Generador (full-screen, sin app shell) ============ */
-body.fullscreen-page #sidebar-host,
-body.fullscreen-page #topbar-host { display: none !important; }
-body.fullscreen-page .app { grid-template-columns: 1fr !important; }
-body.fullscreen-page #route-outlet { height: 100vh; }
-
-.gen-shell { height: 100vh; display: flex; flex-direction: column; background: var(--bg); }
-.gen-bar { display: flex; align-items: center; gap: 14px; padding: 10px 18px; border-bottom: 1px solid var(--border); background: var(--surface); }
-.gen-back { width: 32px; height: 32px; border-radius: 8px; background: var(--bg-soft); border: 1px solid var(--border); color: var(--text-2); font-size: 16px; cursor: pointer; }
-.gen-back:hover { background: var(--surface-hover); color: var(--text); }
+/* ============ Generador (tab dentro del shell) ============ */
+.gen-shell { height: calc(100vh - 56px); display: flex; flex-direction: column; background: var(--bg); }
+.gen-bar { display: flex; align-items: center; gap: 14px; padding: 10px 18px; border-bottom: 1px solid var(--border); }
 .gen-bar-title { flex: 1; min-width: 0; }
 .gen-title-input { width: 100%; background: transparent; border: 0; outline: 0; font-size: 17px; font-weight: 700; color: var(--text); }
 .gen-bar-meta { display: flex; gap: 8px; align-items: center; margin-top: 1px; font-size: 11.5px; color: var(--text-3); }
@@ -667,14 +660,32 @@ body.fullscreen-page #route-outlet { height: 100vh; }
 
 /* ============ Preview "PDF" (hoja A4) ============ */
 .pv-doc { display: flex; flex-direction: column; gap: 18px; }
+/* La hoja A4 vive en su propio "tema claro" sin importar el tema de la app */
 .pv-page {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --bg-soft: #f5f6f8;
+  --bg-sunken: #eef0f4;
+  --border: #e2e5ea;
+  --text: #1a1d23;
+  --text-2: #3a3f48;
+  --text-3: #5b6270;
+  --text-mute: #8a8f9a;
+  --accent: #4f46e5;
+  --accent-strong: #4338ca;
+  --accent-soft: #eef2ff;
+  --success: #16a34a;
+  --success-soft: #ecfdf5;
+  --danger: #dc2626;
+  --danger-soft: #fef2f2;
+  --info: #2563eb;
+  --info-soft: #eff6ff;
+  background: #fff;
+  color: #1a1d23;
+  border: 1px solid #e2e5ea;
   border-radius: 4px;
-  box-shadow: var(--shadow);
-  color: var(--text);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
   position: relative;
-  /* Ratio A4: 1 / 1.4142. Padding equivalente a ~20mm */
   aspect-ratio: 1 / 1.4142;
   padding: 7.4% 6.5%;
   display: flex;

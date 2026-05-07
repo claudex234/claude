@@ -4,7 +4,6 @@ import { state, set } from "../lib/store.js";
 import { navigate, currentRoute } from "../lib/router.js";
 
 const MAIN = [
-  { id: "dashboard", icon: "home", label: "Dashboard" },
   { id: "proformas", icon: "list", label: "Proformas", badge: "47" },
   { id: "generador", icon: "plus", label: "Nueva proforma" },
 ];

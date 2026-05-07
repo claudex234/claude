@@ -9,7 +9,7 @@ export const setOutlet = (node) => { outlet = node; };
 export const currentRoute = () => {
   const h = location.hash.replace(/^#\/?/, "");
   const [name, ...rest] = h.split("/");
-  return { name: name || "dashboard", params: rest };
+  return { name: name || "proformas", params: rest };
 };
 
 export const navigate = (path) => {
@@ -24,7 +24,7 @@ export const renderRoute = async () => {
     currentCleanup = null;
   }
   const { name, params } = currentRoute();
-  const loader = routes.get(name) || routes.get("dashboard");
+  const loader = routes.get(name) || routes.get("proformas");
   outlet.innerHTML = "";
   const mod = await loader();
   const result = mod.render(outlet, { params, navigate });

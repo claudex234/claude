@@ -11,7 +11,6 @@ const THEMES = [
 ];
 
 const PAGES = [
-  { id: "dashboard", l: "Dashboard" },
   { id: "proformas", l: "Listado" },
   { id: "generador", l: "Generador" },
   { id: "detalle", l: "Detalle + tracking ★" },

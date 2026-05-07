@@ -39,7 +39,6 @@ const boot = async () => {
   mountTweaks(document.getElementById("tweaks-host"));
   setOutlet(document.getElementById("route-outlet"));
 
-  registerRoute("dashboard", () => import("./pages/dashboard.js"));
   registerRoute("config", () => import("./pages/config.js"));
   registerRoute("proformas", () => import("./pages/listado.js"));
   registerRoute("generador", () => import("./pages/generador.js"));
@@ -49,7 +48,7 @@ const boot = async () => {
   registerRoute("adjuntos", () => import("./pages/adjuntos.js"));
   registerRoute("templates", () => import("./pages/templates.js"));
 
-  if (!location.hash) location.hash = "#/dashboard";
+  if (!location.hash) location.hash = "#/proformas";
   renderRoute();
 };
 
