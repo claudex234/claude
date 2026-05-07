@@ -338,17 +338,15 @@ export const render = (root) => {
     if (f === "raw") {
       s.raw = v;
       const parsed = parsePaste(v, PRODUCTOS);
-      // El textarea es la fuente de verdad: si el parser detectó algo,
-      // pisa el valor actual. Lo que el parser no detecta, queda como está
-      // (eso protege ediciones manuales en campos no tocados por el paste).
-      CLIENTE_FIELDS.forEach((k) => {
-        if (parsed[k]) s.cliente[k] = parsed[k];
-      });
-      if (parsed.productos.length) s.productos = parsed.productos.slice();
-      // Reflejar en los inputs visibles.
+      // Textarea = fuente de verdad. Lo detectado gana, lo no detectado
+      // vacía. Si querés preservar un valor que el parser no encuentra,
+      // editalo en el input directamente DESPUÉS de tocar el textarea.
+      CLIENTE_FIELDS.forEach((k) => { s.cliente[k] = parsed[k] || ""; });
+      s.productos = parsed.productos.slice();
+      // Sincronizar los inputs visibles (siempre, sin chequeo de igualdad).
       CLIENTE_FIELDS.forEach((k) => {
         const i = node.querySelector(`[data-f='${k}']`);
-        if (i && i.value !== s.cliente[k]) i.value = s.cliente[k];
+        if (i) i.value = s.cliente[k];
       });
       refreshAll();
       return;
