@@ -8,7 +8,7 @@ const requireUser = async () => {
   return user;
 };
 
-const findOrCreateCliente = async (userId, { razon_social, ruc }) => {
+const findOrCreateCliente = async (userId, { razon_social, ruc, contacto, email, telefono }) => {
   const rs = (razon_social || "").trim();
   if (!rs) throw new Error("Falta el cliente");
   const cleanRuc = (ruc || "").trim();
@@ -16,10 +16,29 @@ const findOrCreateCliente = async (userId, { razon_social, ruc }) => {
   q = cleanRuc ? q.eq("ruc", cleanRuc) : q.eq("razon_social", rs);
   const { data, error } = await q.limit(1);
   if (error) throw error;
-  if (data && data.length) return data[0].id;
+  if (data && data.length) {
+    const id = data[0].id;
+    // Actualizar campos blandos si vinieron datos nuevos
+    const patch = {};
+    if (contacto) patch.contacto = contacto.trim();
+    if (email) patch.email = email.trim();
+    if (telefono) patch.telefono = telefono.trim();
+    if (cleanRuc) patch.ruc = cleanRuc;
+    if (Object.keys(patch).length) {
+      await supabase.from("clientes").update(patch).eq("id", id);
+    }
+    return id;
+  }
   const { data: ins, error: e2 } = await supabase
     .from("clientes")
-    .insert({ razon_social: rs, ruc: cleanRuc || null, owner_id: userId })
+    .insert({
+      razon_social: rs,
+      ruc: cleanRuc || null,
+      contacto: contacto?.trim() || null,
+      email: email?.trim() || null,
+      telefono: telefono?.trim() || null,
+      owner_id: userId,
+    })
     .select("id")
     .single();
   if (e2) throw e2;
@@ -61,11 +80,20 @@ const resolveProductoIds = async (codigos) => {
   return Object.fromEntries((data || []).map((p) => [p.codigo, p.id]));
 };
 
+export { nextNumero };
+
 // items = [{ qty, modelo, nombre, precio }]
-export const createProforma = async ({ estado, cliente, ruc, asunto, items }) => {
+// cliente = { razonSocial, ruc, contacto, email, telefono }
+export const createProforma = async ({ estado, cliente, asunto, items }) => {
   if (!Array.isArray(items) || !items.length) throw new Error("Agregá al menos un ítem");
   const user = await requireUser();
-  const cliente_id = await findOrCreateCliente(user.id, { razon_social: cliente, ruc });
+  const cliente_id = await findOrCreateCliente(user.id, {
+    razon_social: cliente.razonSocial,
+    ruc: cliente.ruc,
+    contacto: cliente.contacto,
+    email: cliente.email,
+    telefono: cliente.telefono,
+  });
   const numero = await nextNumero(user.id);
 
   const subtotal = items.reduce((a, it) => a + it.qty * it.precio, 0);
