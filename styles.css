@@ -622,6 +622,7 @@ body {
 .gen-split { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(380px, 460px) 1fr; }
 .gen-editor { padding: 4px 18px 40px; overflow-y: auto; border-right: 1px solid var(--border); background: var(--surface); }
 .gen-preview { padding: 24px; overflow: auto; background: var(--bg-sunken); }
+.pv-fit { position: relative; }
 
 .gen-section { padding: 14px 0; border-top: 1px solid var(--border); }
 .gen-section:first-child { border-top: 0; padding-top: 12px; }

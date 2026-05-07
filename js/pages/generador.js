@@ -246,7 +246,7 @@ const renderEditor = (s) => `
         </section>
       </aside>
 
-      <main class="gen-preview" data-preview>${renderPreview(s)}</main>
+      <main class="gen-preview" data-preview><div class="pv-fit">${renderPreview(s)}</div></main>
     </div>
   </div>`;
 
@@ -270,16 +270,25 @@ export const render = (root) => {
   const node = el(renderEditor(s));
   root.appendChild(node);
 
-  // Escala la hoja A4 (794px) para que entre en la columna. Como un visor
-  // PDF: el layout interno NUNCA se reorganiza, solo cambia el zoom visual.
+  // Escala la hoja A4 (794px de ancho) para que llene el ancho disponible.
+  // Como un visor PDF: el contenido nunca se reorganiza, sólo cambia la
+  // escala visual. Usamos transform: scale + wrapper con dimensiones
+  // explícitas para que el layout/scroll coincida con lo que se ve.
   const PAGE_W = 794;
   const fitPreview = () => {
     const container = node.querySelector(".gen-preview");
-    const doc = container?.querySelector(".pv-doc");
-    if (!container || !doc) return;
-    const cw = container.clientWidth - 48; // padding lateral 24+24
+    const fit = container?.querySelector(".pv-fit");
+    const doc = fit?.querySelector(".pv-doc");
+    if (!container || !fit || !doc) return;
+    const cw = container.clientWidth - 48; // padding lateral
     if (cw <= 0) return;
-    doc.style.zoom = Math.max(0.3, cw / PAGE_W);
+    const scale = Math.max(0.3, cw / PAGE_W);
+    doc.style.transformOrigin = "top left";
+    doc.style.transform = `scale(${scale})`;
+    // El wrapper ocupa el espacio "post-escala" para que el scroll
+    // vertical del container sea correcto.
+    fit.style.width = (PAGE_W * scale) + "px";
+    fit.style.height = (doc.scrollHeight * scale) + "px";
   };
 
   const ro = new ResizeObserver(() => fitPreview());
@@ -310,49 +319,48 @@ export const render = (root) => {
   };
 
   const refreshPreview = () => {
-    const target = node.querySelector("[data-preview]");
-    if (target) {
-      target.innerHTML = renderPreview(s);
+    const fit = node.querySelector(".pv-fit");
+    if (fit) {
+      fit.innerHTML = renderPreview(s);
       fitPreview();
     }
   };
 
   const refreshAll = () => { refreshChips(); refreshProductos(); refreshPreview(); };
 
-  // Smart paste
-  on(node, "input", "[data-f='raw']", (ev) => {
-    s.raw = ev.target.value;
-    const parsed = parsePaste(s.raw, PRODUCTOS);
-    if (parsed.razonSocial && !s.cliente.razonSocial) s.cliente.razonSocial = parsed.razonSocial;
-    if (parsed.ruc && !s.cliente.ruc) s.cliente.ruc = parsed.ruc;
-    if (parsed.contacto && !s.cliente.contacto) s.cliente.contacto = parsed.contacto;
-    if (parsed.email && !s.cliente.email) s.cliente.email = parsed.email;
-    if (parsed.telefono && !s.cliente.telefono) s.cliente.telefono = parsed.telefono;
-    if (parsed.productos.length) s.productos = parsed.productos.slice();
-    ["razonSocial", "ruc", "contacto", "email", "telefono"].forEach((f) => {
-      const i = node.querySelector(`[data-f='${f}']`);
-      if (i) i.value = s.cliente[f];
-    });
-    refreshAll();
-  });
-
-  // Inputs cliente / asunto / términos
-  on(node, "input", "[data-f]", (ev) => {
-    const f = ev.target.dataset.f;
-    const v = ev.target.value;
-    if (f === "raw") return;
+  // Un único handler para todos los inputs/selects con data-f.
+  const CLIENTE_FIELDS = ["razonSocial", "ruc", "contacto", "email", "telefono"];
+  const handleField = (ev) => {
+    const t = ev.target;
+    const f = t.dataset.f;
+    if (!f) return;
+    const v = t.value;
+    if (f === "raw") {
+      s.raw = v;
+      const parsed = parsePaste(v, PRODUCTOS);
+      // Sólo llenamos lo que esté vacío para no pisar ediciones manuales.
+      CLIENTE_FIELDS.forEach((k) => {
+        if (parsed[k] && !s.cliente[k]) s.cliente[k] = parsed[k];
+      });
+      if (parsed.productos.length) s.productos = parsed.productos.slice();
+      // Reflejar en los inputs visibles.
+      CLIENTE_FIELDS.forEach((k) => {
+        const i = node.querySelector(`[data-f='${k}']`);
+        if (i && i.value !== s.cliente[k]) i.value = s.cliente[k];
+      });
+      refreshAll();
+      return;
+    }
     if (f === "asunto") s.asunto = v;
-    else if (["razonSocial", "ruc", "contacto", "email", "telefono"].includes(f)) s.cliente[f] = v;
+    else if (CLIENTE_FIELDS.includes(f)) s.cliente[f] = v;
     else if (f === "validez") s.terminos.validez = parseInt(v, 10) || 0;
     else if (f === "formaPago") s.terminos.formaPago = v;
     else if (f === "tiempoEntrega") s.terminos.tiempoEntrega = v;
     refreshChips();
     refreshPreview();
-  });
-  on(node, "change", "select[data-f='formaPago']", (ev) => {
-    s.terminos.formaPago = ev.target.value;
-    refreshPreview();
-  });
+  };
+  on(node, "input", "[data-f]", handleField);
+  on(node, "change", "[data-f]", handleField);
 
   // Productos
   on(node, "click", "[data-action='add-prod']", (ev) => {
