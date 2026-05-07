@@ -1,5 +1,4 @@
-import { html, raw, el, on, fmtMoney } from "../lib/utils.js";
-import { icon } from "../lib/icons.js";
+import { fmtMoney, on, escapeHtml as e, el } from "../lib/utils.js";
 import { PRODUCTOS } from "../data/productos.js";
 import { PROFORMAS } from "../data/proformas.js";
 import { navigate } from "../lib/router.js";
@@ -13,11 +12,10 @@ const fmtDate = (iso) => {
   const d = new Date(iso);
   return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
 };
+const money = (n) => fmtMoney(n).replace("S/ ", "");
 
-const escHtml = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[c]));
-
-const STATE_DEFAULT = () => ({
-  numero: "PRF-…-…",
+const initialState = () => ({
+  numero: "PRF-…",
   estado: "borrador",
   raw: "",
   asunto: "Pantallas interactivas - 3 unidades",
@@ -35,49 +33,49 @@ const STATE_DEFAULT = () => ({
 const totals = (productos) => {
   const subtotal = productos.reduce((a, p) => a + p.qty * p.precio, 0);
   const igv = +(subtotal * 0.18).toFixed(2);
-  const total = +(subtotal + igv).toFixed(2);
-  return { subtotal, igv, total };
+  return { subtotal, igv, total: +(subtotal + igv).toFixed(2) };
 };
 
-// ====== Preview (lado derecho, "PDF") ======
+// ====== Preview (hoja A4) ======
+const itemRowHtml = (p) => {
+  const ref = PRODUCTOS[p.modelo] || {};
+  const hi = (ref.specsHighlight || []).map((x) => `<div>${e(x)}</div>`).join("");
+  const specs = (ref.specs || []).map((x) => `<div>${e(x)}</div>`).join("");
+  const incluye = (ref.incluye || []).map((x) => `<div>${e(x)}</div>`).join("");
+  return `
+    <tr>
+      <td class="pv-num">${p.qty}</td>
+      <td>
+        <div class="pv-item-title">${e(p.nombre)}</div>
+        ${hi ? `<div class="pv-item-hi">${hi}</div>` : ""}
+        ${specs ? `<div class="pv-item-specs">${specs}</div>` : ""}
+        ${incluye ? `<div class="pv-incluye-title">INCLUIDO EN EL PAQUETE</div><div class="pv-item-specs">${incluye}</div>` : ""}
+      </td>
+      <td class="pv-num pv-right">S/ ${money(p.precio)}</td>
+      <td class="pv-num pv-right pv-strong">S/ ${money(p.qty * p.precio)}</td>
+    </tr>`;
+};
+
 const renderPreview = (s) => {
-  const { subtotal, igv, total } = totals(s.productos);
-  const { cliente, terminos } = s;
-  const bloquesPantalla = s.productos.some((p) => PRODUCTOS[p.modelo]?.tipo !== "no-pantalla");
+  const t = totals(s.productos);
+  const c = s.cliente;
+  const tm = s.terminos;
+  const showBloques = s.productos.length > 0;
 
-  const itemRow = (p, i) => {
-    const ref = PRODUCTOS[p.modelo] || {};
-    const highlight = (ref.specsHighlight || []).map((x) => `<div class="pv-spec-hi">${escHtml(x)}</div>`).join("");
-    const specs = (ref.specs || []).map((x) => `<div class="pv-spec">${escHtml(x)}</div>`).join("");
-    const incluye = (ref.incluye || []).map((x) => `<div class="pv-spec">${escHtml(x)}</div>`).join("");
-    return `
-      <tr>
-        <td class="pv-num">${p.qty}</td>
-        <td>
-          <div class="pv-item-title">${escHtml(p.nombre)}</div>
-          ${highlight ? `<div class="pv-item-hi">${highlight}</div>` : ""}
-          ${specs ? `<div class="pv-item-specs">${specs}</div>` : ""}
-          ${incluye ? `<div class="pv-incluye-title">INCLUIDO EN EL PAQUETE</div><div class="pv-item-specs">${incluye}</div>` : ""}
-        </td>
-        <td class="pv-num pv-right">S/ ${fmtMoney(p.precio).replace("S/ ", "")}</td>
-        <td class="pv-num pv-right pv-strong">S/ ${fmtMoney(p.qty * p.precio).replace("S/ ", "")}</td>
-      </tr>`;
-  };
-
-  return html`
+  return `
     <div class="pv-doc">
-      <div class="pv-page">
+      <article class="pv-page">
         <header class="pv-header">
           <div class="pv-emisor">
             <div class="pv-logo-mark">N</div>
             <div>
-              <div class="pv-emisor-name">${escHtml(EMISOR.razonSocial)}</div>
-              <div class="pv-emisor-meta">RUC ${EMISOR.ruc}  ·  ${EMISOR.email}  ·  ${EMISOR.telefono}</div>
+              <div class="pv-emisor-name">${e(EMISOR.razonSocial)}</div>
+              <div class="pv-emisor-meta">RUC ${e(EMISOR.ruc)} · ${e(EMISOR.email)} · ${e(EMISOR.telefono)}</div>
             </div>
           </div>
           <div class="pv-doc-meta">
             <div class="pv-doc-label">DOCUMENTO</div>
-            <div class="pv-doc-numero">${s.numero}</div>
+            <div class="pv-doc-numero">${e(s.numero)}</div>
             <div class="pv-doc-fecha">${fmtDate(s.emitidaIso)}</div>
           </div>
         </header>
@@ -87,21 +85,21 @@ const renderPreview = (s) => {
         <div class="pv-grid-2">
           <section class="pv-card">
             <div class="pv-card-label">CLIENTE</div>
-            <div class="pv-card-strong">${escHtml(cliente.razonSocial || "—")}</div>
-            ${cliente.ruc ? `<div class="pv-card-row">RUC ${escHtml(cliente.ruc)}</div>` : ""}
-            ${cliente.contacto ? `<div class="pv-card-row">${escHtml(cliente.contacto)}</div>` : ""}
-            ${cliente.email ? `<div class="pv-card-row">${escHtml(cliente.email)}</div>` : ""}
-            ${cliente.telefono ? `<div class="pv-card-row">${escHtml(cliente.telefono)}</div>` : ""}
+            <div class="pv-card-strong">${e(c.razonSocial || "—")}</div>
+            ${c.ruc ? `<div class="pv-card-row">RUC ${e(c.ruc)}</div>` : ""}
+            ${c.contacto ? `<div class="pv-card-row">${e(c.contacto)}</div>` : ""}
+            ${c.email ? `<div class="pv-card-row">${e(c.email)}</div>` : ""}
+            ${c.telefono ? `<div class="pv-card-row">${e(c.telefono)}</div>` : ""}
           </section>
           <section class="pv-card">
             <div class="pv-card-label">TÉRMINOS</div>
-            <div class="pv-terms">
-              <div><span>Tiempo entrega</span><b>${escHtml(terminos.tiempoEntrega)}</b></div>
-              <div><span>Lugar entrega</span><b>${escHtml(EMISOR.defaults.lugarEntrega)}</b></div>
-              <div><span>Garantía</span><b>${escHtml(EMISOR.defaults.garantia)}</b></div>
-              <div><span>Validez</span><b>${terminos.validez} días</b></div>
-              <div><span>Condiciones</span><b>${escHtml(EMISOR.defaults.condiciones)}</b></div>
-            </div>
+            <dl class="pv-terms">
+              <dt>Tiempo entrega</dt><dd>${e(tm.tiempoEntrega)}</dd>
+              <dt>Lugar entrega</dt><dd>${e(EMISOR.defaults.lugarEntrega)}</dd>
+              <dt>Garantía</dt><dd>${e(EMISOR.defaults.garantia)}</dd>
+              <dt>Validez</dt><dd>${tm.validez} días</dd>
+              <dt>Condiciones</dt><dd>${e(EMISOR.defaults.condiciones)}</dd>
+            </dl>
           </section>
         </div>
 
@@ -110,260 +108,191 @@ const renderPreview = (s) => {
             <tr>
               <th class="pv-th-num">CANT</th>
               <th>DESCRIPCIÓN</th>
-              <th class="pv-th-num pv-right">P. UND</th>
-              <th class="pv-th-num pv-right">SUBTOTAL</th>
+              <th class="pv-right">P. UND</th>
+              <th class="pv-right">SUBTOTAL</th>
             </tr>
           </thead>
           <tbody>
-            ${raw(s.productos.length
-              ? s.productos.map(itemRow).join("")
-              : `<tr><td colspan="4" class="pv-empty">Agregá productos para verlos acá</td></tr>`)}
+            ${s.productos.length
+              ? s.productos.map(itemRowHtml).join("")
+              : `<tr><td colspan="4" class="pv-empty">Agregá productos para verlos acá</td></tr>`}
           </tbody>
         </table>
 
         <div class="pv-totales">
-          <div><span>Subtotal</span><b>S/ ${fmtMoney(subtotal).replace("S/ ", "")}</b></div>
-          <div><span>IGV (18%)</span><b>S/ ${fmtMoney(igv).replace("S/ ", "")}</b></div>
-          <div class="pv-total-row"><span>Total</span><b>S/ ${fmtMoney(total).replace("S/ ", "")}</b></div>
+          <div><span>Subtotal</span><b>S/ ${money(t.subtotal)}</b></div>
+          <div><span>IGV (18%)</span><b>S/ ${money(t.igv)}</b></div>
+          <div class="pv-total-row"><span>Total</span><b>S/ ${money(t.total)}</b></div>
         </div>
 
         <div class="pv-page-foot">1 / 2</div>
-      </div>
+      </article>
 
-      <div class="pv-page">
-        ${bloquesPantalla ? `
+      <article class="pv-page">
+        ${showBloques ? `
           <div class="pv-grid-2">
             <section class="pv-block pv-block-ok">
               <div class="pv-block-title">SERVICIOS INCLUIDOS</div>
-              ${BLOQUES_PANTALLA.servicios.map((x) => `<div>· ${escHtml(x)}</div>`).join("")}
+              ${BLOQUES_PANTALLA.servicios.map((x) => `<div>· ${e(x)}</div>`).join("")}
             </section>
             <section class="pv-block pv-block-no">
               <div class="pv-block-title">NO INCLUIDO</div>
-              ${BLOQUES_PANTALLA.noIncluido.map((x) => `<div>· ${escHtml(x)}</div>`).join("")}
+              ${BLOQUES_PANTALLA.noIncluido.map((x) => `<div>· ${e(x)}</div>`).join("")}
             </section>
-          </div>
-        ` : ""}
+          </div>` : ""}
 
         <section class="pv-cuentas">
           <div class="pv-card-label">CUENTAS BANCARIAS</div>
-          ${EMISOR.cuentas.map((c) => `
-            <div class="pv-cuenta">
-              <b>${escHtml(c.banco)} ${escHtml(c.moneda)}:</b> ${escHtml(c.numero)}
-              · <b>CCI</b> ${escHtml(c.cci)}
-            </div>`).join("")}
-          <div class="pv-cuenta-pago"><b>Forma de pago:</b> ${escHtml(terminos.formaPago)}</div>
+          ${EMISOR.cuentas.map((b) => `
+            <div class="pv-cuenta"><b>${e(b.banco)} ${e(b.moneda)}:</b> ${e(b.numero)} · <b>CCI</b> ${e(b.cci)}</div>
+          `).join("")}
+          <div class="pv-cuenta-pago"><b>Forma de pago:</b> ${e(tm.formaPago)}</div>
         </section>
 
         <div class="pv-firma">
           <div class="pv-firma-label">Atentamente,</div>
-          <div class="pv-firma-name">${escHtml(EMISOR.firmante)}</div>
+          <div class="pv-firma-name">${e(EMISOR.firmante)}</div>
         </div>
 
         <div class="pv-page-foot">2 / 2</div>
-      </div>
-    </div>
-  `;
-};
-
-// ====== Editor (lado izquierdo) ======
-const detectionChips = (det, productos) => {
-  const chip = (label, ok) =>
-    `<span class="chip ${ok ? "chip-ok" : "chip-mute"}">${ok ? "✓" : "·"} ${label}</span>`;
-  return [
-    chip("RUC", det.ruc),
-    chip("Email", det.email),
-    chip("Teléfono", det.telefono),
-    chip("Contacto", det.contacto),
-    productos.length
-      ? `<span class="chip chip-ok">✓ ${productos.length} producto${productos.length > 1 ? "s" : ""}</span>`
-      : "",
-  ].join(" ");
-};
-
-const productoRow = (p, i) => {
-  const ref = PRODUCTOS[p.modelo] || {};
-  const incluye = (ref.incluye || []).length;
-  const specs = (ref.specs || []).length;
-  return `
-    <div class="prod-row" data-prod-row="${i}">
-      <input type="number" min="1" class="prod-qty" data-fp="qty" data-i="${i}" value="${p.qty}">
-      <div class="prod-info">
-        <div class="prod-name">${escHtml(p.nombre)}</div>
-        <details class="prod-detail">
-          <summary>Ver descripción completa</summary>
-          <div class="prod-detail-body">${specs} specs · ${incluye} accesorios</div>
-        </details>
-      </div>
-      <input type="number" min="0" class="prod-price" data-fp="precio" data-i="${i}" value="${p.precio}">
-      <div class="prod-total">${fmtMoney(p.qty * p.precio)}</div>
-      <button class="prod-del" data-action="rm-prod" data-i="${i}" title="Quitar">×</button>
+      </article>
     </div>`;
 };
 
-const renderEditor = (s) => html`
-  <div class="page fade-in gen-page">
-    <div class="gen-topbar">
-      <div class="gen-title">
-        <input class="gen-title-input" data-f="asunto" value="${escHtml(s.asunto)}" placeholder="Asunto de la proforma">
-        <div class="gen-title-meta">
-          <span class="mono">${s.numero}</span>
+// ====== Editor ======
+const productoRowHtml = (p, i) => `
+  <div class="prod-row" data-prod-row="${i}">
+    <input type="number" min="1" class="prod-qty" data-fp="qty" data-i="${i}" value="${p.qty}">
+    <div class="prod-name">${e(p.nombre)}</div>
+    <input type="number" min="0" class="prod-price" data-fp="precio" data-i="${i}" value="${p.precio}">
+    <div class="prod-total">${fmtMoney(p.qty * p.precio)}</div>
+    <button class="prod-del" data-action="rm-prod" data-i="${i}" title="Quitar">×</button>
+  </div>`;
+
+const chipHtml = (label, ok) =>
+  `<span class="chip ${ok ? "chip-ok" : "chip-mute"}">${ok ? "✓" : "·"} ${label}</span>`;
+
+const renderEditor = (s) => `
+  <div class="gen-shell fade-in">
+    <header class="gen-bar">
+      <button class="gen-back" data-action="back" title="Volver">←</button>
+      <div class="gen-bar-title">
+        <input class="gen-title-input" data-f="asunto" value="${e(s.asunto)}" placeholder="Asunto">
+        <div class="gen-bar-meta">
+          <span class="mono">${e(s.numero)}</span>
           <span class="dot">·</span>
-          <span class="status status-${s.estado}">${s.estado}</span>
+          <span class="status status-${s.estado}">${e(s.estado)}</span>
         </div>
       </div>
       <div class="gen-actions">
-        <button class="btn" data-action="duplicar">${raw(icon("copy") || "")} Duplicar</button>
-        <button class="btn" data-action="pdf">${raw(icon("download") || "")} PDF</button>
-        <button class="btn" data-action="copiar-link" ${s.publicSlug ? "" : "disabled"}>${raw(icon("link") || "")} Copiar link</button>
-        <button class="btn btn-wsp" data-action="wsp">WhatsApp</button>
-        <button class="btn btn-primary" data-action="enviar">${raw(icon("send"))} Enviar al cliente</button>
+        <button class="btn btn-sm" data-action="duplicar">Duplicar</button>
+        <button class="btn btn-sm" data-action="pdf">PDF</button>
+        <button class="btn btn-sm" data-action="copiar-link" ${s.publicSlug ? "" : "disabled"}>Copiar link</button>
+        <button class="btn btn-sm btn-wsp" data-action="wsp">WhatsApp</button>
+        <button class="btn btn-sm btn-primary" data-action="enviar">Enviar al cliente</button>
       </div>
-    </div>
+    </header>
 
     <div class="gen-split">
-      <div class="gen-editor">
+      <aside class="gen-editor">
         <section class="gen-section">
           <div class="gen-section-head">
-            <span class="gen-section-title">✦ PEGA DATOS DEL CLIENTE + PRODUCTO</span>
+            <span class="gen-section-title">✦ PEGÁ DATOS DEL CLIENTE + PRODUCTO</span>
             <span class="gen-section-hint">la última línea = código del producto</span>
           </div>
-          <textarea class="gen-paste" data-f="raw" rows="8" placeholder="Pegá acá: razón social, RUC, contacto, email, teléfono, código de producto…">${escHtml(s.raw)}</textarea>
+          <textarea class="gen-paste" data-f="raw" rows="6" placeholder="Pegá razón social, RUC, contacto, email, teléfono, código…">${e(s.raw)}</textarea>
           <div class="gen-chips" data-chips></div>
           <details class="gen-codes">
             <summary>Códigos de producto</summary>
-            <div class="gen-codes-body">
-              <code>3PLUS8500</code> = 3 unidades del PLUS a S/8500 c/u ·
-              <code>2PRO</code> = 2 PRO al precio default ·
-              <code>ELITE</code> = 1 ELITE al default
-            </div>
+            <div><code>3PLUS8500</code> = 3 PLUS a S/8500 · <code>2PRO</code> = 2 PRO al precio default · <code>ELITE</code> = 1 ELITE</div>
           </details>
         </section>
 
         <section class="gen-section">
           <div class="gen-section-title">CLIENTE</div>
           <div class="gen-form">
-            <div class="gen-field gen-field-full">
-              <label class="field-label">Razón social</label>
-              <input class="input" data-f="razonSocial" value="${escHtml(s.cliente.razonSocial)}">
-            </div>
-            <div class="gen-field"><label class="field-label">RUC</label><input class="input" data-f="ruc" value="${escHtml(s.cliente.ruc)}"></div>
-            <div class="gen-field"><label class="field-label">Contacto</label><input class="input" data-f="contacto" value="${escHtml(s.cliente.contacto)}"></div>
-            <div class="gen-field"><label class="field-label">Email</label><input class="input" data-f="email" value="${escHtml(s.cliente.email)}"></div>
-            <div class="gen-field"><label class="field-label">Teléfono</label><input class="input" data-f="telefono" value="${escHtml(s.cliente.telefono)}"></div>
+            <label class="gen-field gen-field-full"><span>Razón social</span><input class="input" data-f="razonSocial" value="${e(s.cliente.razonSocial)}"></label>
+            <label class="gen-field"><span>RUC</span><input class="input" data-f="ruc" value="${e(s.cliente.ruc)}"></label>
+            <label class="gen-field"><span>Contacto</span><input class="input" data-f="contacto" value="${e(s.cliente.contacto)}"></label>
+            <label class="gen-field"><span>Email</span><input class="input" data-f="email" value="${e(s.cliente.email)}"></label>
+            <label class="gen-field"><span>Teléfono</span><input class="input" data-f="telefono" value="${e(s.cliente.telefono)}"></label>
           </div>
         </section>
 
         <section class="gen-section">
           <div class="gen-section-head">
-            <span class="gen-section-title">PRODUCTOS (${s.productos.length})</span>
+            <span class="gen-section-title" data-prod-count>PRODUCTOS (${s.productos.length})</span>
             <div class="gen-quick-add">
               ${PRODUCT_CODES.map((c) => `<button class="chip chip-add" data-action="add-prod" data-code="${c}">+ ${c}</button>`).join("")}
             </div>
           </div>
           <div class="prod-list" data-prod-list>
-            ${raw(s.productos.length
-              ? s.productos.map(productoRow).join("")
-              : `<div class="prod-empty">Sin productos · usá los chips de arriba o pegá un código en el textarea.</div>`)}
-          </div>
-        </section>
-
-        <section class="gen-section">
-          <div class="gen-section-head">
-            <span class="gen-section-title">BLOQUES AUTOMÁTICOS</span>
-            ${s.productos.length ? `<span class="gen-section-hint">detectada pantalla interactiva</span>` : ""}
-          </div>
-          <div class="gen-blocks">
-            <div class="gen-block gen-block-ok">
-              <div class="gen-block-title">✓ Servicios incluidos</div>
-              ${BLOQUES_PANTALLA.servicios.map((x) => `<div>· ${escHtml(x)}</div>`).join("")}
-            </div>
-            <div class="gen-block gen-block-no">
-              <div class="gen-block-title">✗ No incluido</div>
-              ${BLOQUES_PANTALLA.noIncluido.map((x) => `<div>· ${escHtml(x)}</div>`).join("")}
-            </div>
+            ${s.productos.length
+              ? s.productos.map(productoRowHtml).join("")
+              : `<div class="prod-empty">Sin productos · usá los chips o pegá un código.</div>`}
           </div>
         </section>
 
         <section class="gen-section">
           <div class="gen-section-title">TÉRMINOS</div>
           <div class="gen-form">
-            <div class="gen-field">
-              <label class="field-label">Validez (días)</label>
-              <input type="number" min="1" class="input" data-f="validez" value="${s.terminos.validez}">
-            </div>
-            <div class="gen-field">
-              <label class="field-label">Forma de pago</label>
+            <label class="gen-field"><span>Validez (días)</span><input type="number" min="1" class="input" data-f="validez" value="${s.terminos.validez}"></label>
+            <label class="gen-field"><span>Tiempo de entrega</span><input class="input" data-f="tiempoEntrega" value="${e(s.terminos.tiempoEntrega)}"></label>
+            <label class="gen-field gen-field-full"><span>Forma de pago</span>
               <select class="input" data-f="formaPago">
-                ${FORMAS_PAGO.map((f) => `<option ${f === s.terminos.formaPago ? "selected" : ""}>${escHtml(f)}</option>`).join("")}
+                ${FORMAS_PAGO.map((f) => `<option ${f === s.terminos.formaPago ? "selected" : ""}>${e(f)}</option>`).join("")}
               </select>
-            </div>
-            <div class="gen-field">
-              <label class="field-label">Tiempo de entrega</label>
-              <input class="input" data-f="tiempoEntrega" value="${escHtml(s.terminos.tiempoEntrega)}">
-            </div>
+            </label>
           </div>
         </section>
+      </aside>
 
-        <div class="gen-track-banner">
-          <div class="gen-track-icon">${raw(icon("eye") || "")}</div>
-          <div>
-            <div class="gen-track-title">Tracking activo en este PDF</div>
-            <div class="gen-track-sub">aperturas, IPs, dispositivo, tiempo por página, descargas, reenvíos y giroscopio (Android/iOS).</div>
-          </div>
-        </div>
-      </div>
-
-      <div class="gen-preview" data-preview>
-        ${raw(renderPreview(s))}
-      </div>
+      <main class="gen-preview" data-preview>${renderPreview(s)}</main>
     </div>
-  </div>
-`;
+  </div>`;
 
 // ====== Mount ======
 export const render = (root) => {
-  const s = STATE_DEFAULT();
+  const s = initialState();
+  document.body.classList.add("fullscreen-page");
 
-  // Pre-cargar el próximo número (no bloquea el render)
+  // Próximo número (no bloquea)
   (async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         s.numero = await nextNumero(user.id);
-        const numTarget = root.querySelector(".gen-title-meta .mono");
-        if (numTarget) numTarget.textContent = s.numero;
+        const m = node.querySelector(".gen-bar-meta .mono");
+        if (m) m.textContent = s.numero;
         refreshPreview();
       }
     } catch (err) { console.warn("nextNumero:", err); }
   })();
 
-  let node = el(renderEditor(s));
+  const node = el(renderEditor(s));
   root.appendChild(node);
 
   const refreshChips = () => {
-    const det = {
-      razonSocial: !!s.cliente.razonSocial,
-      ruc: !!s.cliente.ruc,
-      contacto: !!s.cliente.contacto,
-      email: !!s.cliente.email,
-      telefono: !!s.cliente.telefono,
-    };
     const target = node.querySelector("[data-chips]");
-    if (target) target.innerHTML = detectionChips(det, s.productos);
+    if (!target) return;
+    target.innerHTML = [
+      chipHtml("RUC", !!s.cliente.ruc),
+      chipHtml("Email", !!s.cliente.email),
+      chipHtml("Teléfono", !!s.cliente.telefono),
+      chipHtml("Contacto", !!s.cliente.contacto),
+      s.productos.length ? `<span class="chip chip-ok">✓ ${s.productos.length} producto${s.productos.length > 1 ? "s" : ""}</span>` : "",
+    ].join(" ");
   };
 
   const refreshProductos = () => {
-    const target = node.querySelector("[data-prod-list]");
-    if (target) {
-      target.innerHTML = s.productos.length
-        ? s.productos.map(productoRow).join("")
-        : `<div class="prod-empty">Sin productos · usá los chips de arriba o pegá un código en el textarea.</div>`;
+    const list = node.querySelector("[data-prod-list]");
+    if (list) {
+      list.innerHTML = s.productos.length
+        ? s.productos.map(productoRowHtml).join("")
+        : `<div class="prod-empty">Sin productos · usá los chips o pegá un código.</div>`;
     }
-    const counter = node.querySelector(".gen-section-title");
-    // Actualizar todos los contadores que digan "PRODUCTOS"
-    node.querySelectorAll(".gen-section-title").forEach((t) => {
-      if (t.textContent.startsWith("PRODUCTOS")) t.textContent = `PRODUCTOS (${s.productos.length})`;
-    });
+    const counter = node.querySelector("[data-prod-count]");
+    if (counter) counter.textContent = `PRODUCTOS (${s.productos.length})`;
   };
 
   const refreshPreview = () => {
@@ -373,97 +302,83 @@ export const render = (root) => {
 
   const refreshAll = () => { refreshChips(); refreshProductos(); refreshPreview(); };
 
-  // Smart paste: cuando cambia raw, reparseamos y completamos campos vacíos
-  on(node, "input", "[data-f='raw']", (e) => {
-    s.raw = e.target.value;
+  // Smart paste
+  on(node, "input", "[data-f='raw']", (ev) => {
+    s.raw = ev.target.value;
     const parsed = parsePaste(s.raw, PRODUCTOS);
-    // Llenar solo lo que esté vacío para no pisar ediciones manuales
     if (parsed.razonSocial && !s.cliente.razonSocial) s.cliente.razonSocial = parsed.razonSocial;
     if (parsed.ruc && !s.cliente.ruc) s.cliente.ruc = parsed.ruc;
     if (parsed.contacto && !s.cliente.contacto) s.cliente.contacto = parsed.contacto;
     if (parsed.email && !s.cliente.email) s.cliente.email = parsed.email;
     if (parsed.telefono && !s.cliente.telefono) s.cliente.telefono = parsed.telefono;
     if (parsed.productos.length) s.productos = parsed.productos.slice();
-    // Reflejar en inputs
-    const setVal = (sel, v) => { const i = node.querySelector(sel); if (i) i.value = v; };
-    setVal("[data-f='razonSocial']", s.cliente.razonSocial);
-    setVal("[data-f='ruc']", s.cliente.ruc);
-    setVal("[data-f='contacto']", s.cliente.contacto);
-    setVal("[data-f='email']", s.cliente.email);
-    setVal("[data-f='telefono']", s.cliente.telefono);
+    ["razonSocial", "ruc", "contacto", "email", "telefono"].forEach((f) => {
+      const i = node.querySelector(`[data-f='${f}']`);
+      if (i) i.value = s.cliente[f];
+    });
     refreshAll();
   });
 
-  // Cliente y términos
-  on(node, "input", "[data-f]", (e) => {
-    const f = e.target.dataset.f;
-    const v = e.target.value;
+  // Inputs cliente / asunto / términos
+  on(node, "input", "[data-f]", (ev) => {
+    const f = ev.target.dataset.f;
+    const v = ev.target.value;
     if (f === "raw") return;
     if (f === "asunto") s.asunto = v;
-    else if (f === "razonSocial") s.cliente.razonSocial = v;
-    else if (f === "ruc") s.cliente.ruc = v;
-    else if (f === "contacto") s.cliente.contacto = v;
-    else if (f === "email") s.cliente.email = v;
-    else if (f === "telefono") s.cliente.telefono = v;
+    else if (["razonSocial", "ruc", "contacto", "email", "telefono"].includes(f)) s.cliente[f] = v;
     else if (f === "validez") s.terminos.validez = parseInt(v, 10) || 0;
     else if (f === "formaPago") s.terminos.formaPago = v;
     else if (f === "tiempoEntrega") s.terminos.tiempoEntrega = v;
     refreshChips();
     refreshPreview();
   });
-  // Selects no disparan "input" en algunos browsers
-  on(node, "change", "select[data-f]", (e) => {
-    if (e.target.dataset.f === "formaPago") {
-      s.terminos.formaPago = e.target.value;
-      refreshPreview();
-    }
+  on(node, "change", "select[data-f='formaPago']", (ev) => {
+    s.terminos.formaPago = ev.target.value;
+    refreshPreview();
   });
 
-  // Quick-add producto
-  on(node, "click", "[data-action='add-prod']", (e) => {
-    const code = e.target.dataset.code;
+  // Productos
+  on(node, "click", "[data-action='add-prod']", (ev) => {
+    const code = ev.target.dataset.code;
     const ref = PRODUCTOS[code];
-    if (!ref) return toast(`No hay producto ${code} cargado`, { type: "err" });
+    if (!ref) return toast(`Falta producto ${code}`, { type: "err" });
     s.productos.push({ modelo: code, qty: 1, precio: ref.precioDefault, nombre: ref.nombre });
     refreshAll();
   });
-
-  // Quitar producto
-  on(node, "click", "[data-action='rm-prod']", (e) => {
-    const i = parseInt(e.target.dataset.i, 10);
-    s.productos.splice(i, 1);
+  on(node, "click", "[data-action='rm-prod']", (ev) => {
+    s.productos.splice(parseInt(ev.target.dataset.i, 10), 1);
     refreshAll();
   });
-
-  // Editar qty/precio inline
-  on(node, "input", "[data-fp]", (e) => {
-    const i = parseInt(e.target.dataset.i, 10);
-    const f = e.target.dataset.fp;
-    const v = parseFloat(e.target.value) || 0;
+  on(node, "input", "[data-fp]", (ev) => {
+    const i = parseInt(ev.target.dataset.i, 10);
+    const f = ev.target.dataset.fp;
+    const v = parseFloat(ev.target.value) || 0;
     if (!s.productos[i]) return;
     s.productos[i][f] = v;
-    // Actualizar solo el total de la fila + preview
     const row = node.querySelector(`[data-prod-row='${i}']`);
     if (row) row.querySelector(".prod-total").textContent = fmtMoney(s.productos[i].qty * s.productos[i].precio);
     refreshPreview();
   });
 
-  // Acciones de la barra superior
+  // Acciones
+  on(node, "click", "[data-action='back']", () => navigate("proformas"));
+
   const validate = () => {
     if (!s.cliente.razonSocial.trim()) { toast("Falta el cliente", { type: "err" }); return false; }
     if (!s.productos.length) { toast("Agregá al menos un producto", { type: "err" }); return false; }
     return true;
   };
 
-  const doSave = async (estado, btn) => {
+  on(node, "click", "[data-action='enviar']", async (ev) => {
     if (!validate()) return;
-    const buttons = node.querySelectorAll("[data-action]");
-    buttons.forEach((b) => (b.disabled = true));
+    const btns = node.querySelectorAll("[data-action]");
+    btns.forEach((b) => (b.disabled = true));
+    const btn = ev.target.closest("button");
     const original = btn?.innerHTML;
-    if (btn) btn.textContent = estado === "enviada" ? "Enviando…" : "Guardando…";
+    if (btn) btn.textContent = "Enviando…";
     try {
       const { proforma, slug, totals: t } = await createProforma({
-        estado,
+        estado: "enviada",
         cliente: s.cliente,
         asunto: s.asunto,
         items: s.productos,
@@ -472,54 +387,42 @@ export const render = (root) => {
         id: proforma.numero,
         cliente: s.cliente.razonSocial,
         contacto: s.cliente.contacto,
-        cargo: "",
         ruc: s.cliente.ruc,
         email: s.cliente.email,
         telefono: s.cliente.telefono,
-        monto: t.total,
-        moneda: "PEN",
+        monto: t.total, moneda: "PEN",
         items: s.productos.length,
-        emitida: proforma.emitida,
-        validez: proforma.validez,
-        estado: proforma.estado,
+        emitida: proforma.emitida, validez: proforma.validez, estado: proforma.estado,
         aperturas: 0, tiempoTotal: 0, ultimaVista: "—",
-        paginas: 0, descargas: 0, impresiones: 0, reenvios: 0,
-        giroscopio: false,
+        paginas: 0, descargas: 0, impresiones: 0, reenvios: 0, giroscopio: false,
         asunto: s.asunto,
       });
-      s.numero = proforma.numero;
-      s.estado = proforma.estado;
       s.publicSlug = slug;
-      toast(estado === "enviada" ? `${proforma.numero} enviada` : `${proforma.numero} guardada`, { type: "ok" });
+      toast(`${proforma.numero} enviada`, { type: "ok" });
       navigate("proformas");
     } catch (err) {
       console.error(err);
       toast(err.message || "No pude guardar", { type: "err" });
-      buttons.forEach((b) => (b.disabled = false));
+      btns.forEach((b) => (b.disabled = false));
       if (btn && original) btn.innerHTML = original;
     }
-  };
-
-  on(node, "click", "[data-action='enviar']", (e) => doSave("enviada", e.target.closest("button")));
+  });
   on(node, "click", "[data-action='pdf']", () => toast("Export a PDF — próximamente", { type: "info" }));
   on(node, "click", "[data-action='duplicar']", () => toast("Duplicar — próximamente", { type: "info" }));
   on(node, "click", "[data-action='copiar-link']", async () => {
-    if (!s.publicSlug) return toast("Primero enviá la proforma para generar el link", { type: "err" });
+    if (!s.publicSlug) return toast("Enviá primero la proforma", { type: "err" });
     const url = `https://duecaz.github.io/test/#/p/${s.publicSlug}`;
-    try {
-      await navigator.clipboard.writeText(url);
-      toast("Link copiado", { type: "ok" });
-    } catch {
-      toast(url, { type: "info", ms: 6000 });
-    }
+    try { await navigator.clipboard.writeText(url); toast("Link copiado", { type: "ok" }); }
+    catch { toast(url, { type: "info", ms: 6000 }); }
   });
   on(node, "click", "[data-action='wsp']", () => {
     const tel = (s.cliente.telefono || "").replace(/[^\d+]/g, "");
     if (!tel) return toast("Cargá un teléfono primero", { type: "err" });
     const link = s.publicSlug ? `https://duecaz.github.io/test/#/p/${s.publicSlug}` : "";
-    const msg = encodeURIComponent(
-      `Hola ${s.cliente.contacto || ""}, te paso la proforma ${s.numero}: ${s.asunto || ""}.${link ? " " + link : ""}`
-    );
+    const msg = encodeURIComponent(`Hola ${s.cliente.contacto || ""}, te paso la proforma ${s.numero}: ${s.asunto || ""}.${link ? " " + link : ""}`);
     window.open(`https://wa.me/${tel.replace(/^\+/, "")}?text=${msg}`, "_blank");
   });
+
+  // Cleanup: restaurar la app shell al salir
+  return () => document.body.classList.remove("fullscreen-page");
 };
