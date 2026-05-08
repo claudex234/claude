@@ -69,18 +69,19 @@ const renderPreview = (s) => {
       <article class="pv-page">
         <header class="pv-header">
           <div class="pv-emisor">
-            <div class="pv-logo-mark">N</div>
-            <div>
-              <div class="pv-emisor-name">${e(EMISOR.razonSocial)}</div>
-              <div class="pv-emisor-meta">RUC ${e(EMISOR.ruc)} · ${e(EMISOR.email)} · ${e(EMISOR.telefono)}</div>
-            </div>
+            <div class="pv-logo-svg">${EMISOR.logoSvg}</div>
+            <div class="pv-emisor-tag">${e(EMISOR.subtagline)}</div>
           </div>
           <div class="pv-doc-meta">
-            <div class="pv-doc-label">PROFORMA</div>
-            <div class="pv-doc-numero">${e(s.numero)}</div>
-            <div class="pv-doc-fecha">${fmtDate(s.emitidaIso)}</div>
+            <div class="pv-emisor-name">${e(EMISOR.razonSocial)}</div>
+            <div class="pv-emisor-tag">${e(EMISOR.tagline)}</div>
           </div>
         </header>
+
+        <div class="pv-info-row">
+          <span><b>Proforma</b> ${e(s.numero)}</span>
+          <span>${fmtDate(s.emitidaIso)}</span>
+        </div>
 
         <div class="pv-grid-2">
           <section class="pv-card">
