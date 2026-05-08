@@ -14,16 +14,21 @@ const app = document.getElementById("app");
 const isPublicRoute = () => /^#\/?p\//.test(location.hash);
 
 const bootPublic = async () => {
-  const { render } = await import("./pages/publico.js");
-  app.innerHTML = "";
-  let cleanup = await render(app);
-  // Si el slug cambia en la misma sesión, re-renderizar.
-  window.addEventListener("hashchange", async () => {
-    if (!isPublicRoute()) { location.reload(); return; }
-    if (typeof cleanup === "function") cleanup();
+  app.innerHTML = `<div style="display:grid;place-items:center;height:100vh;color:#8a8f9a;font:14px system-ui">Cargando proforma…</div>`;
+  try {
+    const { render } = await import("./pages/publico.js");
     app.innerHTML = "";
-    cleanup = await render(app);
-  });
+    let cleanup = await render(app);
+    window.addEventListener("hashchange", async () => {
+      if (!isPublicRoute()) { location.reload(); return; }
+      if (typeof cleanup === "function") cleanup();
+      app.innerHTML = "";
+      cleanup = await render(app);
+    });
+  } catch (err) {
+    console.error("[bootPublic] crash:", err);
+    app.innerHTML = `<div style="display:grid;place-items:center;height:100vh;padding:24px;text-align:center;font:13px system-ui;color:#f87171"><div><div style="font-size:16px;margin-bottom:8px">No pude cargar el visor</div><pre style="font-family:ui-monospace,monospace;color:#8a8f9a;background:#11141a;padding:10px;border-radius:6px;text-align:left">${(err?.message || err)}\n${err?.stack || ""}</pre></div></div>`;
+  }
 };
 
 const boot = async () => {

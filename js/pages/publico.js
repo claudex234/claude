@@ -231,11 +231,23 @@ const fitDoc = (root) => {
   fit.style.height = (doc.scrollHeight * scale) + "px";
 };
 
+const showError = (root, title, detail) => {
+  root.innerHTML = `
+    <div class="vp-error">
+      <div style="max-width:520px">
+        <div style="font-size:16px;font-weight:600;color:#f87171;margin-bottom:8px">${e(title)}</div>
+        ${detail ? `<div style="font-size:12px;color:#8a8f9a;font-family:var(--font-mono);background:#11141a;padding:10px 14px;border-radius:6px;border:1px solid #262b35;text-align:left;white-space:pre-wrap">${e(detail)}</div>` : ""}
+        <div style="margin-top:14px;font-size:12px;color:#5e6a82">Si esto persiste, mostrale este mensaje a quien te mandó el link.</div>
+      </div>
+    </div>
+  `;
+};
+
 export const render = async (root) => {
   document.body.classList.add("vp-public");
   const slug = slugFromHash();
   if (!slug) {
-    root.innerHTML = `<div class="vp-error">Link inválido.</div>`;
+    showError(root, "Link inválido", "La URL no contiene un slug válido.");
     return () => document.body.classList.remove("vp-public");
   }
 
@@ -245,22 +257,35 @@ export const render = async (root) => {
   try {
     data = await fetchProforma(slug);
   } catch (err) {
-    root.innerHTML = `<div class="vp-error">No pude cargar este documento.<br><small>${e(err.message || "")}</small></div>`;
+    console.error("[publico] fetchProforma falló:", err);
+    showError(root, "No pude cargar este documento.", `${err?.message || err}\n\nslug: ${slug}`);
     return () => document.body.classList.remove("vp-public");
   }
   if (!data) {
-    root.innerHTML = `<div class="vp-error">Este link expiró o no existe.</div>`;
+    showError(root, "Este link expiró o no existe.", `slug: ${slug}`);
     return () => document.body.classList.remove("vp-public");
   }
 
-  // Registrar la apertura (no-blocking)
+  // Registrar la apertura (no-blocking, no rompe si falla)
   logApertura(slug);
 
-  root.innerHTML = renderViewer(data, slug);
+  // Renderizar — si tira excepción, la mostramos en pantalla en vez de
+  // dejar la página colgada en "Cargando…".
+  let html;
+  try {
+    html = renderViewer(data, slug);
+  } catch (err) {
+    console.error("[publico] renderViewer falló:", err, "data:", data);
+    showError(root, "Error al renderizar el documento.", `${err?.message || err}\n\n${err?.stack || ""}`);
+    return () => document.body.classList.remove("vp-public");
+  }
+
+  root.innerHTML = html;
   const cleanupProt = installProtections(root);
 
+  const stage = root.querySelector(".vp-stage");
   const ro = new ResizeObserver(() => fitDoc(root));
-  ro.observe(root.querySelector(".vp-stage"));
+  if (stage) ro.observe(stage);
   requestAnimationFrame(() => fitDoc(root));
 
   return () => {

@@ -26,9 +26,12 @@ const RX_EMAIL = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/;
 
 // Móvil PE: opcional +51, opcional separadores, 9 + 8 dígitos.
 const RX_TEL_MOBILE = /(?:\+?51[\s-]?)?9\d{2}[\s-]?\d{3}[\s-]?\d{3}\b/;
-// Fijo PE: opcional +51, opcional 0, prefijo de área (1-2 díg) entre paréntesis
-// o no, después 6 dígitos. Ej: "01 234 5678", "(044) 123-456".
-const RX_TEL_FIJO   = /(?:\+?51[\s-]?)?\(?0?[1-9]\d?\)?[\s-]?\d{3}[\s-]?\d{3,4}\b/;
+// Fijo PE: requiere separador explícito (espacio, guión) o paréntesis
+// alrededor del prefijo. Esto evita que confunda un RUC (11 dígitos
+// pegados) con un teléfono fijo.
+//   "01 234 5678", "(044) 123-4567", "+51 1 234 5678" → match
+//   "20512345678" (RUC pelado) → no match
+const RX_TEL_FIJO = /(?:\+?51[\s-]+)?(?:\(0?[1-9]\d?\)\s*|0?[1-9]\d?[\s-]+)\d{3}[\s-]?\d{3,4}\b/;
 
 // Sufijos corporativos al final de la línea (con o sin puntos).
 const RX_CORP_END = /\b(S\.?A\.?C\.?|S\.?A\.?A\.?|S\.?A\.?|E\.?I\.?R\.?L\.?|S\.?R\.?L\.?|S\.?C\.?R\.?L\.?|LTDA\.?)\.?\s*$/i;
@@ -98,7 +101,7 @@ export const parsePaste = (raw, productos) => {
 
   for (const rawLine of lines) {
     const noLabel = stripLabel(rawLine.trim());
-    const t = noLabel;
+    let t = noLabel;
     if (!t) continue;
 
     // 1) Código de producto compacto: "3PLUS8500", "PRO", "1ELITE"
@@ -124,7 +127,23 @@ export const parsePaste = (raw, productos) => {
       if (m) out.email = m[0];
     }
 
-    // 3) Teléfono — preferimos móvil > fijo
+    // 3) RUC PRIMERO (más específico que teléfono). Si lo encontramos en
+    //    la línea, removemos esos dígitos del texto de trabajo para que
+    //    el detector de teléfono no los confunda. Bug clásico: un RUC
+    //    "20603463545" terminaba detectado como fijo "0603463545".
+    if (!out.ruc) {
+      const m = t.match(RX_RUC_ANY);
+      if (m) {
+        out.ruc = m[0];
+        out.rucSeguro = RX_RUC_SAFE.test(m[0]);
+        const rest = t.replace(m[0], "").trim().replace(/^[\s.,\-:]+/, "");
+        if (!out.razonSocial && rest && looksLikeEmpresa(rest)) out.razonSocial = rest;
+        // Quitar el RUC del texto antes de seguir buscando teléfono.
+        t = t.replace(m[0], "").trim();
+      }
+    }
+
+    // 4) Teléfono — preferimos móvil > fijo
     if (!out.telefono) {
       const mobile = t.match(RX_TEL_MOBILE);
       if (mobile) {
@@ -135,23 +154,8 @@ export const parsePaste = (raw, productos) => {
       }
     }
 
-    // 4) RUC (cualquier prefijo válido). Marcamos "seguro" si empieza por 20.
-    if (!out.ruc) {
-      const m = t.match(RX_RUC_ANY);
-      if (m) {
-        out.ruc = m[0];
-        out.rucSeguro = RX_RUC_SAFE.test(m[0]);
-        // Si la misma línea trae también la razón social ("RUC … Empresa SAC")
-        const rest = t.replace(m[0], "").trim().replace(/^[\s.,\-:]+/, "");
-        if (!out.razonSocial && rest && (looksLikeEmpresa(rest))) {
-          out.razonSocial = rest;
-        }
-      }
-    }
-
     // 5) Razón social por sufijo / educativo
     if (!out.razonSocial && looksLikeEmpresa(t)) {
-      // Limpiar restos de "RUC: 20..." al inicio si quedaron.
       out.razonSocial = t.replace(/^\s*\d{11}\s*/, "").trim();
       continue;
     }
