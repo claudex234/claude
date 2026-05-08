@@ -618,6 +618,8 @@ body {
 .btn-sm { padding: 6px 11px; font-size: 12px; }
 .btn-wsp { background: #25d366; color: #fff; border-color: #25d366; }
 .btn-wsp:hover { background: #1fbe5b; }
+.btn-link { background: var(--accent-soft); color: var(--accent-strong); border-color: var(--accent); }
+.btn-link:hover { background: var(--accent); color: #fff; }
 
 .gen-split { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(380px, 460px) 1fr; }
 .gen-editor { padding: 4px 18px 40px; overflow-y: auto; border-right: 1px solid var(--border); background: var(--surface); }

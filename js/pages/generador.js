@@ -2,7 +2,7 @@ import { fmtMoney, on, escapeHtml as e, el } from "../lib/utils.js";
 import { PRODUCTOS } from "../data/productos.js";
 import { PROFORMAS } from "../data/proformas.js";
 import { navigate } from "../lib/router.js";
-import { createProforma, nextNumero } from "../data/api.js";
+import { createProforma, nextNumero, ensurePublicLink } from "../data/api.js";
 import { supabase } from "../lib/supabase.js";
 import { toast } from "../lib/toast.js";
 import { EMISOR, FORMAS_PAGO, BLOQUES_PANTALLA } from "../data/empresa.js";
@@ -28,6 +28,7 @@ const initialState = () => ({
     tiempoEntrega: EMISOR.defaults.tiempoEntrega,
   },
   publicSlug: null,
+  proformaId: null, // uuid devuelto por createProforma; null hasta primer guardado
   emitidaIso: new Date().toISOString().slice(0, 10),
 });
 
@@ -187,7 +188,7 @@ const renderEditor = (s) => `
       <div class="gen-actions">
         <button class="btn btn-sm" data-action="duplicar">Duplicar</button>
         <button class="btn btn-sm" data-action="pdf">PDF</button>
-        <button class="btn btn-sm" data-action="copiar-link" ${s.publicSlug ? "" : "disabled"}>Copiar link</button>
+        <button class="btn btn-sm btn-link" data-action="generar-link">${s.publicSlug ? "Copiar link" : "Generar link"}</button>
         <button class="btn btn-sm btn-wsp" data-action="wsp">WhatsApp</button>
         <button class="btn btn-sm btn-primary" data-action="enviar">Enviar al cliente</button>
       </div>
@@ -430,6 +431,7 @@ export const render = (root) => {
         asunto: s.asunto,
       });
       s.publicSlug = slug;
+      s.proformaId = proforma.id;
       toast(`${proforma.numero} enviada`, { type: "ok" });
       navigate("proformas");
     } catch (err) {
@@ -441,16 +443,88 @@ export const render = (root) => {
   });
   on(node, "click", "[data-action='pdf']", () => toast("Export a PDF — próximamente", { type: "info" }));
   on(node, "click", "[data-action='duplicar']", () => toast("Duplicar — próximamente", { type: "info" }));
-  on(node, "click", "[data-action='copiar-link']", async () => {
-    if (!s.publicSlug) return toast("Enviá primero la proforma", { type: "err" });
-    const url = `https://duecaz.github.io/test/#/p/${s.publicSlug}`;
-    try { await navigator.clipboard.writeText(url); toast("Link copiado", { type: "ok" }); }
-    catch { toast(url, { type: "info", ms: 6000 }); }
+  // Copy con fallback: navigator.clipboard puede fallar fuera de https
+  // o sin user gesture (después de un await).
+  const copyToClipboard = async (text) => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch {}
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      const ok = document.execCommand("copy");
+      ta.remove();
+      return ok;
+    } catch { return false; }
+  };
+
+  const publicUrl = (slug) => `${location.origin}${location.pathname}#/p/${slug}`;
+
+  // Genera (o reutiliza) el link público. Si la proforma todavía no se
+  // guardó en Supabase, primero la guarda como borrador.
+  on(node, "click", "[data-action='generar-link']", async (ev) => {
+    if (!validate()) return;
+    const btn = ev.target.closest("button");
+    const original = btn?.innerHTML;
+    if (btn) { btn.disabled = true; btn.textContent = s.publicSlug ? "Copiando…" : "Generando…"; }
+    try {
+      // Si nunca lo guardamos, lo creamos como borrador.
+      if (!s.proformaId) {
+        const { proforma, slug, totals: t } = await createProforma({
+          estado: "borrador",
+          cliente: s.cliente,
+          asunto: s.asunto,
+          items: s.productos,
+        });
+        s.proformaId = proforma.id;
+        s.numero = proforma.numero;
+        s.publicSlug = slug || null;
+        // Reflejar en la barra y el listado
+        const m = node.querySelector(".gen-bar-meta .mono");
+        if (m) m.textContent = s.numero;
+        PROFORMAS.unshift({
+          id: proforma.numero, proformaId: proforma.id, slug: null,
+          cliente: s.cliente.razonSocial, contacto: s.cliente.contacto,
+          ruc: s.cliente.ruc, email: s.cliente.email, telefono: s.cliente.telefono,
+          monto: t.total, moneda: "PEN", items: s.productos.length,
+          emitida: proforma.emitida, validez: proforma.validez, estado: "borrador",
+          aperturas: 0, tiempoTotal: 0, ultimaVista: "—",
+          paginas: 0, descargas: 0, impresiones: 0, reenvios: 0, giroscopio: false,
+          asunto: s.asunto,
+        });
+      }
+      // Ahora sí, asegurar el slug público.
+      const wasNew = !s.publicSlug;
+      if (!s.publicSlug) s.publicSlug = await ensurePublicLink(s.proformaId);
+      // Sincronizar en PROFORMAS también
+      const rec = PROFORMAS.find((p) => p.proformaId === s.proformaId);
+      if (rec) rec.slug = s.publicSlug;
+
+      const url = publicUrl(s.publicSlug);
+      const copied = await copyToClipboard(url);
+      toast(copied ? `Link copiado · ${url}` : `Link listo · ${url}`, { type: "ok", ms: 7000 });
+      if (wasNew) window.open(url, "_blank", "noopener");
+
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = "Copiar link";
+      }
+    } catch (err) {
+      console.error(err);
+      toast(err.message || "No pude generar el link", { type: "err" });
+      if (btn && original) { btn.disabled = false; btn.innerHTML = original; }
+    }
   });
   on(node, "click", "[data-action='wsp']", () => {
     const tel = (s.cliente.telefono || "").replace(/[^\d+]/g, "");
     if (!tel) return toast("Cargá un teléfono primero", { type: "err" });
-    const link = s.publicSlug ? `https://duecaz.github.io/test/#/p/${s.publicSlug}` : "";
+    const link = s.publicSlug ? publicUrl(s.publicSlug) : "";
     const msg = encodeURIComponent(`Hola ${s.cliente.contacto || ""}, te paso la proforma ${s.numero}: ${s.asunto || ""}.${link ? " " + link : ""}`);
     window.open(`https://wa.me/${tel.replace(/^\+/, "")}?text=${msg}`, "_blank");
   });
