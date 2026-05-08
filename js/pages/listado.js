@@ -177,7 +177,7 @@ export const render = (root) => {
                   <th>Producto</th>
                   <th style="text-align:right">Última vista</th>
                   <th>Estado</th>
-                  <th style="width:80px"></th>
+                  <th style="width:140px"></th>
                 </tr>
               </thead>
               <tbody>
