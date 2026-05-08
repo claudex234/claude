@@ -24,8 +24,12 @@ const fetchProforma = async (slug) => {
   return data;
 };
 
-const logApertura = (slug) => {
-  supabase.rpc("log_public_apertura", { p_slug: slug, p_user_agent: navigator.userAgent }).catch(() => {});
+const logApertura = async (slug) => {
+  try {
+    await supabase.rpc("log_public_apertura", { p_slug: slug, p_user_agent: navigator.userAgent });
+  } catch (err) {
+    console.warn("[publico] log_public_apertura falló:", err);
+  }
 };
 
 const itemRowHtml = (it) => {
@@ -266,7 +270,7 @@ export const render = async (root) => {
     return () => document.body.classList.remove("vp-public");
   }
 
-  // Registrar la apertura (no-blocking, no rompe si falla)
+  // Registrar la apertura — fire-and-forget; errores van a la consola.
   logApertura(slug);
 
   // Renderizar — si tira excepción, la mostramos en pantalla en vez de
