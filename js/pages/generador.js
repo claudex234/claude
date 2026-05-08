@@ -415,6 +415,8 @@ export const render = (root) => {
       });
       PROFORMAS.unshift({
         id: proforma.numero,
+        proformaId: proforma.id,
+        slug: slug || null,
         cliente: s.cliente.razonSocial,
         contacto: s.cliente.contacto,
         ruc: s.cliente.ruc,

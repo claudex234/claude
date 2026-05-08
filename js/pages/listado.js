@@ -3,6 +3,9 @@ import { icon } from "../lib/icons.js";
 import { PROFORMAS } from "../data/proformas.js";
 import { PROFORMAS_PRODUCTOS } from "../data/productos.js";
 import { navigate } from "../lib/router.js";
+import { toast } from "../lib/toast.js";
+
+const publicLinkFor = (slug) => `${location.origin}${location.pathname}#/p/${slug}`;
 
 const FILTERS = [
   { id: "todas", label: "Todas" },
@@ -74,7 +77,9 @@ export const render = (root) => {
         </td>
         <td data-stop>
           <div style="display:flex;gap:6px;justify-content:flex-end;align-items:center">
-            <button class="btn btn-sm" style="font-size:11px;padding:4px 9px;font-weight:600">${raw(icon("eye", 11))} PDF</button>
+            ${p.slug
+              ? raw(`<button class="btn-icon btn-ghost" title="Copiar link público" data-action="copy-link" data-slug="${p.slug}">${icon("link", 14)}</button>`)
+              : raw(`<button class="btn-icon btn-ghost" title="Sin link público (no enviada)" disabled style="opacity:.3">${icon("link", 14)}</button>`)}
             <button class="btn-icon btn-ghost" title="Eliminar" style="color:var(--danger);opacity:.7">${raw(icon("trash", 14))}</button>
           </div>
         </td>
@@ -178,6 +183,11 @@ export const render = (root) => {
 
   const wire = (target) => {
     on(target, "click", "[data-action='nueva']", () => navigate("generador"));
+    on(target, "click", "[data-action='copy-link']", async (e, btn) => {
+      const url = publicLinkFor(btn.dataset.slug);
+      try { await navigator.clipboard.writeText(url); toast("Link copiado", { type: "ok" }); }
+      catch { toast(url, { type: "info", ms: 6000 }); }
+    });
     on(target, "click", "[data-filter]", (_, btn) => { state.filter = btn.dataset.filter; refresh(); });
     on(target, "click", "[data-pfilter]", (_, btn) => { state.productFilter = btn.dataset.pfilter; refresh(); });
     on(target, "input", "[data-search]", (e) => {

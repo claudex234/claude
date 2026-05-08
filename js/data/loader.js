@@ -34,10 +34,12 @@ const adaptTemplate = (row) => ({
   items: Array.isArray(row.items) ? row.items.length : (row.items || 0),
 });
 
-const adaptProforma = (row, clientesById) => {
+const adaptProforma = (row, clientesById, slugByProformaId) => {
   const c = row.cliente_id ? clientesById.get(row.cliente_id) : null;
   return {
     id: row.numero,
+    proformaId: row.id,
+    slug: slugByProformaId.get(row.id) || null,
     cliente: c?.razon_social || "—",
     contacto: c?.contacto || "",
     cargo: c?.cargo || "",
@@ -63,12 +65,13 @@ const adaptProforma = (row, clientesById) => {
 };
 
 export const loadAll = async () => {
-  const [productosRes, skinsRes, plantillasRes, clientesRes, proformasRes] = await Promise.all([
+  const [productosRes, skinsRes, plantillasRes, clientesRes, proformasRes, linksRes] = await Promise.all([
     supabase.from("productos").select("*").eq("activo", true).order("precio_default"),
     supabase.from("skins").select("*").order("created_at"),
     supabase.from("plantillas").select("*").order("created_at"),
     supabase.from("clientes").select("*"),
     supabase.from("proformas").select("*").order("created_at", { ascending: false }),
+    supabase.from("proforma_links").select("proforma_id, slug"),
   ]);
 
   if (productosRes.error) console.error("productos:", productosRes.error);
@@ -76,6 +79,7 @@ export const loadAll = async () => {
   if (plantillasRes.error) console.error("plantillas:", plantillasRes.error);
   if (clientesRes.error) console.error("clientes:", clientesRes.error);
   if (proformasRes.error) console.error("proformas:", proformasRes.error);
+  if (linksRes.error) console.error("links:", linksRes.error);
 
   // Productos: mapa por código
   for (const k of Object.keys(PRODUCTOS)) delete PRODUCTOS[k];
@@ -95,11 +99,15 @@ export const loadAll = async () => {
   const clientesById = new Map();
   for (const row of clientesRes.data || []) clientesById.set(row.id, row);
 
+  // Slugs públicos por proforma
+  const slugByProformaId = new Map();
+  for (const row of linksRes.data || []) slugByProformaId.set(row.proforma_id, row.slug);
+
   // Proformas
   PROFORMAS.length = 0;
   for (const k of Object.keys(PROFORMAS_PRODUCTOS)) delete PROFORMAS_PRODUCTOS[k];
   for (const row of proformasRes.data || []) {
-    PROFORMAS.push(adaptProforma(row, clientesById));
+    PROFORMAS.push(adaptProforma(row, clientesById, slugByProformaId));
   }
 
   // Métricas mínimas calculadas del lado cliente
