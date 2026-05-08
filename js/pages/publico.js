@@ -93,12 +93,11 @@ const renderViewer = (data, slug) => {
                   </div>
                 </div>
                 <div class="pv-doc-meta">
-                  <div class="pv-doc-label">DOCUMENTO</div>
+                  <div class="pv-doc-label">PROFORMA</div>
                   <div class="pv-doc-numero">${e(p.numero)}</div>
                   <div class="pv-doc-fecha">${fmtDate(p.emitida)}</div>
                 </div>
               </header>
-              <h2 class="pv-title">${e(p.asunto || "Proforma")}</h2>
               <div class="pv-grid-2">
                 <section class="pv-card">
                   <div class="pv-card-label">CLIENTE</div>

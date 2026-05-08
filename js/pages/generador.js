@@ -76,13 +76,11 @@ const renderPreview = (s) => {
             </div>
           </div>
           <div class="pv-doc-meta">
-            <div class="pv-doc-label">DOCUMENTO</div>
+            <div class="pv-doc-label">PROFORMA</div>
             <div class="pv-doc-numero">${e(s.numero)}</div>
             <div class="pv-doc-fecha">${fmtDate(s.emitidaIso)}</div>
           </div>
         </header>
-
-        <h2 class="pv-title">Proforma</h2>
 
         <div class="pv-grid-2">
           <section class="pv-card">

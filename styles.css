@@ -671,6 +671,8 @@ body {
 .gen-preview .pv-doc { width: 794px; }
 .pv-doc { display: flex; flex-direction: column; gap: 24px; }
 .pv-page {
+  /* -20% en interlineado: las hojas A4 son densas, default 1.5 → 1.2. */
+  line-height: 1.2;
   --bg: #ffffff;
   --surface: #ffffff;
   --bg-soft: #f5f6f8;
@@ -731,8 +733,8 @@ body {
 .pv-right { text-align: right; }
 .pv-strong { font-weight: 700; color: var(--text); }
 .pv-item-title { font-weight: 700; font-size: 12px; margin-bottom: 3px; }
-.pv-item-hi { background: rgba(255, 200, 60, 0.12); border-left: 2px solid #f5b800; padding: 5px 8px; border-radius: 3px; margin: 3px 0; font-size: 11px; line-height: 1.5; }
-.pv-item-specs { font-size: 10.5px; color: var(--text-3); line-height: 1.5; margin-top: 3px; }
+.pv-item-hi { background: rgba(255, 200, 60, 0.12); border-left: 2px solid #f5b800; padding: 5px 8px; border-radius: 3px; margin: 3px 0; font-size: 11px; line-height: 1.2; }
+.pv-item-specs { font-size: 10.5px; color: var(--text-3); line-height: 1.2; margin-top: 3px; }
 .pv-incluye-title { margin-top: 6px; font-size: 9.5px; font-weight: 700; color: var(--text-mute); letter-spacing: .6px; }
 .pv-empty { text-align: center; color: var(--text-mute); padding: 22px; }
 
@@ -745,7 +747,7 @@ body {
 
 .pv-page-foot { position: absolute; bottom: 10px; right: 14px; font-size: 9.5px; color: var(--text-mute); font-family: var(--font-mono); }
 
-.pv-block { padding: 10px 12px; border-radius: 5px; font-size: 11px; line-height: 1.5; }
+.pv-block { padding: 10px 12px; border-radius: 5px; font-size: 11px; line-height: 1.2; }
 .pv-block-title { font-size: 9.5px; font-weight: 700; letter-spacing: .8px; margin-bottom: 4px; }
 .pv-block-ok { background: var(--success-soft); border: 1px solid var(--success); }
 .pv-block-ok .pv-block-title { color: var(--success); }
