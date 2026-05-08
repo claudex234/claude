@@ -11,7 +11,24 @@ document.documentElement.setAttribute("data-theme", state.theme);
 
 const app = document.getElementById("app");
 
+const isPublicRoute = () => /^#\/?p\//.test(location.hash);
+
+const bootPublic = async () => {
+  const { render } = await import("./pages/publico.js");
+  app.innerHTML = "";
+  let cleanup = await render(app);
+  // Si el slug cambia en la misma sesión, re-renderizar.
+  window.addEventListener("hashchange", async () => {
+    if (!isPublicRoute()) { location.reload(); return; }
+    if (typeof cleanup === "function") cleanup();
+    app.innerHTML = "";
+    cleanup = await render(app);
+  });
+};
+
 const boot = async () => {
+  if (isPublicRoute()) return bootPublic();
+
   // 1) Gate de autenticación: bloquea hasta tener sesión.
   await waitForSession(app);
 
