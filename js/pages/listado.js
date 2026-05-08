@@ -4,8 +4,33 @@ import { PROFORMAS } from "../data/proformas.js";
 import { PROFORMAS_PRODUCTOS } from "../data/productos.js";
 import { navigate } from "../lib/router.js";
 import { toast } from "../lib/toast.js";
+import { ensurePublicLink } from "../data/api.js";
 
 const publicLinkFor = (slug) => `${location.origin}${location.pathname}#/p/${slug}`;
+
+// Copy con fallback: navigator.clipboard puede fallar fuera de https,
+// sin user gesture, o en algunos browsers. Probamos execCommand como
+// segundo intento y devolvemos true/false.
+const copyToClipboard = async (text) => {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {}
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand("copy");
+    ta.remove();
+    return ok;
+  } catch { return false; }
+};
 
 const FILTERS = [
   { id: "todas", label: "Todas" },
@@ -77,9 +102,11 @@ export const render = (root) => {
         </td>
         <td data-stop>
           <div style="display:flex;gap:6px;justify-content:flex-end;align-items:center">
-            ${p.slug
-              ? raw(`<button class="btn-icon btn-ghost" title="Copiar link público" data-action="copy-link" data-slug="${p.slug}">${icon("link", 14)}</button>`)
-              : raw(`<button class="btn-icon btn-ghost" title="Sin link público (no enviada)" disabled style="opacity:.3">${icon("link", 14)}</button>`)}
+            <button class="btn btn-sm" data-action="link" data-id="${p.id}"
+              title="${p.slug ? "Copiar link público" : "Generar y copiar link público"}"
+              style="font-size:11px;padding:4px 9px;font-weight:600;${p.slug ? "color:var(--accent-strong)" : ""}">
+              ${raw(icon("link", 11))} ${p.slug ? "Link" : "Generar"}
+            </button>
             <button class="btn-icon btn-ghost" title="Eliminar" style="color:var(--danger);opacity:.7">${raw(icon("trash", 14))}</button>
           </div>
         </td>
@@ -183,10 +210,34 @@ export const render = (root) => {
 
   const wire = (target) => {
     on(target, "click", "[data-action='nueva']", () => navigate("generador"));
-    on(target, "click", "[data-action='copy-link']", async (e, btn) => {
-      const url = publicLinkFor(btn.dataset.slug);
-      try { await navigator.clipboard.writeText(url); toast("Link copiado", { type: "ok" }); }
-      catch { toast(url, { type: "info", ms: 6000 }); }
+    on(target, "click", "[data-action='link']", async (e, btn) => {
+      const id = btn.dataset.id;
+      const proforma = PROFORMAS.find((p) => p.id === id);
+      if (!proforma) return;
+      if (!proforma.proformaId) {
+        toast("Esta proforma no se guardó en la base. Recargá la página.", { type: "err" });
+        return;
+      }
+      const original = btn.innerHTML;
+      btn.disabled = true;
+      btn.textContent = proforma.slug ? "Copiando…" : "Generando…";
+      try {
+        const wasNew = !proforma.slug;
+        if (wasNew) {
+          proforma.slug = await ensurePublicLink(proforma.proformaId);
+        }
+        const url = publicLinkFor(proforma.slug);
+        const copied = await copyToClipboard(url);
+        toast(copied ? `Link copiado · ${url}` : `Link listo · ${url}`, { type: "ok", ms: 7000 });
+        // Si lo acabo de generar, lo abro en otra pestaña para que veas el resultado.
+        if (wasNew) window.open(url, "_blank", "noopener");
+        refresh();
+      } catch (err) {
+        console.error(err);
+        toast(err.message || "No pude generar el link", { type: "err" });
+        btn.disabled = false;
+        btn.innerHTML = original;
+      }
     });
     on(target, "click", "[data-filter]", (_, btn) => { state.filter = btn.dataset.filter; refresh(); });
     on(target, "click", "[data-pfilter]", (_, btn) => { state.productFilter = btn.dataset.pfilter; refresh(); });

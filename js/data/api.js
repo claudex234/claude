@@ -141,3 +141,22 @@ export const createProforma = async ({ estado, cliente, asunto, items }) => {
 
   return { proforma: prof, slug, totals: { subtotal, igv, total } };
 };
+
+// Devuelve el slug público existente, o crea uno si no existe.
+export const ensurePublicLink = async (proformaId) => {
+  if (!proformaId) throw new Error("Falta proformaId");
+  const { data: existing, error: e1 } = await supabase
+    .from("proforma_links")
+    .select("slug")
+    .eq("proforma_id", proformaId)
+    .limit(1);
+  if (e1) throw e1;
+  if (existing && existing.length) return existing[0].slug;
+
+  const slug = randomSlug();
+  const { error: e2 } = await supabase
+    .from("proforma_links")
+    .insert({ proforma_id: proformaId, slug });
+  if (e2) throw e2;
+  return slug;
+};
