@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Proforma — preview A4</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:opsz,wght@9..144,400;9..144,600&display=swap" rel="stylesheet">
+  <style>
+    /* ============================================================
+       Hoja A4 — proforma EDUBOARD
+       Dimensiones físicas fijas: 794×1123 px (A4 a 96 dpi).
+       Editá libremente: tipografías, colores, spacing, bloques.
+       Cuando termines, pasame el HTML/CSS final y lo porto a la app.
+       ============================================================ */
+    :root {
+      --bg-page: #ffffff;
+      --ink: #1a1d23;
+      --ink-2: #3a3f48;
+      --ink-3: #5b6270;
+      --ink-mute: #8a8f9a;
+      --line: #e2e5ea;
+      --line-2: #c8cdd5;
+      --soft: #f5f6f8;
+      --brand: #e63946;
+      --brand-soft: rgba(230, 57, 70, 0.08);
+      --hi: #fde68a;
+      --ok: #16a34a;
+      --ok-soft: #ecfdf5;
+      --bad: #dc2626;
+      --bad-soft: #fef2f2;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: #2a2d33; }
+    body {
+      font-family: "Inter", -apple-system, system-ui, sans-serif;
+      color: var(--ink);
+      line-height: 1.2;
+      padding: 32px;
+      display: flex; justify-content: center;
+    }
+
+    .page {
+      width: 794px;
+      min-height: 1123px;
+      background: var(--bg-page);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      padding: 28px 56px 56px;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* === Header === */
+    .pv-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      padding-bottom: 8px;
+    }
+    .pv-emisor {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      align-items: flex-start;
+    }
+    .pv-logo-svg { width: 200px; }
+    .pv-logo-svg svg { width: 100%; height: auto; display: block; }
+    .pv-emisor-tag {
+      font-family: "Fraunces", Georgia, serif;
+      font-style: italic;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+    .pv-doc-meta { text-align: right; }
+    .pv-emisor-name {
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--ink);
+    }
+    .pv-doc-meta .pv-emisor-tag {
+      font-style: normal;
+      color: var(--ink-3);
+      font-weight: 500;
+      font-family: "Inter", sans-serif;
+    }
+
+    .pv-info-row {
+      display: flex; justify-content: space-between;
+      align-items: baseline;
+      font-size: 12.5px; color: var(--ink-2);
+      padding: 8px 0 10px;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      margin: 8px 0 12px;
+    }
+    .pv-info-row b { font-weight: 700; color: var(--ink); margin-right: 4px; }
+    .pv-info-row .num { font-family: ui-monospace, monospace; }
+
+    /* === Cards CLIENTE / TÉRMINOS === */
+    .pv-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .pv-card {
+      padding: 10px 12px;
+      background: var(--soft);
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      font-size: 11.5px;
+    }
+    .pv-card-label {
+      font-size: 9.5px;
+      font-weight: 700;
+      color: var(--ink-mute);
+      letter-spacing: .8px;
+      margin-bottom: 5px;
+    }
+    .pv-card-strong { font-size: 12.5px; font-weight: 700; color: var(--ink); }
+    .pv-card-row { font-size: 11.5px; color: var(--ink-2); margin-top: 1px; }
+
+    .pv-terms {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      column-gap: 12px;
+      row-gap: 3px;
+      font-size: 11.5px;
+      margin: 0;
+    }
+    .pv-terms dt { color: var(--ink-3); }
+    .pv-terms dd { margin: 0; color: var(--ink); font-weight: 600; }
+
+    /* === Tabla de items === */
+    .pv-items {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 14px;
+      font-size: 11.5px;
+    }
+    .pv-items th {
+      font-size: 9.5px;
+      font-weight: 700;
+      color: var(--ink-mute);
+      letter-spacing: .8px;
+      text-align: left;
+      padding: 6px;
+      border-bottom: 1px solid var(--line);
+    }
+    .pv-items td {
+      padding: 8px 6px;
+      vertical-align: top;
+      border-bottom: 1px solid var(--line);
+    }
+    .pv-num { font-family: ui-monospace, monospace; }
+    .pv-right { text-align: right; }
+    .pv-strong { font-weight: 700; color: var(--ink); }
+    .pv-item-title {
+      font-weight: 700;
+      font-size: 12px;
+      margin-bottom: 3px;
+    }
+    .pv-item-hi {
+      background: rgba(255, 200, 60, 0.12);
+      border-left: 2px solid #f5b800;
+      padding: 5px 8px;
+      border-radius: 3px;
+      margin: 3px 0;
+      font-size: 11px;
+      line-height: 1.2;
+    }
+    .pv-item-specs {
+      font-size: 10.5px;
+      color: var(--ink-3);
+      line-height: 1.2;
+      margin-top: 3px;
+    }
+    .pv-item-specs > div { padding: 1px 0; }
+    .pv-incluye-title {
+      margin-top: 6px;
+      font-size: 9.5px;
+      font-weight: 700;
+      color: var(--ink-mute);
+      letter-spacing: .6px;
+    }
+
+    /* === Totales === */
+    .pv-totales {
+      margin-top: 12px;
+      margin-left: auto;
+      width: 240px;
+      font-size: 11.5px;
+    }
+    .pv-totales > div {
+      display: flex;
+      justify-content: space-between;
+      padding: 3px 6px;
+    }
+    .pv-totales > div span { color: var(--ink-3); }
+    .pv-totales > div b { font-family: ui-monospace, monospace; font-weight: 600; }
+    .pv-total-row {
+      border-top: 1px solid var(--line);
+      margin-top: 4px;
+      padding-top: 6px !important;
+      font-size: 13px;
+    }
+    .pv-total-row span, .pv-total-row b {
+      color: var(--ink);
+      font-weight: 700;
+    }
+
+    /* === Bloques (servicios incluidos / no incluido) === */
+    .pv-block {
+      padding: 10px 12px;
+      border-radius: 5px;
+      font-size: 11px;
+      line-height: 1.2;
+    }
+    .pv-block-title {
+      font-size: 9.5px;
+      font-weight: 700;
+      letter-spacing: .8px;
+      margin-bottom: 4px;
+    }
+    .pv-block-ok { background: var(--ok-soft); border: 1px solid var(--ok); }
+    .pv-block-ok .pv-block-title { color: var(--ok); }
+    .pv-block-no { background: var(--bad-soft); border: 1px solid var(--bad); }
+    .pv-block-no .pv-block-title { color: var(--bad); }
+
+    /* === Cuentas + firma === */
+    .pv-cuentas {
+      margin-top: 14px;
+      padding: 10px 12px;
+      background: var(--soft);
+      border: 1px solid var(--line);
+      border-radius: 5px;
+      font-size: 11px;
+    }
+    .pv-cuenta { padding: 2px 0; color: var(--ink-2); }
+    .pv-cuenta-pago {
+      margin-top: 5px;
+      padding-top: 5px;
+      border-top: 1px dashed var(--line-2);
+    }
+
+    .pv-firma { margin-top: 24px; }
+    .pv-firma-label { font-size: 11px; color: var(--ink-3); }
+    .pv-firma-name { font-weight: 700; font-size: 12.5px; margin-top: 2px; }
+
+    .pv-page-foot {
+      position: absolute;
+      bottom: 14px;
+      right: 24px;
+      font-size: 9.5px;
+      color: var(--ink-mute);
+      font-family: ui-monospace, monospace;
+    }
+
+    /* Salto entre páginas (visual, no afecta el código de la app) */
+    .page + .page { margin-top: 24px; }
+  </style>
+</head>
+<body>
+
+  <!-- ============= PÁGINA 1 ============= -->
+  <article class="page">
+    <header class="pv-header">
+      <div class="pv-emisor">
+        <div class="pv-logo-svg">
+          <!-- ⬇ REEMPLAZÁ ESTE SVG POR TU LOGO REAL ⬇ -->
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 60" preserveAspectRatio="xMinYMid meet">
+            <rect x="2" y="2" width="216" height="56" rx="4" fill="none" stroke="#e63946" stroke-width="3"/>
+            <text x="110" y="38" text-anchor="middle"
+                  font-family="Inter, system-ui, sans-serif" font-weight="800"
+                  font-size="26" letter-spacing="2" fill="#1a1d23">
+              <tspan fill="#1a1d23">EDU</tspan><tspan dx="6" fill="#e63946">BOARD</tspan>
+            </text>
+          </svg>
+        </div>
+        <div class="pv-emisor-tag">¡Educación Divertida y eficaz!</div>
+      </div>
+      <div class="pv-doc-meta">
+        <div class="pv-emisor-name">EDUBOARD EIRL</div>
+        <div class="pv-emisor-tag">Pizarras Digitales Interactivas</div>
+      </div>
+    </header>
+
+    <div class="pv-info-row">
+      <span><b>Proforma</b><span class="num">PRF-2026-0001</span></span>
+      <span>09/05/2026</span>
+    </div>
+
+    <div class="pv-grid-2">
+      <section class="pv-card">
+        <div class="pv-card-label">CLIENTE</div>
+        <div class="pv-card-strong">UNIVERSIDAD PERUANA CAYETANO HEREDIA</div>
+        <div class="pv-card-row">RUC 20512345678</div>
+        <div class="pv-card-row">María Quispe</div>
+        <div class="pv-card-row">mquispe@cayetano.edu.pe</div>
+        <div class="pv-card-row">+51 987 654 321</div>
+      </section>
+      <section class="pv-card">
+        <div class="pv-card-label">TÉRMINOS</div>
+        <dl class="pv-terms">
+          <dt>Tiempo entrega</dt><dd>07 días calendario</dd>
+          <dt>Lugar entrega</dt><dd>Lima, agencia, según OC</dd>
+          <dt>Garantía</dt><dd>2 años</dd>
+          <dt>Validez</dt><dd>15 días</dd>
+          <dt>Condiciones</dt><dd>T/T</dd>
+        </dl>
+      </section>
+    </div>
+
+    <table class="pv-items">
+      <thead>
+        <tr>
+          <th class="pv-num" style="width:50px">CANT</th>
+          <th>DESCRIPCIÓN</th>
+          <th class="pv-right" style="width:90px">P. UND</th>
+          <th class="pv-right" style="width:100px">SUBTOTAL</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="pv-num">1</td>
+          <td>
+            <div class="pv-item-title">Pantalla Interactiva táctil 86" ED88PP-86 (PLUS)</div>
+            <div class="pv-item-hi">
+              <div>CPU Octacore A76+A55 @2.4 GHz (gama alta)</div>
+              <div>GPU G610 MC4 (rápido tareas gráficas)</div>
+              <div>NPU 6 TOPS (unidad de procesamiento neuronal)</div>
+              <div>Memoria RAM 16 GB</div>
+              <div>Almacenamiento SSD 256 GB ampliable</div>
+              <div>IA educativa, genera clases, preguntas, tarjetas</div>
+              <div>Gestión de usuarios con huella dactilar</div>
+            </div>
+            <div class="pv-item-specs">
+              <div>Resolución 4K UHD</div>
+              <div>Android 13</div>
+              <div>NFC, sensor de calidad de aire</div>
+              <div>Protección antigolpes y antirrayaduras: MOSH 7, IK7</div>
+              <div>Cámara 4K, con 120° de apertura, ePTZ, autoframing</div>
+              <div>Micrófono: matriz de 8</div>
+              <div>Parlante: 20W + 20W con 20W de subwoofer</div>
+              <div>Compartir pantalla inalámbrica hasta 16 usuarios</div>
+              <div>Compatible con Windows, Mac, Android, iPhone, Linux</div>
+              <div>Wi-Fi 6.0, Bluetooth 5.2</div>
+              <div>2 años de garantía</div>
+            </div>
+            <div class="pv-incluye-title">INCLUIDO EN EL PAQUETE</div>
+            <div class="pv-item-specs">
+              <div>01 Cable USB 1.5 mts</div>
+              <div>01 Cable HDMI 1.5 mts</div>
+              <div>02 Rotuladores · 01 Borrador</div>
+              <div>01 Set de anclaje a pared (VESA)</div>
+              <div>01 Manual de uso de pizarra en español</div>
+              <div>01 Certificado de garantía</div>
+              <div>01 Control remoto</div>
+            </div>
+          </td>
+          <td class="pv-num pv-right">S/ 11,000.00</td>
+          <td class="pv-num pv-right pv-strong">S/ 11,000.00</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="pv-totales">
+      <div><span>Subtotal</span><b>S/ 9,322.03</b></div>
+      <div><span>IGV (18%)</span><b>S/ 1,677.97</b></div>
+      <div class="pv-total-row"><span>Total</span><b>S/ 11,000.00</b></div>
+    </div>
+
+    <div class="pv-page-foot">1 / 2</div>
+  </article>
+
+  <!-- ============= PÁGINA 2 ============= -->
+  <article class="page">
+    <div class="pv-grid-2">
+      <section class="pv-block pv-block-ok">
+        <div class="pv-block-title">SERVICIOS INCLUIDOS</div>
+        <div>· Entrega, instalación y capacitación, previa coordinación</div>
+      </section>
+      <section class="pv-block pv-block-no">
+        <div class="pv-block-title">NO INCLUIDO</div>
+        <div>· Extensiones, tomas de luz, cables, otras instalaciones eléctricas</div>
+        <div>· Reforzamientos de pared o drywall</div>
+        <div>· Computadoras u otros equipos</div>
+      </section>
+    </div>
+
+    <section class="pv-cuentas">
+      <div class="pv-card-label">CUENTAS BANCARIAS</div>
+      <div class="pv-cuenta"><b>BCP Soles:</b> 194-1234567-0-12 · <b>CCI</b> 002 194 001234567012 31</div>
+      <div class="pv-cuenta"><b>BBVA Soles:</b> 0011 0123 0200456789 · <b>CCI</b> 011 123 000200456789 46</div>
+      <div class="pv-cuenta-pago"><b>Forma de pago:</b> 50% adelanto / 50% contra entrega</div>
+    </section>
+
+    <div class="pv-firma">
+      <div class="pv-firma-label">Atentamente,</div>
+      <div class="pv-firma-name">Manuel Dueñas Cazani</div>
+    </div>
+
+    <div class="pv-page-foot">2 / 2</div>
+  </article>
+
+</body>
+</html>
