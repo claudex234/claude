@@ -42,10 +42,11 @@ const totals = (productos) => {
 // ====== Preview (hoja A4) ======
 const itemRowHtml = (p) => {
   const ref = PRODUCTOS[p.modelo] || {};
-  // Las specs destacadas se envuelven en <span data-hl>; el resaltador
-  // se dibuja después del render con Rough Notation, ajustado al ancho
-  // exacto del texto de cada línea.
-  const hi = (ref.specsHighlight || []).map((x) => `<div><span data-hl>${e(x)}</span></div>`).join("");
+  // Specs destacadas: cada una su propio <div data-hl>. El contenedor
+  // es flex-column con align-items:flex-start (cada hijo se ajusta al
+  // ancho del texto) y gap (espacio vertical para que los strokes de
+  // Rough Notation no se solapen).
+  const hi = (ref.specsHighlight || []).map((x) => `<div data-hl>${e(x)}</div>`).join("");
   const specs = (ref.specs || []).map((x) => `<div>${e(x)}</div>`).join("");
   const incluye = (ref.incluye || []).map((x) => `<div>${e(x)}</div>`).join("");
   return `

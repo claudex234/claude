@@ -35,7 +35,7 @@ const logApertura = async (slug) => {
 
 const itemRowHtml = (it) => {
   const ref = it.producto || {};
-  const hi = (ref.specs_highlight || []).map((x) => `<div><span data-hl>${e(x)}</span></div>`).join("");
+  const hi = (ref.specs_highlight || []).map((x) => `<div data-hl>${e(x)}</div>`).join("");
   const specs = (ref.specs || []).map((x) => `<div>${e(x)}</div>`).join("");
   const incluye = (ref.incluye || []).map((x) => `<div>${e(x)}</div>`).join("");
   return `

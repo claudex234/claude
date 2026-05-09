@@ -750,10 +750,21 @@ body {
 .pv-strong { font-weight: 700; color: var(--text); }
 .pv-item-title { font-weight: 700; font-size: 12px; margin-bottom: 3px; }
 /* Highlight tipo "marker" del prof: amarillo más sólido, sin border-left. */
-/* El amarillo lo dibuja Rough Notation a cada [data-hl] después del
-   render. Acá sólo dejamos padding/typo del bloque. */
-.pv-item-hi { padding: 3px 0; margin: 3px 0; font-size: 11px; line-height: 1.4; }
-.pv-item-hi [data-hl] { color: var(--text); padding: 0 2px; }
+/* Specs destacadas: el resaltador (Rough Notation) se dibuja sobre cada
+   [data-hl] después del render. El contenedor es flex-column con
+   align-items: flex-start para que cada div se ajuste al ancho del texto,
+   y gap para que los strokes no se solapen. */
+.pv-item-hi {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  margin: 4px 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text);
+}
+.pv-item-hi [data-hl] { padding: 0 2px; }
 .pv-item-specs { font-size: 10.5px; color: var(--text-3); line-height: 1.2; margin-top: 3px; }
 .pv-incluye-title { margin-top: 6px; font-size: 9.5px; font-weight: 700; color: var(--text-mute); letter-spacing: .6px; }
 .pv-empty { text-align: center; color: var(--text-mute); padding: 22px; }
