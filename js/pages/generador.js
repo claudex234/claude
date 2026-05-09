@@ -7,12 +7,13 @@ import { supabase } from "../lib/supabase.js";
 import { toast } from "../lib/toast.js";
 import { EMISOR, FORMAS_PAGO, BLOQUES_PANTALLA } from "../data/empresa.js";
 import { parsePaste, PRODUCT_CODES } from "../lib/parser.js";
-import { renderProformaContent } from "../lib/proforma_template.js";
 
 const fmtDate = (iso) => {
   const d = new Date(iso);
   return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
 };
+const money = (n) => fmtMoney(n).replace("S/ ", "");
+
 const initialState = () => ({
   numero: "PRF-…",
   estado: "borrador",
@@ -37,49 +38,127 @@ const totals = (productos) => {
   return { subtotal, igv, total: +(subtotal + igv).toFixed(2) };
 };
 
-// Construye el shape `data` que espera la plantilla (definido en proforma_template.js).
-const buildProformaData = (s) => ({
-  numero: s.numero,
-  fecha: fmtDate(s.emitidaIso),
-  empresa: {
-    nombre: EMISOR.razonSocial,
-    ruc: EMISOR.ruc,
-    contacto: EMISOR.firmante,
-    telefono: EMISOR.telefono,
-    email: EMISOR.email,
-  },
-  cliente: {
-    razon: s.cliente.razonSocial,
-    ruc: s.cliente.ruc,
-    contacto: s.cliente.contacto,
-    email: s.cliente.email,
-    telefono: s.cliente.telefono,
-  },
-  terminos: {
-    tiempoEntrega: s.terminos.tiempoEntrega,
-    lugarEntrega: EMISOR.defaults.lugarEntrega,
-    garantia: EMISOR.defaults.garantia,
-    validez: s.terminos.validez,
-    condiciones: EMISOR.defaults.condiciones,
-  },
-  bancos: EMISOR.cuentas.map((c) => ({
-    nombre: `${c.banco} ${c.moneda}`,
-    cuenta: c.numero,
-    cci: c.cci,
-  })),
-  formaPago: s.terminos.formaPago,
-  titularBanco: EMISOR.titularBanco || EMISOR.razonSocial,
-  firma: EMISOR.firmante,
-  precioIncluyeIGV: !!EMISOR.defaults.precioIncluyeIGV,
-  items: s.productos.map((p) => ({ qty: p.qty, modelo: p.modelo, precio: p.precio })),
-});
+// ====== Preview (hoja A4) ======
+const itemRowHtml = (p) => {
+  const ref = PRODUCTOS[p.modelo] || {};
+  const hi = (ref.specsHighlight || []).map((x) => `<div>${e(x)}</div>`).join("");
+  const specs = (ref.specs || []).map((x) => `<div>${e(x)}</div>`).join("");
+  const incluye = (ref.incluye || []).map((x) => `<div>${e(x)}</div>`).join("");
+  return `
+    <tr>
+      <td class="pv-num">${p.qty}</td>
+      <td>
+        <div class="pv-item-title">${e(p.nombre)}</div>
+        ${hi ? `<div class="pv-item-hi">${hi}</div>` : ""}
+        ${specs ? `<div class="pv-item-specs">${specs}</div>` : ""}
+        ${incluye ? `<div class="pv-incluye-title">INCLUIDO EN EL PAQUETE</div><div class="pv-item-specs">${incluye}</div>` : ""}
+      </td>
+      <td class="pv-num pv-right">S/ ${money(p.precio)}</td>
+      <td class="pv-num pv-right pv-strong">S/ ${money(p.qty * p.precio)}</td>
+    </tr>`;
+};
 
-const renderPreview = (s) => `
-  <div class="pv-doc">
-    <article class="pv-page">
-      ${renderProformaContent(buildProformaData(s), PRODUCTOS, BLOQUES_PANTALLA)}
-    </article>
-  </div>`;
+const renderPreview = (s) => {
+  const t = totals(s.productos);
+  const c = s.cliente;
+  const tm = s.terminos;
+  const showBloques = s.productos.length > 0;
+
+  return `
+    <div class="pv-doc">
+      <article class="pv-page">
+        <header class="pv-header">
+          <div class="pv-emisor">
+            <div class="pv-logo-svg">${EMISOR.logoSvg}</div>
+            <div class="pv-emisor-tag">${e(EMISOR.subtagline)}</div>
+          </div>
+          <div class="pv-doc-meta">
+            <div class="pv-emisor-name">${e(EMISOR.razonSocial)}</div>
+            <div class="pv-emisor-tag">${e(EMISOR.tagline)}</div>
+          </div>
+        </header>
+
+        <div class="pv-info-row">
+          <span><b>Proforma</b> ${e(s.numero)}</span>
+          <span>${fmtDate(s.emitidaIso)}</span>
+        </div>
+
+        <div class="pv-grid-2">
+          <section class="pv-card">
+            <div class="pv-card-label">CLIENTE</div>
+            <div class="pv-card-strong">${e(c.razonSocial || "—")}</div>
+            ${c.ruc ? `<div class="pv-card-row">RUC ${e(c.ruc)}</div>` : ""}
+            ${c.contacto ? `<div class="pv-card-row">${e(c.contacto)}</div>` : ""}
+            ${c.email ? `<div class="pv-card-row">${e(c.email)}</div>` : ""}
+            ${c.telefono ? `<div class="pv-card-row">${e(c.telefono)}</div>` : ""}
+          </section>
+          <section class="pv-card">
+            <div class="pv-card-label">TÉRMINOS</div>
+            <dl class="pv-terms">
+              <dt>Tiempo entrega</dt><dd>${e(tm.tiempoEntrega)}</dd>
+              <dt>Lugar entrega</dt><dd>${e(EMISOR.defaults.lugarEntrega)}</dd>
+              <dt>Garantía</dt><dd>${e(EMISOR.defaults.garantia)}</dd>
+              <dt>Validez</dt><dd>${tm.validez} días</dd>
+              <dt>Condiciones</dt><dd>${e(EMISOR.defaults.condiciones)}</dd>
+            </dl>
+          </section>
+        </div>
+
+        <table class="pv-items">
+          <thead>
+            <tr>
+              <th class="pv-th-num">CANT</th>
+              <th>DESCRIPCIÓN</th>
+              <th class="pv-right">P. UND</th>
+              <th class="pv-right">SUBTOTAL</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${s.productos.length
+              ? s.productos.map(itemRowHtml).join("")
+              : `<tr><td colspan="4" class="pv-empty">Agregá productos para verlos acá</td></tr>`}
+          </tbody>
+        </table>
+
+        <div class="pv-totales">
+          <div><span>Subtotal</span><b>S/ ${money(t.subtotal)}</b></div>
+          <div><span>IGV (18%)</span><b>S/ ${money(t.igv)}</b></div>
+          <div class="pv-total-row"><span>Total</span><b>S/ ${money(t.total)}</b></div>
+        </div>
+
+        <div class="pv-page-foot">1 / 2</div>
+      </article>
+
+      <article class="pv-page">
+        ${showBloques ? `
+          <div class="pv-grid-2">
+            <section class="pv-block pv-block-ok">
+              <div class="pv-block-title">SERVICIOS INCLUIDOS</div>
+              ${BLOQUES_PANTALLA.servicios.map((x) => `<div>· ${e(x)}</div>`).join("")}
+            </section>
+            <section class="pv-block pv-block-no">
+              <div class="pv-block-title">NO INCLUIDO</div>
+              ${BLOQUES_PANTALLA.noIncluido.map((x) => `<div>· ${e(x)}</div>`).join("")}
+            </section>
+          </div>` : ""}
+
+        <section class="pv-cuentas">
+          <div class="pv-card-label">CUENTAS BANCARIAS</div>
+          ${EMISOR.cuentas.map((b) => `
+            <div class="pv-cuenta"><b>${e(b.banco)} ${e(b.moneda)}:</b> ${e(b.numero)} · <b>CCI</b> ${e(b.cci)}</div>
+          `).join("")}
+          <div class="pv-cuenta-pago"><b>Forma de pago:</b> ${e(tm.formaPago)}</div>
+        </section>
+
+        <div class="pv-firma">
+          <div class="pv-firma-label">Atentamente,</div>
+          <div class="pv-firma-name">${e(EMISOR.firmante)}</div>
+        </div>
+
+        <div class="pv-page-foot">2 / 2</div>
+      </article>
+    </div>`;
+};
 
 // ====== Editor ======
 const productoRowHtml = (p, i) => `
@@ -196,7 +275,7 @@ export const render = (root) => {
   // Como un visor PDF: el contenido nunca se reorganiza, sólo cambia la
   // escala visual. Usamos transform: scale + wrapper con dimensiones
   // explícitas para que el layout/scroll coincida con lo que se ve.
-  const PAGE_W = 595;
+  const PAGE_W = 794;
   const fitPreview = () => {
     const container = node.querySelector(".gen-preview");
     const fit = container?.querySelector(".pv-fit");
