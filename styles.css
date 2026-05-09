@@ -695,8 +695,12 @@ body {
   --hl-bg: #fff8c4;
   --hl-color: #0a2540;
   width: 794px;
-  /* La hoja se adapta al contenido; sin min-height A4 ni flex column
-     que empujaba la firma al fondo y dejaba un hueco enorme. */
+  /* Hoja A4 a 96dpi (794x1123 px). min-height para emular la hoja
+     completa; el flex-column SE QUITÓ porque combinado con
+     margin-top: auto en .pv-firma empujaba la firma al fondo y
+     dejaba un hueco enorme. Sin flex, el contenido stackea natural
+     desde arriba y abajo queda whitespace de hoja A4. */
+  min-height: 1123px;
   padding: 18px 32px 32px;
   box-sizing: border-box;
   background: #fff;
