@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <title>Highlight options — overlap + bumps</title>
+  <title>Highlight options — natural strokes</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -16,7 +16,7 @@
       line-height: 1.5;
     }
     h1 { margin: 0 0 8px; font-size: 22px; }
-    .subtitle { color: #8a8f9a; margin-bottom: 24px; font-size: 13px; max-width: 760px; }
+    .subtitle { color: #8a8f9a; margin-bottom: 24px; font-size: 13px; max-width: 780px; }
     .grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(440px, 1fr));
@@ -45,105 +45,39 @@
       padding: 2px 7px;
       border-radius: 999px;
     }
-    .item-name {
-      font-weight: 700;
-      font-size: 12px;
-      margin-bottom: 6px;
-    }
+    .item-name { font-weight: 700; font-size: 12px; margin-bottom: 6px; }
     .specs-after { font-size: 10.5px; color: #6b7c93; line-height: 1.2; margin-top: 6px; }
     .specs-after > div { padding: 1px 0; }
-
-    /* line-height fijo para todas las variantes — alineamos los strokes */
-    .hi { font-size: 11px; line-height: 16px; padding: 0; }
+    .hi { font-size: 11px; line-height: 16px; padding: 0; position: relative; }
     .hi > div { padding: 0; margin: 0; }
 
-    /* ============================================================
-       Cada opción usa multiple background-image con OVERLAP real:
-       Stroke height = 22px. Line-height = 16px. Posiciones cada 16px.
-       Resultado: cada pasada tapa 6px de la anterior.
-       ============================================================ */
-
-    /* === A · Stroke ondulado con muchos bumps (8 pasadas) === */
+    /* === A · Hand-crafted: UN solo SVG con 8 strokes únicos.
+       Cada uno tiene waveform, opacidad, posición x y rotación
+       distintas — toda la randomización pre-bakeada. === */
     .optA .hi {
-      --s: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 22' preserveAspectRatio='none'><path d='M2,5 C 25,3 50,7 75,4 C 100,2 125,6 150,3 C 175,5 200,2 225,6 C 250,3 275,7 300,3 C 325,5 350,2 375,5 L 398,4 L 398,18 C 375,20 350,17 325,19 C 300,16 275,21 250,17 C 225,21 200,16 175,20 C 150,17 125,21 100,18 C 75,21 50,16 25,19 L 2,17 Z' fill='%23ffe066'/></svg>");
-      background-image: var(--s), var(--s), var(--s), var(--s), var(--s), var(--s), var(--s), var(--s);
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 140' preserveAspectRatio='none'><g><path d='M-2,5 C 30,3 60,8 95,4 C 130,2 165,7 200,3 C 235,5 270,2 305,7 C 340,3 380,6 402,4 L 402,18 C 380,20 340,17 305,20 C 270,16 235,21 200,17 C 165,21 130,16 95,20 C 60,17 30,21 -2,18 Z' fill='%23ffe066' opacity='0.88' transform='rotate(-0.6 200 11)'/><path d='M3,21 C 35,23 70,18 105,21 C 140,17 175,22 210,19 C 245,23 280,18 315,21 C 350,17 380,20 397,19 L 397,33 C 380,35 350,37 315,33 C 280,37 245,32 210,36 C 175,32 140,37 105,34 C 70,37 35,33 3,35 Z' fill='%23ffd954' opacity='0.82' transform='rotate(0.5 200 27)'/><path d='M-1,38 C 40,36 80,42 120,37 C 160,34 200,40 240,36 C 280,38 320,34 360,40 C 380,37 395,38 401,38 L 401,52 C 395,54 380,52 360,55 C 320,51 280,55 240,52 C 200,56 160,50 120,54 C 80,51 40,56 -1,53 Z' fill='%23ffe066' opacity='0.85' transform='rotate(-0.4 200 45)'/><path d='M2,54 C 25,57 50,52 80,55 C 110,51 145,57 180,53 C 215,56 250,51 290,55 C 325,52 360,55 397,52 L 397,67 C 360,70 325,67 290,70 C 250,66 215,71 180,68 C 145,71 110,66 80,70 C 50,67 25,71 2,68 Z' fill='%23ffd954' opacity='0.8' transform='rotate(0.6 200 61)'/><path d='M-2,69 C 90,72 180,67 298,71 C 320,67 360,71 402,68 L 402,83 C 360,85 320,82 298,85 C 180,87 90,82 -2,85 Z' fill='%23ffe066' opacity='0.9' transform='rotate(-0.3 200 76)'/><path d='M3,84 C 50,86 110,81 200,84 C 290,82 360,86 397,82 L 397,97 C 360,100 290,97 200,100 C 110,97 50,100 3,98 Z' fill='%23ffd954' opacity='0.78' transform='rotate(0.4 200 91)'/><path d='M-1,99 C 60,101 130,96 220,99 C 310,97 360,100 401,98 L 401,114 C 360,116 310,113 220,116 C 130,113 60,116 -1,114 Z' fill='%23ffe066' opacity='0.85' transform='rotate(-0.5 200 107)'/><path d='M2,115 C 80,117 160,112 240,116 C 320,113 360,117 397,114 L 397,129 C 360,131 320,128 240,131 C 160,128 80,131 2,129 Z' fill='%23ffd954' opacity='0.8' transform='rotate(0.5 200 122)'/></g></svg>");
       background-repeat: no-repeat;
-      background-position: 0 -3px, 0 13px, 0 29px, 0 45px, 0 61px, 0 77px, 0 93px, 0 109px;
-      background-size: 100% 22px;
+      background-size: 100% 132px;
+      background-position: 0 -3px;
       mix-blend-mode: multiply;
     }
 
-    /* === B · Stroke con DOS bandas internas (densidad despareja) === */
-    .optB .hi {
-      --s: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 22' preserveAspectRatio='none'><g fill='%23ffe066'><path d='M2,5 C 25,3 50,7 75,4 C 100,2 125,6 150,3 C 175,5 200,2 225,6 C 250,3 275,7 300,3 C 325,5 350,2 375,5 L 398,4 L 398,18 C 375,20 350,17 325,19 C 300,16 275,21 250,17 C 225,21 200,16 175,20 C 150,17 125,21 100,18 C 75,21 50,16 25,19 L 2,17 Z' opacity='0.7'/><path d='M3,8 C 50,6 110,11 200,7 C 290,4 340,9 397,6 L 397,15 C 340,17 290,12 200,16 C 110,19 50,14 3,17 Z' opacity='0.5'/></g></svg>");
-      background-image: var(--s), var(--s), var(--s), var(--s), var(--s), var(--s), var(--s), var(--s);
-      background-repeat: no-repeat;
-      background-position: 0 -3px, 0 13px, 0 29px, 0 45px, 0 61px, 0 77px, 0 93px, 0 109px;
-      background-size: 100% 22px;
-      mix-blend-mode: multiply;
-    }
-
-    /* === C · Stroke + feTurbulence (bordes vibrados) === */
-    .optC .hi {
-      --s: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 22' preserveAspectRatio='none'><defs><filter id='r' x='-2%25' y='-15%25' width='104%25' height='130%25'><feTurbulence type='fractalNoise' baseFrequency='0.06 0.12' numOctaves='2' seed='5'/><feDisplacementMap in='SourceGraphic' scale='1.8'/></filter></defs><g filter='url(%23r)'><path d='M2,5 C 25,3 50,7 75,4 C 100,2 125,6 150,3 C 175,5 200,2 225,6 C 250,3 275,7 300,3 C 325,5 350,2 375,5 L 398,4 L 398,18 C 375,20 350,17 325,19 C 300,16 275,21 250,17 C 225,21 200,16 175,20 C 150,17 125,21 100,18 C 75,21 50,16 25,19 L 2,17 Z' fill='%23ffe066'/></g></svg>");
-      background-image: var(--s), var(--s), var(--s), var(--s), var(--s), var(--s), var(--s), var(--s);
-      background-repeat: no-repeat;
-      background-position: 0 -3px, 0 13px, 0 29px, 0 45px, 0 61px, 0 77px, 0 93px, 0 109px;
-      background-size: 100% 22px;
-      mix-blend-mode: multiply;
-    }
-
-    /* === D · 4 strokes únicos alternando (no idénticos) === */
-    .optD .hi {
-      --s1: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 22' preserveAspectRatio='none'><path d='M2,5 C 30,3 60,8 95,4 C 130,2 165,7 200,3 C 235,5 270,2 305,7 C 340,3 370,6 395,4 L 398,4 L 398,18 C 370,20 340,17 305,20 C 270,16 235,21 200,17 C 165,21 130,16 95,20 C 60,17 30,21 2,18 Z' fill='%23ffe066' opacity='0.85'/></svg>");
-      --s2: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 22' preserveAspectRatio='none'><path d='M2,4 C 35,6 70,3 105,5 C 140,2 175,6 210,4 C 245,7 280,3 315,6 C 350,2 380,5 398,4 L 398,17 C 380,19 350,21 315,18 C 280,21 245,16 210,20 C 175,16 140,21 105,18 C 70,21 35,17 2,19 Z' fill='%23ffe066' opacity='0.85'/></svg>");
-      --s3: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 22' preserveAspectRatio='none'><path d='M2,6 C 40,4 80,9 120,5 C 160,2 200,8 240,4 C 280,6 320,2 360,7 C 380,4 395,5 398,5 L 398,18 C 395,20 380,18 360,21 C 320,17 280,21 240,18 C 200,22 160,16 120,20 C 80,17 40,22 2,19 Z' fill='%23ffe066' opacity='0.85'/></svg>");
-      --s4: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 22' preserveAspectRatio='none'><path d='M2,4 C 25,7 50,3 80,5 C 110,2 145,7 180,3 C 215,6 250,2 290,5 C 325,3 360,6 395,3 L 398,4 L 398,17 C 360,20 325,17 290,20 C 250,16 215,21 180,18 C 145,21 110,17 80,20 C 50,17 25,21 2,18 Z' fill='%23ffe066' opacity='0.85'/></svg>");
-      background-image: var(--s1), var(--s2), var(--s3), var(--s4), var(--s1), var(--s2), var(--s3), var(--s4);
-      background-repeat: no-repeat;
-      background-position: 0 -3px, 0 13px, 0 29px, 0 45px, 0 61px, 0 77px, 0 93px, 0 109px;
-      background-size: 100% 22px;
-      mix-blend-mode: multiply;
-    }
-
-    /* === E · Inspirado en Rough Notation (múltiples paths cortos overlapping) === */
-    .optE .hi {
-      --s: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 22' preserveAspectRatio='none'><g fill='%23ffe066' opacity='0.55'><path d='M5,7 C 80,5 160,9 240,6 C 320,3 380,7 397,5 L 397,16 C 380,18 320,15 240,18 C 160,21 80,16 5,19 Z'/><path d='M2,5 C 70,7 150,4 220,8 C 290,4 360,8 398,5 L 398,17 C 360,21 290,17 220,20 C 150,18 70,21 2,18 Z'/><path d='M3,9 C 60,7 130,11 200,8 C 270,5 340,10 397,7 L 397,15 C 340,18 270,13 200,16 C 130,19 60,15 3,17 Z'/></g></svg>");
-      background-image: var(--s), var(--s), var(--s), var(--s), var(--s), var(--s), var(--s), var(--s);
-      background-repeat: no-repeat;
-      background-position: 0 -3px, 0 13px, 0 29px, 0 45px, 0 61px, 0 77px, 0 93px, 0 109px;
-      background-size: 100% 22px;
-      mix-blend-mode: multiply;
-    }
-
-    /* === F · Combo final: turbulence + 2 capas + multiply === */
-    .optF .hi {
-      --s: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 22' preserveAspectRatio='none'><defs><filter id='r' x='-2%25' y='-15%25' width='104%25' height='130%25'><feTurbulence type='fractalNoise' baseFrequency='0.05 0.1' numOctaves='2' seed='7'/><feDisplacementMap in='SourceGraphic' scale='1.5'/></filter></defs><g filter='url(%23r)'><path d='M2,5 C 25,3 50,7 75,4 C 100,2 125,6 150,3 C 175,5 200,2 225,6 C 250,3 275,7 300,3 C 325,5 350,2 375,5 L 398,4 L 398,18 C 375,20 350,17 325,19 C 300,16 275,21 250,17 C 225,21 200,16 175,20 C 150,17 125,21 100,18 C 75,21 50,16 25,19 L 2,17 Z' fill='%23ffe066' opacity='0.7'/><path d='M3,8 C 60,6 130,11 220,7 C 310,4 360,9 397,6 L 397,15 C 360,17 310,12 220,16 C 130,19 60,14 3,17 Z' fill='%23fdd835' opacity='0.4'/></g></svg>");
-      background-image: var(--s), var(--s), var(--s), var(--s), var(--s), var(--s), var(--s), var(--s);
-      background-repeat: no-repeat;
-      background-position: 0 -3px, 0 13px, 0 29px, 0 45px, 0 61px, 0 77px, 0 93px, 0 109px;
-      background-size: 100% 22px;
-      mix-blend-mode: multiply;
-    }
-
-    /* === G · placeholder; el highlight lo dibuja Rough Notation por JS === */
-    .optG .hi { font-size: 11px; line-height: 16px; }
-
+    /* B/C/D usan Rough Notation por JS — solo wrapper. */
   </style>
 </head>
 <body>
 
-<h1>Resaltadores · pasadas onduladas que se superponen</h1>
+<h1>Resaltadores · más naturales (variación real por línea)</h1>
 <div class="subtitle">
-Inspirado en cómo lo hace <a href="https://roughnotation.com/" target="_blank" style="color:#fbbf24">Rough Notation</a> y otros libs de annotation hand-drawn. Cada stroke SVG mide 22 px y se posiciona cada 16 px → siempre se solapan 6 px con la línea de arriba. Múltiples bumps en cada path para que se vea ondulado, no liso. La opción G usa Rough Notation directo (vía CDN) para que veas cómo lo dibuja una librería real.
+A es lo más natural posible sin librería: un único SVG con 8 strokes pre-bakeados, cada uno con waveform / opacidad / rotación distintas. B-D usan <a href="https://roughnotation.com/" target="_blank" style="color:#fbbf24">Rough Notation</a> con distintos parámetros — esa lib hace randomización runtime, así que cada recarga se ve un poco diferente, igual que un marker real.
 </div>
 
 <div class="grid">
 
   <div class="option optA">
     <div class="option-header">
-      <div class="option-name">A · Ondulado + overlap</div>
-      <div class="option-tag">8 bumps por stroke</div>
+      <div class="option-name">A · 8 strokes únicos pre-bakeados</div>
+      <div class="option-tag">SVG estático + multiply</div>
     </div>
     <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
     <div class="hi">
@@ -162,11 +96,11 @@ Inspirado en cómo lo hace <a href="https://roughnotation.com/" target="_blank" 
 
   <div class="option optB">
     <div class="option-header">
-      <div class="option-name">B · Doble capa interna</div>
-      <div class="option-tag">densidad despareja</div>
+      <div class="option-name">B · Rough Notation default</div>
+      <div class="option-tag">iterations: 2</div>
     </div>
     <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
-    <div class="hi">
+    <div class="hi" data-rn data-iter="2" data-color="#ffe066">
       <div>CPU Octacore A755 @1.8 GHz</div>
       <div>Memoria RAM 8 GB</div>
       <div>Almacenamiento 64 GB ampliable</div>
@@ -182,11 +116,11 @@ Inspirado en cómo lo hace <a href="https://roughnotation.com/" target="_blank" 
 
   <div class="option optC">
     <div class="option-header">
-      <div class="option-name">C · Bordes vibrados (turbulence)</div>
-      <div class="option-tag">feTurbulence + overlap</div>
+      <div class="option-name">C · Rough Notation denso</div>
+      <div class="option-tag">iterations: 4</div>
     </div>
     <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
-    <div class="hi">
+    <div class="hi" data-rn data-iter="4" data-color="#ffe066">
       <div>CPU Octacore A755 @1.8 GHz</div>
       <div>Memoria RAM 8 GB</div>
       <div>Almacenamiento 64 GB ampliable</div>
@@ -202,71 +136,11 @@ Inspirado en cómo lo hace <a href="https://roughnotation.com/" target="_blank" 
 
   <div class="option optD">
     <div class="option-header">
-      <div class="option-name">D · 4 strokes únicos</div>
-      <div class="option-tag">cada pasada distinta</div>
+      <div class="option-name">D · Rough Notation doble pasada</div>
+      <div class="option-tag">claro + dorado encima</div>
     </div>
     <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
-    <div class="hi">
-      <div>CPU Octacore A755 @1.8 GHz</div>
-      <div>Memoria RAM 8 GB</div>
-      <div>Almacenamiento 64 GB ampliable</div>
-      <div>IA educativa</div>
-      <div>Huella dactilar</div>
-    </div>
-    <div class="specs-after">
-      <div>Resolución 4K UHD</div>
-      <div>Android 13</div>
-      <div>RAM 8 GB</div>
-    </div>
-  </div>
-
-  <div class="option optE">
-    <div class="option-header">
-      <div class="option-name">E · Estilo Rough Notation</div>
-      <div class="option-tag">3 paths cortos translúcidos</div>
-    </div>
-    <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
-    <div class="hi">
-      <div>CPU Octacore A755 @1.8 GHz</div>
-      <div>Memoria RAM 8 GB</div>
-      <div>Almacenamiento 64 GB ampliable</div>
-      <div>IA educativa</div>
-      <div>Huella dactilar</div>
-    </div>
-    <div class="specs-after">
-      <div>Resolución 4K UHD</div>
-      <div>Android 13</div>
-      <div>RAM 8 GB</div>
-    </div>
-  </div>
-
-  <div class="option optF">
-    <div class="option-header">
-      <div class="option-name">F · Combo total</div>
-      <div class="option-tag">turbulence + capas + multiply</div>
-    </div>
-    <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
-    <div class="hi">
-      <div>CPU Octacore A755 @1.8 GHz</div>
-      <div>Memoria RAM 8 GB</div>
-      <div>Almacenamiento 64 GB ampliable</div>
-      <div>IA educativa</div>
-      <div>Huella dactilar</div>
-    </div>
-    <div class="specs-after">
-      <div>Resolución 4K UHD</div>
-      <div>Android 13</div>
-      <div>RAM 8 GB</div>
-    </div>
-  </div>
-
-  <div class="option optG">
-    <div class="option-header">
-      <div class="option-name">G · Rough Notation (lib real)</div>
-      <div class="option-tag">JS, hand-drawn animation</div>
-    </div>
-    <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
-    <div class="hi" data-rn>
+    <div class="hi" data-rn-double>
       <div>CPU Octacore A755 @1.8 GHz</div>
       <div>Memoria RAM 8 GB</div>
       <div>Almacenamiento 64 GB ampliable</div>
@@ -283,18 +157,30 @@ Inspirado en cómo lo hace <a href="https://roughnotation.com/" target="_blank" 
 </div>
 
 <script type="module">
-  // Rough Notation aplica un highlight hecho con strokes randomizados
-  // sobre cada elemento. multiline:true hace que pinte por línea de
-  // texto, que es exactamente lo que querés.
   import { annotate } from "https://unpkg.com/rough-notation?module";
-  document.querySelectorAll(".optG [data-rn]").forEach((el) => {
+
+  document.querySelectorAll("[data-rn]").forEach((el) => {
     annotate(el, {
       type: "highlight",
-      color: "#ffe066",
+      color: el.dataset.color || "#ffe066",
       multiline: true,
-      iterations: 3,
-      animationDuration: 600,
+      iterations: parseInt(el.dataset.iter, 10) || 2,
+      animationDuration: 900,
+      padding: [1, 2],
     }).show();
+  });
+
+  document.querySelectorAll("[data-rn-double]").forEach((el) => {
+    annotate(el, {
+      type: "highlight", color: "#fff5a0",
+      multiline: true, iterations: 3,
+      animationDuration: 0, padding: [2, 3],
+    }).show();
+    setTimeout(() => annotate(el, {
+      type: "highlight", color: "#ffd954",
+      multiline: true, iterations: 2,
+      animationDuration: 0, padding: [-1, 2],
+    }).show(), 50);
   });
 </script>
 
