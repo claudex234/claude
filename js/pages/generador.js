@@ -7,7 +7,6 @@ import { supabase } from "../lib/supabase.js";
 import { toast } from "../lib/toast.js";
 import { EMISOR, FORMAS_PAGO, BLOQUES_PANTALLA } from "../data/empresa.js";
 import { parsePaste, PRODUCT_CODES } from "../lib/parser.js";
-import { annotate } from "https://esm.sh/rough-notation@0.5.1";
 
 const fmtDate = (iso) => {
   const d = new Date(iso);
@@ -42,11 +41,11 @@ const totals = (productos) => {
 // ====== Preview (hoja A4) ======
 const itemRowHtml = (p) => {
   const ref = PRODUCTOS[p.modelo] || {};
-  // Specs destacadas: cada una su propio <div data-hl>. El contenedor
-  // es flex-column con align-items:flex-start (cada hijo se ajusta al
-  // ancho del texto) y gap (espacio vertical para que los strokes de
-  // Rough Notation no se solapen).
-  const hi = (ref.specsHighlight || []).map((x) => `<div data-hl>${e(x)}</div>`).join("");
+  // Specs destacadas: cada una es un <div> que envuelve un <span data-hl>.
+  // El span tiene el SVG del marker como background con box-decoration-break,
+  // así el resaltador se ajusta al ancho exacto del texto y vive DENTRO
+  // del documento (escala con el transform sin problemas).
+  const hi = (ref.specsHighlight || []).map((x) => `<div><span data-hl>${e(x)}</span></div>`).join("");
   const specs = (ref.specs || []).map((x) => `<div>${e(x)}</div>`).join("");
   const incluye = (ref.incluye || []).map((x) => `<div>${e(x)}</div>`).join("");
   return `
@@ -301,7 +300,7 @@ export const render = (root) => {
 
   const ro = new ResizeObserver(() => fitPreview());
   ro.observe(node.querySelector(".gen-preview"));
-  requestAnimationFrame(() => { applyHighlights(); fitPreview(); });
+  requestAnimationFrame(fitPreview);
 
   const refreshChips = () => {
     const target = node.querySelector("[data-chips]");
@@ -332,27 +331,10 @@ export const render = (root) => {
     if (counter) counter.textContent = `PRODUCTOS (${s.productos.length})`;
   };
 
-  // Aplica el resaltador estilo marker (Rough Notation) a cada span con
-  // data-hl. Cada span se rendea ajustado al ancho de su texto, así el
-  // stroke termina donde termina la línea.
-  const applyHighlights = () => {
-    node.querySelectorAll("[data-hl]").forEach((el) => {
-      annotate(el, {
-        type: "highlight", color: "#ffe066",
-        iterations: 2, animationDuration: 0, padding: [1, 2],
-      }).show();
-    });
-  };
-
   const refreshPreview = () => {
     const fit = node.querySelector(".pv-fit");
     if (fit) {
       fit.innerHTML = renderPreview(s);
-      // Orden importa: aplicamos el highlight ANTES del transform: scale.
-      // Si Rough Notation lee posiciones ya escaladas, dibuja desplazado.
-      // Al hacerlo a escala 1, la SVG queda dentro del .pv-doc y se
-      // escala junto con el resto cuando fitPreview aplica el transform.
-      applyHighlights();
       fitPreview();
     }
   };

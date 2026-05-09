@@ -5,7 +5,6 @@
 import { supabase } from "../lib/supabase.js";
 import { fmtMoney, escapeHtml as e } from "../lib/utils.js";
 import { EMISOR, BLOQUES_PANTALLA } from "../data/empresa.js";
-import { annotate } from "https://esm.sh/rough-notation@0.5.1";
 
 const fmtDate = (iso) => {
   if (!iso) return "—";
@@ -35,7 +34,7 @@ const logApertura = async (slug) => {
 
 const itemRowHtml = (it) => {
   const ref = it.producto || {};
-  const hi = (ref.specs_highlight || []).map((x) => `<div data-hl>${e(x)}</div>`).join("");
+  const hi = (ref.specs_highlight || []).map((x) => `<div><span data-hl>${e(x)}</span></div>`).join("");
   const specs = (ref.specs || []).map((x) => `<div>${e(x)}</div>`).join("");
   const incluye = (ref.incluye || []).map((x) => `<div>${e(x)}</div>`).join("");
   return `
@@ -296,17 +295,7 @@ export const render = async (root) => {
   const stage = root.querySelector(".vp-stage");
   const ro = new ResizeObserver(() => fitDoc(root));
   if (stage) ro.observe(stage);
-  requestAnimationFrame(() => {
-    // Orden importa: dibujamos el highlight ANTES del transform: scale.
-    // Si Rough Notation lee posiciones ya escaladas, queda desplazado.
-    root.querySelectorAll("[data-hl]").forEach((el) => {
-      annotate(el, {
-        type: "highlight", color: "#ffe066",
-        iterations: 2, animationDuration: 700, padding: [1, 2],
-      }).show();
-    });
-    fitDoc(root);
-  });
+  requestAnimationFrame(() => fitDoc(root));
 
   return () => {
     ro.disconnect();
