@@ -610,6 +610,8 @@ body {
 .gen-bar-meta { display: flex; gap: 8px; align-items: center; margin-top: 1px; font-size: 11.5px; color: var(--text-3); }
 .gen-bar-meta .mono { font-family: var(--font-mono); }
 .gen-bar-meta .dot { color: var(--text-mute); }
+.gen-skin-select { background: transparent; border: 0; color: var(--text-3); font: inherit; cursor: pointer; padding: 0 2px; outline: 0; text-transform: capitalize; }
+.gen-skin-select:hover { color: var(--text); }
 .status { padding: 1px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; }
 .status-borrador { background: var(--bg-soft); color: var(--text-3); border: 1px solid var(--border); }
 .status-enviada  { background: var(--info-soft); color: var(--info); border: 1px solid var(--info); }

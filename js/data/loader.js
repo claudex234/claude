@@ -34,12 +34,13 @@ const adaptTemplate = (row) => ({
   items: Array.isArray(row.items) ? row.items.length : (row.items || 0),
 });
 
-const adaptProforma = (row, clientesById, slugByProformaId) => {
+const adaptProforma = (row, clientesById, slugByProformaId, skinCodigoById) => {
   const c = row.cliente_id ? clientesById.get(row.cliente_id) : null;
   return {
     id: row.numero,
     proformaId: row.id,
     slug: slugByProformaId.get(row.id) || null,
+    skinCodigo: skinCodigoById.get(row.skin_id) || "corporate",
     cliente: c?.razon_social || "—",
     contacto: c?.contacto || "",
     cargo: c?.cargo || "",
@@ -103,11 +104,15 @@ export const loadAll = async () => {
   const slugByProformaId = new Map();
   for (const row of linksRes.data || []) slugByProformaId.set(row.proforma_id, row.slug);
 
+  // Map skin_id (uuid) → codigo (text) para que cada proforma sepa qué planilla usa
+  const skinCodigoById = new Map();
+  for (const row of skinsRes.data || []) skinCodigoById.set(row.id, row.codigo);
+
   // Proformas
   PROFORMAS.length = 0;
   for (const k of Object.keys(PROFORMAS_PRODUCTOS)) delete PROFORMAS_PRODUCTOS[k];
   for (const row of proformasRes.data || []) {
-    PROFORMAS.push(adaptProforma(row, clientesById, slugByProformaId));
+    PROFORMAS.push(adaptProforma(row, clientesById, slugByProformaId, skinCodigoById));
   }
 
   // Métricas mínimas calculadas del lado cliente

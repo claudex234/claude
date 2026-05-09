@@ -7,6 +7,7 @@ import { supabase } from "../lib/supabase.js";
 import { toast } from "../lib/toast.js";
 import { EMISOR, FORMAS_PAGO, BLOQUES_PANTALLA } from "../data/empresa.js";
 import { parsePaste, PRODUCT_CODES } from "../lib/parser.js";
+import { renderPlanilla, PLANILLAS_DISPONIBLES } from "../lib/planillas.js";
 
 const fmtDate = (iso) => {
   const d = new Date(iso);
@@ -29,6 +30,7 @@ const initialState = () => ({
   },
   publicSlug: null,
   proformaId: null, // uuid devuelto por createProforma; null hasta primer guardado
+  skinCodigo: "corporate",
   emitidaIso: new Date().toISOString().slice(0, 10),
 });
 
@@ -39,131 +41,60 @@ const totals = (productos) => {
 };
 
 // ====== Preview (hoja A4) ======
-const itemRowHtml = (p) => {
-  const ref = PRODUCTOS[p.modelo] || {};
-  // Specs destacadas: cada una es un <div> que envuelve un <span data-hl>.
-  // El span tiene el SVG del marker como background con box-decoration-break,
-  // así el resaltador se ajusta al ancho exacto del texto y vive DENTRO
-  // del documento (escala con el transform sin problemas).
-  const hi = (ref.specsHighlight || []).map((x) => `<div><span data-hl>${e(x)}</span></div>`).join("");
-  const specs = (ref.specs || []).map((x) => `<div>${e(x)}</div>`).join("");
-  const incluye = (ref.incluye || []).map((x) => `<div>${e(x)}</div>`).join("");
-  return `
-    <tr>
-      <td>
-        <div class="pv-item-title">${e(p.nombre)}</div>
-        ${hi ? `<div class="pv-item-hi">${hi}</div>` : ""}
-        ${specs ? `<div class="pv-item-specs">${specs}</div>` : ""}
-        ${incluye ? `<div class="pv-incluye-title">INCLUIDO EN EL PAQUETE</div><div class="pv-item-specs">${incluye}</div>` : ""}
-      </td>
-      <td class="pv-c">
-        ${ref.imagen ? `<img class="pv-item-img" src="${e(ref.imagen)}" alt="${e(ref.codigo || p.modelo)}">` : ""}
-        ${ref.codigo ? `<div class="pv-item-codigo">${e(ref.codigo)}</div>` : ""}
-      </td>
-      <td class="pv-num pv-c pv-strong">${p.qty}</td>
-      <td class="pv-num pv-right">${money(p.precio)}</td>
-      <td class="pv-num pv-right pv-strong">${money(p.qty * p.precio)}</td>
-    </tr>`;
+// Construye el shape `data` que consumen las planillas (ver
+// /planillas/<codigo>/index.html para los tokens disponibles).
+const buildData = (s) => {
+  const t = totals(s.productos);
+  return {
+    numero: s.numero,
+    fecha: fmtDate(s.emitidaIso),
+    emisor: EMISOR,
+    cliente: {
+      razon: s.cliente.razonSocial || "—",
+      ruc: s.cliente.ruc,
+      contacto: s.cliente.contacto,
+      email: s.cliente.email,
+      telefono: s.cliente.telefono,
+    },
+    terminos: {
+      tiempoEntrega: s.terminos.tiempoEntrega,
+      lugarEntrega: EMISOR.defaults.lugarEntrega,
+      garantia: EMISOR.defaults.garantia,
+      validez: s.terminos.validez,
+      condiciones: EMISOR.defaults.condiciones,
+    },
+    items: s.productos.map((p) => {
+      const ref = PRODUCTOS[p.modelo] || {};
+      return {
+        qty: p.qty,
+        precio: money(p.precio),
+        total: money(p.qty * p.precio),
+        nombre: p.nombre,
+        codigo: ref.codigo || p.modelo,
+        imagen: ref.imagen,
+        specs: ref.specs || [],
+        specsHighlight: ref.specsHighlight || [],
+        incluye: ref.incluye || [],
+      };
+    }),
+    totales: {
+      subtotal: money(t.subtotal),
+      igv: money(t.igv),
+      total: money(t.total),
+    },
+    showBloques: s.productos.length > 0,
+    bloques: {
+      servicios: BLOQUES_PANTALLA.servicios,
+      noIncluido: BLOQUES_PANTALLA.noIncluido,
+    },
+  };
 };
 
-const renderPreview = (s) => {
-  const t = totals(s.productos);
-  const c = s.cliente;
-  const tm = s.terminos;
-  const showBloques = s.productos.length > 0;
-
-  return `
-    <div class="pv-doc">
-      <article class="pv-page">
-        <header class="pv-header">
-          <div class="pv-emisor">
-            <div class="pv-logo-svg">${EMISOR.logoSvg}</div>
-            <div class="pv-emisor-meta">
-              <div class="pv-emisor-name">${e(EMISOR.razonSocial)}</div>
-              <div class="pv-emisor-ruc">RUC ${e(EMISOR.ruc)}</div>
-            </div>
-          </div>
-          <div class="pv-doc-meta">
-            <div class="pv-eyebrow">Cotización</div>
-            <div class="pv-mono pv-mono-strong">${e(s.numero)}</div>
-            <div class="pv-muted">${fmtDate(s.emitidaIso)}</div>
-          </div>
-        </header>
-
-        <h2 class="pv-title">Cotización</h2>
-
-        <div class="pv-grid-2">
-          <section class="pv-card">
-            <div class="pv-card-label">CLIENTE</div>
-            <div class="pv-card-strong">${e(c.razonSocial || "—")}</div>
-            ${c.ruc ? `<div class="pv-card-row">RUC ${e(c.ruc)}</div>` : ""}
-            ${c.contacto ? `<div class="pv-card-row">${e(c.contacto)}</div>` : ""}
-            ${c.email ? `<div class="pv-card-row">${e(c.email)}</div>` : ""}
-            ${c.telefono ? `<div class="pv-card-row">${e(c.telefono)}</div>` : ""}
-          </section>
-          <section class="pv-card">
-            <div class="pv-card-label">TÉRMINOS</div>
-            <dl class="pv-terms">
-              <dt>Tiempo entrega</dt><dd>${e(tm.tiempoEntrega)}</dd>
-              <dt>Lugar entrega</dt><dd>${e(EMISOR.defaults.lugarEntrega)}</dd>
-              <dt>Garantía</dt><dd>${e(EMISOR.defaults.garantia)}</dd>
-              <dt>Validez</dt><dd>${tm.validez} días</dd>
-              <dt>Condiciones</dt><dd>${e(EMISOR.defaults.condiciones)}</dd>
-            </dl>
-          </section>
-        </div>
-
-        <table class="pv-items">
-          <colgroup>
-            <col class="col-desc"><col class="col-img"><col class="col-qty"><col class="col-p"><col class="col-pt">
-          </colgroup>
-          <thead>
-            <tr>
-              <th>DESCRIPCIÓN</th>
-              <th class="pv-c">IMAGEN</th>
-              <th class="pv-c">CANT</th>
-              <th class="pv-right">P.</th>
-              <th class="pv-right">PT</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${s.productos.length
-              ? s.productos.map(itemRowHtml).join("")
-              : `<tr><td colspan="5" class="pv-empty">Agregá productos para verlos acá</td></tr>`}
-          </tbody>
-        </table>
-
-        <div class="pv-totales">
-          <div><span>Subtotal</span><b>S/ ${money(t.subtotal)}</b></div>
-          <div><span>IGV (18%)</span><b>S/ ${money(t.igv)}</b></div>
-          <div class="pv-total-row"><span>Total</span><b>S/ ${money(t.total)}</b></div>
-        </div>
-
-        ${showBloques ? `
-          <div class="pv-grid-2">
-            <section class="pv-block pv-block-ok">
-              <div class="pv-block-title">SERVICIOS INCLUIDOS</div>
-              ${BLOQUES_PANTALLA.servicios.map((x) => `<div>· ${e(x)}</div>`).join("")}
-            </section>
-            <section class="pv-block pv-block-no">
-              <div class="pv-block-title">NO INCLUIDO</div>
-              ${BLOQUES_PANTALLA.noIncluido.map((x) => `<div>· ${e(x)}</div>`).join("")}
-            </section>
-          </div>` : ""}
-
-        <section class="pv-cuentas">
-          <div class="pv-card-label">CUENTAS BANCARIAS</div>
-          ${EMISOR.cuentas.map((b) => `
-            <div class="pv-cuenta"><b>${e(b.banco)} ${e(b.moneda)}:</b> ${e(b.numero)} · <b>CCI</b> ${e(b.cci)}</div>
-          `).join("")}
-        </section>
-
-        <div class="pv-firma">
-          <div class="pv-firma-label">Atentamente,</div>
-          <div class="pv-firma-name">${e(EMISOR.firmante)}</div>
-        </div>
-      </article>
-    </div>`;
+// Renderiza el preview vía la planilla seleccionada. Async porque la
+// primera vez se hace fetch del HTML (después la lib lo cachea).
+const renderPreview = async (s) => {
+  const inner = await renderPlanilla(s.skinCodigo, buildData(s));
+  return `<div class="pv-doc"><article class="pv-page">${inner}</article></div>`;
 };
 
 // ====== Editor ======
@@ -188,6 +119,12 @@ const renderEditor = (s) => `
           <span class="mono">${e(s.numero)}</span>
           <span class="dot">·</span>
           <span class="status status-${s.estado}">${e(s.estado)}</span>
+          <span class="dot">·</span>
+          <select class="gen-skin-select" data-f="skinCodigo" title="Planilla del PDF">
+            ${PLANILLAS_DISPONIBLES.map((c) =>
+              `<option value="${c}"${c === s.skinCodigo ? " selected" : ""}>${c}</option>`
+            ).join("")}
+          </select>
         </div>
       </div>
       <div class="gen-actions">
@@ -253,7 +190,7 @@ const renderEditor = (s) => `
         </section>
       </aside>
 
-      <main class="gen-preview" data-preview><div class="pv-fit">${renderPreview(s)}</div></main>
+      <main class="gen-preview" data-preview><div class="pv-fit"><div class="pv-doc"><article class="pv-page" style="padding:60px;color:#999">Cargando planilla…</article></div></div></main>
     </div>
   </div>`;
 
@@ -300,7 +237,8 @@ export const render = (root) => {
 
   const ro = new ResizeObserver(() => fitPreview());
   ro.observe(node.querySelector(".gen-preview"));
-  requestAnimationFrame(fitPreview);
+  // Primer render asíncrono después de pintar el placeholder.
+  requestAnimationFrame(() => { refreshPreview(); });
 
   const refreshChips = () => {
     const target = node.querySelector("[data-chips]");
@@ -331,12 +269,15 @@ export const render = (root) => {
     if (counter) counter.textContent = `PRODUCTOS (${s.productos.length})`;
   };
 
-  const refreshPreview = () => {
+  const refreshPreview = async () => {
     const fit = node.querySelector(".pv-fit");
-    if (fit) {
-      fit.innerHTML = renderPreview(s);
-      fitPreview();
+    if (!fit) return;
+    try {
+      fit.innerHTML = await renderPreview(s);
+    } catch (err) {
+      fit.innerHTML = `<div style="padding:24px;color:#a30b29;font-size:12px">Error en la planilla: ${e(err.message || err)}</div>`;
     }
+    fitPreview();
   };
 
   const refreshAll = () => { refreshChips(); refreshProductos(); refreshPreview(); };
@@ -369,6 +310,7 @@ export const render = (root) => {
     else if (f === "validez") s.terminos.validez = parseInt(v, 10) || 0;
     else if (f === "formaPago") s.terminos.formaPago = v;
     else if (f === "tiempoEntrega") s.terminos.tiempoEntrega = v;
+    else if (f === "skinCodigo") s.skinCodigo = v;
     refreshChips();
     refreshPreview();
   };
@@ -418,6 +360,7 @@ export const render = (root) => {
         cliente: s.cliente,
         asunto: s.asunto,
         items: s.productos,
+        skinCodigo: s.skinCodigo,
       });
       PROFORMAS.unshift({
         id: proforma.numero,

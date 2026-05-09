@@ -5,6 +5,7 @@
 import { supabase } from "../lib/supabase.js";
 import { fmtMoney, escapeHtml as e } from "../lib/utils.js";
 import { EMISOR, BLOQUES_PANTALLA } from "../data/empresa.js";
+import { renderPlanilla } from "../lib/planillas.js";
 
 const fmtDate = (iso) => {
   if (!iso) return "—";
@@ -32,40 +33,58 @@ const logApertura = async (slug) => {
   }
 };
 
-const itemRowHtml = (it) => {
-  const ref = it.producto || {};
-  const hi = (ref.specs_highlight || []).map((x) => `<div><span data-hl>${e(x)}</span></div>`).join("");
-  const specs = (ref.specs || []).map((x) => `<div>${e(x)}</div>`).join("");
-  const incluye = (ref.incluye || []).map((x) => `<div>${e(x)}</div>`).join("");
-  return `
-    <tr>
-      <td>
-        <div class="pv-item-title">${e(it.descripcion || ref.nombre || "")}</div>
-        ${hi ? `<div class="pv-item-hi">${hi}</div>` : ""}
-        ${specs ? `<div class="pv-item-specs">${specs}</div>` : ""}
-        ${incluye ? `<div class="pv-incluye-title">INCLUIDO EN EL PAQUETE</div><div class="pv-item-specs">${incluye}</div>` : ""}
-      </td>
-      <td class="pv-c">
-        ${ref.imagen ? `<img class="pv-item-img" src="${e(ref.imagen)}" alt="${e(ref.codigo || "")}">` : ""}
-        ${ref.codigo ? `<div class="pv-item-codigo">${e(ref.codigo)}</div>` : ""}
-      </td>
-      <td class="pv-num pv-c pv-strong">${it.qty}</td>
-      <td class="pv-num pv-right">${money(it.precio_unit)}</td>
-      <td class="pv-num pv-right pv-strong">${money(it.total)}</td>
-    </tr>`;
+// Construye el shape `data` que consumen las planillas. El payload del
+// RPC viene en snake_case; lo normalizo acá.
+const buildData = (payload) => {
+  const p = payload.proforma;
+  const c = payload.cliente || {};
+  return {
+    numero: p.numero,
+    fecha: fmtDate(p.emitida),
+    emisor: EMISOR,
+    cliente: {
+      razon: c.razon_social || "—",
+      ruc: c.ruc, contacto: c.contacto, email: c.email, telefono: c.telefono,
+    },
+    terminos: {
+      tiempoEntrega: EMISOR.defaults.tiempoEntrega,
+      lugarEntrega: EMISOR.defaults.lugarEntrega,
+      garantia: EMISOR.defaults.garantia,
+      validez: 15,
+      condiciones: EMISOR.defaults.condiciones,
+    },
+    items: (payload.items || []).map((it) => {
+      const ref = it.producto || {};
+      return {
+        qty: it.qty,
+        precio: money(it.precio_unit),
+        total: money(it.total),
+        nombre: it.descripcion || ref.nombre || "",
+        codigo: ref.codigo || "",
+        imagen: ref.imagen || "",
+        specs: ref.specs || [],
+        specsHighlight: ref.specs_highlight || [],
+        incluye: ref.incluye || [],
+      };
+    }),
+    totales: {
+      subtotal: money(p.subtotal),
+      igv: money(p.igv),
+      total: money(p.total),
+    },
+    showBloques: (payload.items || []).length > 0,
+    bloques: {
+      servicios: BLOQUES_PANTALLA.servicios,
+      noIncluido: BLOQUES_PANTALLA.noIncluido,
+    },
+  };
 };
 
-const renderViewer = (data, slug) => {
-  const p = data.proforma;
-  const c = data.cliente || {};
-  const items = data.items || [];
-  const showBloques = items.length > 0;
-
-  // Marca de agua: slug + timestamp + UA acortado. Cualquier captura llevará
-  // este texto repetido en diagonal.
+const renderViewer = async (payload, slug) => {
+  const p = payload.proforma;
+  const inner = await renderPlanilla(payload.skin_codigo || "corporate", buildData(payload));
   const ts = new Date().toISOString().slice(0, 16).replace("T", " ");
   const wm = `${slug.slice(0, 8)} · ${ts}`;
-
   return `
     <div class="vp-shell">
       <div class="vp-watermark" aria-hidden="true">
@@ -73,7 +92,6 @@ const renderViewer = (data, slug) => {
       </div>
       <header class="vp-bar">
         <div class="vp-bar-emisor">
-          <div class="pv-logo-mark">N</div>
           <div>
             <div class="vp-bar-name">${e(EMISOR.razonSocial)}</div>
             <div class="vp-bar-meta">Proforma ${e(p.numero)}</div>
@@ -83,97 +101,17 @@ const renderViewer = (data, slug) => {
           🔒 Vista protegida · ${e(slug)}
         </div>
       </header>
-
       <main class="vp-stage">
         <div class="vp-fit">
           <div class="pv-doc">
-            <article class="pv-page">
-              <header class="pv-header">
-                <div class="pv-emisor">
-                  <div class="pv-logo-svg">${EMISOR.logoSvg}</div>
-                  <div class="pv-emisor-meta">
-                    <div class="pv-emisor-name">${e(EMISOR.razonSocial)}</div>
-                    <div class="pv-emisor-ruc">RUC ${e(EMISOR.ruc)}</div>
-                  </div>
-                </div>
-                <div class="pv-doc-meta">
-                  <div class="pv-eyebrow">Cotización</div>
-                  <div class="pv-mono pv-mono-strong">${e(p.numero)}</div>
-                  <div class="pv-muted">${fmtDate(p.emitida)}</div>
-                </div>
-              </header>
-              <h2 class="pv-title">Cotización</h2>
-              <div class="pv-grid-2">
-                <section class="pv-card">
-                  <div class="pv-card-label">CLIENTE</div>
-                  <div class="pv-card-strong">${e(c.razon_social || "—")}</div>
-                  ${c.ruc ? `<div class="pv-card-row">RUC ${e(c.ruc)}</div>` : ""}
-                  ${c.contacto ? `<div class="pv-card-row">${e(c.contacto)}</div>` : ""}
-                  ${c.email ? `<div class="pv-card-row">${e(c.email)}</div>` : ""}
-                  ${c.telefono ? `<div class="pv-card-row">${e(c.telefono)}</div>` : ""}
-                </section>
-                <section class="pv-card">
-                  <div class="pv-card-label">TÉRMINOS</div>
-                  <dl class="pv-terms">
-                    <dt>Tiempo entrega</dt><dd>${e(EMISOR.defaults.tiempoEntrega)}</dd>
-                    <dt>Lugar entrega</dt><dd>${e(EMISOR.defaults.lugarEntrega)}</dd>
-                    <dt>Garantía</dt><dd>${e(EMISOR.defaults.garantia)}</dd>
-                    <dt>Validez</dt><dd>${fmtDate(p.validez)}</dd>
-                    <dt>Condiciones</dt><dd>${e(EMISOR.defaults.condiciones)}</dd>
-                  </dl>
-                </section>
-              </div>
-              <table class="pv-items">
-                <colgroup>
-                  <col class="col-desc"><col class="col-img"><col class="col-qty"><col class="col-p"><col class="col-pt">
-                </colgroup>
-                <thead>
-                  <tr>
-                    <th>DESCRIPCIÓN</th>
-                    <th class="pv-c">IMAGEN</th>
-                    <th class="pv-c">CANT</th>
-                    <th class="pv-right">P.</th>
-                    <th class="pv-right">PT</th>
-                  </tr>
-                </thead>
-                <tbody>${items.map(itemRowHtml).join("")}</tbody>
-              </table>
-              <div class="pv-totales">
-                <div><span>Subtotal</span><b>S/ ${money(p.subtotal)}</b></div>
-                <div><span>IGV (18%)</span><b>S/ ${money(p.igv)}</b></div>
-                <div class="pv-total-row"><span>Total</span><b>S/ ${money(p.total)}</b></div>
-              </div>
-              ${showBloques ? `
-                <div class="pv-grid-2">
-                  <section class="pv-block pv-block-ok">
-                    <div class="pv-block-title">SERVICIOS INCLUIDOS</div>
-                    ${BLOQUES_PANTALLA.servicios.map((x) => `<div>· ${e(x)}</div>`).join("")}
-                  </section>
-                  <section class="pv-block pv-block-no">
-                    <div class="pv-block-title">NO INCLUIDO</div>
-                    ${BLOQUES_PANTALLA.noIncluido.map((x) => `<div>· ${e(x)}</div>`).join("")}
-                  </section>
-                </div>` : ""}
-              <section class="pv-cuentas">
-                <div class="pv-card-label">CUENTAS BANCARIAS</div>
-                ${EMISOR.cuentas.map((b) => `
-                  <div class="pv-cuenta"><b>${e(b.banco)} ${e(b.moneda)}:</b> ${e(b.numero)} · <b>CCI</b> ${e(b.cci)}</div>
-                `).join("")}
-              </section>
-              <div class="pv-firma">
-                <div class="pv-firma-label">Atentamente,</div>
-                <div class="pv-firma-name">${e(EMISOR.firmante)}</div>
-              </div>
-            </article>
+            <article class="pv-page">${inner}</article>
           </div>
         </div>
       </main>
-
       <div class="vp-blackout" aria-hidden="true">
         <div class="vp-blackout-text">Vista pausada — esta página oculta el contenido cuando no está en foco</div>
       </div>
-    </div>
-  `;
+    </div>`;
 };
 
 const PAGE_W = 794;
@@ -282,7 +220,7 @@ export const render = async (root) => {
   // dejar la página colgada en "Cargando…".
   let html;
   try {
-    html = renderViewer(data, slug);
+    html = await renderViewer(data, slug);
   } catch (err) {
     console.error("[publico] renderViewer falló:", err, "data:", data);
     showError(root, "Error al renderizar el documento.", `${err?.message || err}\n\n${err?.stack || ""}`);

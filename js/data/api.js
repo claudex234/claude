@@ -84,7 +84,8 @@ export { nextNumero };
 
 // items = [{ qty, modelo, nombre, precio }]
 // cliente = { razonSocial, ruc, contacto, email, telefono }
-export const createProforma = async ({ estado, cliente, asunto, items }) => {
+// skinCodigo = "corporate" | "warm" | …
+export const createProforma = async ({ estado, cliente, asunto, items, skinCodigo }) => {
   if (!Array.isArray(items) || !items.length) throw new Error("Agregá al menos un ítem");
   const user = await requireUser();
   const cliente_id = await findOrCreateCliente(user.id, {
@@ -100,6 +101,14 @@ export const createProforma = async ({ estado, cliente, asunto, items }) => {
   const igv = +(subtotal * 0.18).toFixed(2);
   const total = +(subtotal + igv).toFixed(2);
 
+  // Resolver el codigo de planilla → uuid de skin (FK).
+  let skin_id = null;
+  if (skinCodigo) {
+    const { data: skinRow } = await supabase
+      .from("skins").select("id").eq("codigo", skinCodigo).limit(1).maybeSingle();
+    skin_id = skinRow?.id || null;
+  }
+
   const today = new Date().toISOString().slice(0, 10);
   const validez = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
 
@@ -109,6 +118,7 @@ export const createProforma = async ({ estado, cliente, asunto, items }) => {
       numero, cliente_id, asunto: asunto || null, estado,
       emitida: today, validez,
       subtotal, igv, total, moneda: "PEN",
+      skin_id,
       owner_id: user.id,
     })
     .select()

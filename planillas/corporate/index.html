@@ -1,0 +1,215 @@
+<!--
+  Planilla: corporate
+  Layout sólido, líneas marcadas. Apto para sector educativo / gobierno.
+  Estilos scopeados a `.pl-corporate`, así pueden coexistir varias planillas.
+
+  Tokens disponibles (ver js/lib/planillas.js):
+    {{numero}}, {{fecha}}
+    {{emisor.razonSocial}}, {{emisor.ruc}}, {{emisor.firmante}},
+    {{emisor.tagline}}, {{emisor.subtagline}}, {{!emisor.logoSvg}},
+    {{emisor.titularBanco}}, {{#each emisor.cuentas}}…{{/each}}
+    {{cliente.razon}}, {{cliente.ruc}}, {{cliente.contacto}},
+    {{cliente.email}}, {{cliente.telefono}}
+    {{terminos.tiempoEntrega}}, {{terminos.lugarEntrega}},
+    {{terminos.garantia}}, {{terminos.validez}}, {{terminos.condiciones}}
+    {{#each items}}{{nombre}}, {{qty}}, {{precio}}, {{total}},
+      {{codigo}}, {{!imagen}}, {{#each specsHighlight}}…{{/each}},
+      {{#each specs}}…{{/each}}, {{#each incluye}}…{{/each}}
+    {{/each}}
+    {{totales.subtotal}}, {{totales.igv}}, {{totales.total}}
+    {{#if showBloques}}…{{/if}}, {{#each bloques.servicios}}…{{/each}},
+    {{#each bloques.noIncluido}}…{{/each}}
+-->
+<style>
+.pl-corporate {
+  --ink: #0a2540;
+  --ink-2: #425466;
+  --ink-3: #6b7c93;
+  --ink-mute: #8898aa;
+  --line: #b0b8c2;
+  --line-soft: #e3e8ee;
+  font-family: "Inter", system-ui, sans-serif;
+  color: var(--ink);
+  line-height: 1.3;
+}
+.pl-corporate * { box-sizing: border-box; }
+
+.pl-corporate .header { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding-bottom: 0; }
+.pl-corporate .emisor { display: flex; flex-direction: row; gap: 10px; align-items: center; min-width: 0; }
+.pl-corporate .logo { width: 130px; flex: 0 0 130px; }
+.pl-corporate .logo svg { width: 100%; height: auto; display: block; }
+.pl-corporate .emisor-name { font-weight: 700; font-size: 13px; letter-spacing: -.2px; line-height: 1.2; }
+.pl-corporate .emisor-ruc { font-size: 10px; color: var(--ink-3); }
+.pl-corporate .doc-meta { text-align: right; }
+.pl-corporate .eyebrow { font-size: 9.5px; color: var(--ink-mute); text-transform: uppercase; letter-spacing: 1px; font-weight: 600; margin-bottom: 2px; }
+.pl-corporate .doc-numero { font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 11px; }
+.pl-corporate .doc-fecha { font-size: 10px; color: var(--ink-3); margin-top: 1px; }
+
+.pl-corporate .title { font-size: 15px; font-weight: 700; margin: 2px 0 6px; letter-spacing: -.3px; text-align: center; }
+
+.pl-corporate .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.pl-corporate .card { padding: 6px 11px; border: 1px solid var(--line); border-radius: 5px; font-size: 11.5px; }
+.pl-corporate .card-label { font-size: 9.5px; font-weight: 700; color: var(--ink-mute); letter-spacing: .8px; margin-bottom: 5px; text-transform: uppercase; }
+.pl-corporate .card-strong { font-size: 12.5px; font-weight: 700; }
+.pl-corporate .card-row { font-size: 11.5px; color: var(--ink-2); margin-top: 1px; }
+
+.pl-corporate dl.terms { display: grid; grid-template-columns: auto 1fr; column-gap: 12px; row-gap: 3px; font-size: 11.5px; margin: 0; }
+.pl-corporate dl.terms dt { color: var(--ink-3); }
+.pl-corporate dl.terms dd { margin: 0; font-weight: 600; }
+
+.pl-corporate table.items { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 11px; table-layout: fixed; }
+.pl-corporate table.items th { font-size: 9.5px; font-weight: 700; color: var(--ink-mute); letter-spacing: .8px; text-align: left; padding: 6px; border-bottom: 2px solid var(--ink); text-transform: uppercase; }
+.pl-corporate table.items td { padding: 8px 6px; vertical-align: top; border-bottom: 1px solid var(--line-soft); }
+.pl-corporate .num { font-family: "JetBrains Mono", monospace; }
+.pl-corporate .right { text-align: right; }
+.pl-corporate .center { text-align: center; }
+.pl-corporate .strong { font-weight: 700; }
+
+.pl-corporate .item-title { font-weight: 700; font-size: 12px; margin-bottom: 3px; }
+.pl-corporate .item-hi { margin: 4px 0 6px; font-size: 10.5px; line-height: 1.2; }
+.pl-corporate .item-hi [data-hl] { display: inline; -webkit-box-decoration-break: clone; box-decoration-break: clone; background: #fff8c4; padding: 1px 4px; }
+.pl-corporate .item-specs { font-size: 10.5px; color: var(--ink-3); line-height: 1.2; margin-top: 3px; }
+.pl-corporate .item-specs > div { padding: 1px 0; }
+.pl-corporate .incluye-title { margin-top: 6px; font-size: 9.5px; font-weight: 700; color: var(--ink-mute); letter-spacing: .6px; text-transform: uppercase; }
+.pl-corporate .item-img { width: 100%; max-width: 110px; height: auto; display: block; margin: 0 auto; border-radius: 3px; border: 1px solid var(--line-soft); }
+.pl-corporate .item-codigo { font-size: 8.5px; color: var(--ink-mute); margin-top: 3px; font-family: "JetBrains Mono", monospace; text-align: center; }
+
+.pl-corporate .totales { margin-top: 12px; margin-left: auto; width: 220px; font-size: 11.5px; }
+.pl-corporate .totales > div { display: flex; justify-content: space-between; padding: 3px 6px; }
+.pl-corporate .totales > div span { color: var(--ink-3); }
+.pl-corporate .totales > div b { font-family: "JetBrains Mono", monospace; font-weight: 600; }
+.pl-corporate .total-row { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 6px !important; font-size: 13px; }
+.pl-corporate .total-row span, .pl-corporate .total-row b { font-weight: 700; }
+
+.pl-corporate .block { padding: 6px 11px; border-radius: 5px; font-size: 11px; line-height: 1.2; border: 1px solid var(--line); }
+.pl-corporate .block-title { font-size: 9.5px; font-weight: 700; letter-spacing: .8px; margin-bottom: 4px; text-transform: uppercase; }
+.pl-corporate .block-ok .block-title { color: #008f25; }
+.pl-corporate .block-no .block-title { color: #a30b29; }
+
+.pl-corporate .cuentas { margin-top: 14px; padding: 6px 12px; border: 1px solid var(--line); border-radius: 5px; font-size: 11px; }
+.pl-corporate .cuenta { padding: 2px 0; color: var(--ink-2); }
+
+.pl-corporate .firma { margin-top: 14px; padding-top: 12px; }
+.pl-corporate .firma-label { font-size: 11px; color: var(--ink-3); }
+.pl-corporate .firma-name { font-weight: 700; font-size: 12.5px; margin-top: 2px; }
+</style>
+
+<article class="pl-corporate">
+  <header class="header">
+    <div class="emisor">
+      <div class="logo">{{!emisor.logoSvg}}</div>
+      <div>
+        <div class="emisor-name">{{emisor.razonSocial}}</div>
+        <div class="emisor-ruc">RUC {{emisor.ruc}}</div>
+      </div>
+    </div>
+    <div class="doc-meta">
+      <div class="eyebrow">Cotización</div>
+      <div class="doc-numero">{{numero}}</div>
+      <div class="doc-fecha">{{fecha}}</div>
+    </div>
+  </header>
+
+  <h2 class="title">Cotización</h2>
+
+  <div class="grid-2">
+    <section class="card">
+      <div class="card-label">Cliente</div>
+      <div class="card-strong">{{cliente.razon}}</div>
+      {{#if cliente.ruc}}<div class="card-row">RUC {{cliente.ruc}}</div>{{/if}}
+      {{#if cliente.contacto}}<div class="card-row">{{cliente.contacto}}</div>{{/if}}
+      {{#if cliente.email}}<div class="card-row">{{cliente.email}}</div>{{/if}}
+      {{#if cliente.telefono}}<div class="card-row">{{cliente.telefono}}</div>{{/if}}
+    </section>
+    <section class="card">
+      <div class="card-label">Términos</div>
+      <dl class="terms">
+        <dt>Tiempo entrega</dt><dd>{{terminos.tiempoEntrega}}</dd>
+        <dt>Lugar entrega</dt><dd>{{terminos.lugarEntrega}}</dd>
+        <dt>Garantía</dt><dd>{{terminos.garantia}}</dd>
+        <dt>Validez</dt><dd>{{terminos.validez}} días</dd>
+        <dt>Condiciones</dt><dd>{{terminos.condiciones}}</dd>
+      </dl>
+    </section>
+  </div>
+
+  <table class="items">
+    <colgroup>
+      <col style="width:53%"><col style="width:18%"><col style="width:8%"><col style="width:10%"><col style="width:11%">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Descripción</th>
+        <th class="center">Imagen</th>
+        <th class="center">Cant</th>
+        <th class="right">P.</th>
+        <th class="right">PT</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each items}}
+      <tr>
+        <td>
+          <div class="item-title">{{nombre}}</div>
+          {{#if specsHighlight}}
+          <div class="item-hi">
+            {{#each specsHighlight}}
+            <div><span data-hl>{{this}}</span></div>
+            {{/each}}
+          </div>
+          {{/if}}
+          {{#if specs}}
+          <div class="item-specs">
+            {{#each specs}}<div>{{this}}</div>{{/each}}
+          </div>
+          {{/if}}
+          {{#if incluye}}
+          <div class="incluye-title">Incluido en el paquete</div>
+          <div class="item-specs">
+            {{#each incluye}}<div>{{this}}</div>{{/each}}
+          </div>
+          {{/if}}
+        </td>
+        <td class="center">
+          {{#if imagen}}<img class="item-img" src="{{imagen}}" alt="{{codigo}}">{{/if}}
+          {{#if codigo}}<div class="item-codigo">{{codigo}}</div>{{/if}}
+        </td>
+        <td class="num center strong">{{qty}}</td>
+        <td class="num right">{{precio}}</td>
+        <td class="num right strong">{{total}}</td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+
+  <div class="totales">
+    <div><span>Subtotal</span><b>S/ {{totales.subtotal}}</b></div>
+    <div><span>IGV (18%)</span><b>S/ {{totales.igv}}</b></div>
+    <div class="total-row"><span>Total</span><b>S/ {{totales.total}}</b></div>
+  </div>
+
+  {{#if showBloques}}
+  <div class="grid-2" style="margin-top:10px">
+    <section class="block block-ok">
+      <div class="block-title">Servicios incluidos</div>
+      {{#each bloques.servicios}}<div>· {{this}}</div>{{/each}}
+    </section>
+    <section class="block block-no">
+      <div class="block-title">No incluido</div>
+      {{#each bloques.noIncluido}}<div>· {{this}}</div>{{/each}}
+    </section>
+  </div>
+  {{/if}}
+
+  <section class="cuentas">
+    <div class="card-label">Cuentas bancarias</div>
+    {{#each emisor.cuentas}}
+    <div class="cuenta"><b>{{banco}} {{moneda}}:</b> {{numero}} · <b>CCI</b> {{cci}}</div>
+    {{/each}}
+  </section>
+
+  <div class="firma">
+    <div class="firma-label">Atentamente,</div>
+    <div class="firma-name">{{emisor.firmante}}</div>
+  </div>
+</article>

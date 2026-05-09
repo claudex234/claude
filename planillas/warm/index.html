@@ -1,0 +1,202 @@
+<!--
+  Planilla: warm
+  Paleta tierra (naranjas/marrones suaves) + Fraunces serif para títulos.
+  Mood más humano y cálido. Mismo set de tokens que corporate.
+-->
+<style>
+.pl-warm {
+  --ink: #2a261b;
+  --ink-2: #595241;
+  --ink-3: #7a7159;
+  --ink-mute: #9c9279;
+  --line: #c9bfa9;
+  --line-soft: #e6dfd0;
+  --paper: #faf6ed;
+  --accent: #b85a3d;
+  font-family: "Inter", system-ui, sans-serif;
+  color: var(--ink);
+  line-height: 1.35;
+}
+.pl-warm * { box-sizing: border-box; }
+.pl-warm .display { font-family: "Fraunces", Georgia, serif; }
+
+.pl-warm .header { display: flex; justify-content: space-between; align-items: flex-end; gap: 14px; padding-bottom: 10px; border-bottom: 2px solid var(--accent); }
+.pl-warm .emisor { display: flex; flex-direction: row; gap: 12px; align-items: flex-end; min-width: 0; }
+.pl-warm .logo { width: 130px; flex: 0 0 130px; }
+.pl-warm .logo svg { width: 100%; height: auto; display: block; }
+.pl-warm .emisor-name { font-family: "Fraunces", serif; font-weight: 600; font-size: 14px; line-height: 1.1; }
+.pl-warm .emisor-ruc { font-size: 10px; color: var(--ink-3); margin-top: 2px; }
+.pl-warm .doc-meta { text-align: right; }
+.pl-warm .eyebrow { font-size: 9.5px; color: var(--accent); text-transform: uppercase; letter-spacing: 1.5px; font-weight: 700; margin-bottom: 2px; }
+.pl-warm .doc-numero { font-family: "JetBrains Mono", monospace; font-weight: 700; font-size: 12px; }
+.pl-warm .doc-fecha { font-size: 10px; color: var(--ink-3); margin-top: 1px; }
+
+.pl-warm .title { font-family: "Fraunces", serif; font-style: italic; font-size: 22px; font-weight: 600; margin: 14px 0 14px; text-align: left; color: var(--accent); }
+
+.pl-warm .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+.pl-warm .card { padding: 10px 14px; background: var(--paper); border-radius: 4px; font-size: 11.5px; }
+.pl-warm .card-label { font-family: "Fraunces", serif; font-style: italic; font-size: 11px; color: var(--accent); margin-bottom: 6px; font-weight: 600; }
+.pl-warm .card-strong { font-family: "Fraunces", serif; font-size: 13px; font-weight: 600; }
+.pl-warm .card-row { font-size: 11.5px; color: var(--ink-2); margin-top: 1px; }
+
+.pl-warm dl.terms { display: grid; grid-template-columns: auto 1fr; column-gap: 14px; row-gap: 4px; font-size: 11.5px; margin: 0; }
+.pl-warm dl.terms dt { color: var(--ink-3); font-style: italic; }
+.pl-warm dl.terms dd { margin: 0; font-weight: 500; }
+
+.pl-warm table.items { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 11px; table-layout: fixed; }
+.pl-warm table.items th { font-family: "Fraunces", serif; font-style: italic; font-size: 11px; color: var(--accent); letter-spacing: 0; text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--accent); font-weight: 600; }
+.pl-warm table.items td { padding: 10px 6px; vertical-align: top; border-bottom: 1px solid var(--line-soft); }
+.pl-warm .num { font-family: "JetBrains Mono", monospace; }
+.pl-warm .right { text-align: right; }
+.pl-warm .center { text-align: center; }
+.pl-warm .strong { font-weight: 700; }
+
+.pl-warm .item-title { font-family: "Fraunces", serif; font-weight: 600; font-size: 12.5px; margin-bottom: 4px; }
+.pl-warm .item-hi { margin: 4px 0 6px; font-size: 10.5px; line-height: 1.3; }
+.pl-warm .item-hi [data-hl] { display: inline; -webkit-box-decoration-break: clone; box-decoration-break: clone; background: #fde4c4; padding: 1px 4px; }
+.pl-warm .item-specs { font-size: 10.5px; color: var(--ink-3); line-height: 1.3; margin-top: 4px; }
+.pl-warm .item-specs > div { padding: 1px 0; }
+.pl-warm .incluye-title { margin-top: 8px; font-family: "Fraunces", serif; font-style: italic; font-size: 10.5px; color: var(--accent); font-weight: 600; }
+.pl-warm .item-img { width: 100%; max-width: 110px; height: auto; display: block; margin: 0 auto; border-radius: 4px; border: 1px solid var(--line-soft); }
+.pl-warm .item-codigo { font-size: 8.5px; color: var(--ink-mute); margin-top: 3px; font-family: "JetBrains Mono", monospace; text-align: center; }
+
+.pl-warm .totales { margin-top: 14px; margin-left: auto; width: 240px; font-size: 11.5px; }
+.pl-warm .totales > div { display: flex; justify-content: space-between; padding: 4px 8px; }
+.pl-warm .totales > div span { color: var(--ink-3); font-style: italic; }
+.pl-warm .totales > div b { font-family: "JetBrains Mono", monospace; font-weight: 600; }
+.pl-warm .total-row { background: var(--accent); color: #fff; border-radius: 3px; margin-top: 4px; padding: 8px 10px !important; font-size: 13px; }
+.pl-warm .total-row span { color: rgba(255,255,255,.8) !important; font-style: normal !important; }
+.pl-warm .total-row b { color: #fff; font-weight: 700; }
+
+.pl-warm .block { padding: 10px 14px; border-radius: 4px; font-size: 11px; line-height: 1.3; background: var(--paper); }
+.pl-warm .block-title { font-family: "Fraunces", serif; font-style: italic; font-size: 11px; margin-bottom: 5px; font-weight: 600; }
+.pl-warm .block-ok .block-title { color: #5a8a3e; }
+.pl-warm .block-no .block-title { color: #b8412e; }
+
+.pl-warm .cuentas { margin-top: 16px; padding: 10px 14px; background: var(--paper); border-radius: 4px; font-size: 11px; }
+.pl-warm .cuenta { padding: 2px 0; color: var(--ink-2); }
+
+.pl-warm .firma { margin-top: 22px; padding-top: 14px; border-top: 1px dashed var(--line); }
+.pl-warm .firma-label { font-family: "Fraunces", serif; font-style: italic; font-size: 11px; color: var(--ink-3); }
+.pl-warm .firma-name { font-family: "Fraunces", serif; font-weight: 600; font-size: 13px; margin-top: 2px; }
+</style>
+
+<article class="pl-warm">
+  <header class="header">
+    <div class="emisor">
+      <div class="logo">{{!emisor.logoSvg}}</div>
+      <div>
+        <div class="emisor-name">{{emisor.razonSocial}}</div>
+        <div class="emisor-ruc">RUC {{emisor.ruc}}</div>
+      </div>
+    </div>
+    <div class="doc-meta">
+      <div class="eyebrow">Cotización</div>
+      <div class="doc-numero">{{numero}}</div>
+      <div class="doc-fecha">{{fecha}}</div>
+    </div>
+  </header>
+
+  <h2 class="title">Propuesta comercial</h2>
+
+  <div class="grid-2">
+    <section class="card">
+      <div class="card-label">Cliente</div>
+      <div class="card-strong">{{cliente.razon}}</div>
+      {{#if cliente.ruc}}<div class="card-row">RUC {{cliente.ruc}}</div>{{/if}}
+      {{#if cliente.contacto}}<div class="card-row">{{cliente.contacto}}</div>{{/if}}
+      {{#if cliente.email}}<div class="card-row">{{cliente.email}}</div>{{/if}}
+      {{#if cliente.telefono}}<div class="card-row">{{cliente.telefono}}</div>{{/if}}
+    </section>
+    <section class="card">
+      <div class="card-label">Términos</div>
+      <dl class="terms">
+        <dt>Tiempo entrega</dt><dd>{{terminos.tiempoEntrega}}</dd>
+        <dt>Lugar entrega</dt><dd>{{terminos.lugarEntrega}}</dd>
+        <dt>Garantía</dt><dd>{{terminos.garantia}}</dd>
+        <dt>Validez</dt><dd>{{terminos.validez}} días</dd>
+        <dt>Condiciones</dt><dd>{{terminos.condiciones}}</dd>
+      </dl>
+    </section>
+  </div>
+
+  <table class="items">
+    <colgroup>
+      <col style="width:53%"><col style="width:18%"><col style="width:8%"><col style="width:10%"><col style="width:11%">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Descripción</th>
+        <th class="center">Imagen</th>
+        <th class="center">Cant</th>
+        <th class="right">P.</th>
+        <th class="right">PT</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each items}}
+      <tr>
+        <td>
+          <div class="item-title">{{nombre}}</div>
+          {{#if specsHighlight}}
+          <div class="item-hi">
+            {{#each specsHighlight}}
+            <div><span data-hl>{{this}}</span></div>
+            {{/each}}
+          </div>
+          {{/if}}
+          {{#if specs}}
+          <div class="item-specs">
+            {{#each specs}}<div>{{this}}</div>{{/each}}
+          </div>
+          {{/if}}
+          {{#if incluye}}
+          <div class="incluye-title">Incluido en el paquete</div>
+          <div class="item-specs">
+            {{#each incluye}}<div>{{this}}</div>{{/each}}
+          </div>
+          {{/if}}
+        </td>
+        <td class="center">
+          {{#if imagen}}<img class="item-img" src="{{imagen}}" alt="{{codigo}}">{{/if}}
+          {{#if codigo}}<div class="item-codigo">{{codigo}}</div>{{/if}}
+        </td>
+        <td class="num center strong">{{qty}}</td>
+        <td class="num right">{{precio}}</td>
+        <td class="num right strong">{{total}}</td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+
+  <div class="totales">
+    <div><span>Subtotal</span><b>S/ {{totales.subtotal}}</b></div>
+    <div><span>IGV (18%)</span><b>S/ {{totales.igv}}</b></div>
+    <div class="total-row"><span>Total</span><b>S/ {{totales.total}}</b></div>
+  </div>
+
+  {{#if showBloques}}
+  <div class="grid-2" style="margin-top:14px">
+    <section class="block block-ok">
+      <div class="block-title">Servicios incluidos</div>
+      {{#each bloques.servicios}}<div>· {{this}}</div>{{/each}}
+    </section>
+    <section class="block block-no">
+      <div class="block-title">No incluido</div>
+      {{#each bloques.noIncluido}}<div>· {{this}}</div>{{/each}}
+    </section>
+  </div>
+  {{/if}}
+
+  <section class="cuentas">
+    <div class="card-label">Cuentas bancarias</div>
+    {{#each emisor.cuentas}}
+    <div class="cuenta"><b>{{banco}} {{moneda}}:</b> {{numero}} · <b>CCI</b> {{cci}}</div>
+    {{/each}}
+  </section>
+
+  <div class="firma">
+    <div class="firma-label">Atentamente,</div>
+    <div class="firma-name">{{emisor.firmante}}</div>
+  </div>
+</article>
