@@ -3,15 +3,9 @@
 // disuadir capturas/descargas. (Bloquear capturas 100% es imposible
 // en un browser; esto sólo dificulta y deja huella.)
 import { supabase } from "../lib/supabase.js";
-import { fmtMoney, escapeHtml as e } from "../lib/utils.js";
+import { escapeHtml as e } from "../lib/utils.js";
 import { EMISOR, BLOQUES_PANTALLA } from "../data/empresa.js";
-
-const fmtDate = (iso) => {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
-};
-const money = (n) => fmtMoney(n).replace("S/ ", "");
+import { renderProformaContent } from "../lib/proforma_template.js";
 
 const slugFromHash = () => {
   const m = location.hash.match(/^#\/?p\/([A-Za-z0-9_-]+)/);
@@ -32,35 +26,81 @@ const logApertura = async (slug) => {
   }
 };
 
-const itemRowHtml = (it) => {
-  const ref = it.producto || {};
-  const hi = (ref.specs_highlight || []).map((x) => `<div>${e(x)}</div>`).join("");
-  const specs = (ref.specs || []).map((x) => `<div>${e(x)}</div>`).join("");
-  const incluye = (ref.incluye || []).map((x) => `<div>${e(x)}</div>`).join("");
-  return `
-    <tr>
-      <td class="pv-num">${it.qty}</td>
-      <td>
-        <div class="pv-item-title">${e(it.descripcion || ref.nombre || "")}</div>
-        ${hi ? `<div class="pv-item-hi">${hi}</div>` : ""}
-        ${specs ? `<div class="pv-item-specs">${specs}</div>` : ""}
-        ${incluye ? `<div class="pv-incluye-title">INCLUIDO EN EL PAQUETE</div><div class="pv-item-specs">${incluye}</div>` : ""}
-      </td>
-      <td class="pv-num pv-right">S/ ${money(it.precio_unit)}</td>
-      <td class="pv-num pv-right pv-strong">S/ ${money(it.total)}</td>
-    </tr>`;
+const fmtDateLocal = (iso) => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
 };
 
-const renderViewer = (data, slug) => {
-  const p = data.proforma;
-  const c = data.cliente || {};
-  const items = data.items || [];
-  const showBloques = items.length > 0;
+// Construye el shape `data` + map de productos a partir del payload del RPC.
+const buildPublicData = (payload) => {
+  const p = payload.proforma;
+  const c = payload.cliente || {};
+  const productosMap = {};
+  const items = (payload.items || []).map((it) => {
+    const ref = it.producto;
+    if (ref) {
+      productosMap[ref.codigo] = {
+        codigo: ref.codigo,
+        nombre: ref.nombre,
+        tipo: ref.tipo || "pantalla",
+        imagen: ref.imagen || "",
+        specs: ref.specs || [],
+        specsHighlight: ref.specs_highlight || [],
+        incluye: ref.incluye || [],
+      };
+    }
+    return {
+      qty: it.qty,
+      modelo: ref?.codigo || it.descripcion,
+      precio: Number(it.precio_unit) || 0,
+    };
+  });
+  return {
+    productos: productosMap,
+    data: {
+      numero: p.numero,
+      fecha: fmtDateLocal(p.emitida),
+      empresa: {
+        nombre: EMISOR.razonSocial,
+        ruc: EMISOR.ruc,
+        contacto: EMISOR.firmante,
+        telefono: EMISOR.telefono,
+        email: EMISOR.email,
+      },
+      cliente: {
+        razon: c.razon_social || "",
+        ruc: c.ruc || "",
+        contacto: c.contacto || "",
+        email: c.email || "",
+        telefono: c.telefono || "",
+      },
+      terminos: {
+        tiempoEntrega: EMISOR.defaults.tiempoEntrega,
+        lugarEntrega: EMISOR.defaults.lugarEntrega,
+        garantia: EMISOR.defaults.garantia,
+        validez: 15,
+        condiciones: EMISOR.defaults.condiciones,
+      },
+      bancos: EMISOR.cuentas.map((b) => ({
+        nombre: `${b.banco} ${b.moneda}`,
+        cuenta: b.numero,
+        cci: b.cci,
+      })),
+      formaPago: EMISOR.defaults.formaPago,
+      titularBanco: EMISOR.titularBanco || EMISOR.razonSocial,
+      firma: EMISOR.firmante,
+      precioIncluyeIGV: !!EMISOR.defaults.precioIncluyeIGV,
+      items,
+    },
+  };
+};
 
-  // Marca de agua: slug + timestamp + UA acortado. Cualquier captura llevará
-  // este texto repetido en diagonal.
+const renderViewer = (payload, slug) => {
+  const { data, productos } = buildPublicData(payload);
   const ts = new Date().toISOString().slice(0, 16).replace("T", " ");
   const wm = `${slug.slice(0, 8)} · ${ts}`;
+  const content = renderProformaContent(data, productos, BLOQUES_PANTALLA);
 
   return `
     <div class="vp-shell">
@@ -69,100 +109,20 @@ const renderViewer = (data, slug) => {
       </div>
       <header class="vp-bar">
         <div class="vp-bar-emisor">
-          <div class="pv-logo-mark">N</div>
-          <div>
-            <div class="vp-bar-name">${e(EMISOR.razonSocial)}</div>
-            <div class="vp-bar-meta">Proforma ${e(p.numero)}</div>
-          </div>
+          <div class="vp-bar-name">${e(EMISOR.razonSocial)}</div>
+          <div class="vp-bar-meta">Proforma ${e(payload.proforma.numero)}</div>
         </div>
         <div class="vp-bar-warn" title="No se permite capturar ni descargar este documento">
           🔒 Vista protegida · ${e(slug)}
         </div>
       </header>
-
       <main class="vp-stage">
         <div class="vp-fit">
           <div class="pv-doc">
-            <article class="pv-page">
-              <header class="pv-header">
-                <div class="pv-emisor">
-                  <div class="pv-logo-svg">${EMISOR.logoSvg}</div>
-                  <div class="pv-emisor-tag">${e(EMISOR.subtagline)}</div>
-                </div>
-                <div class="pv-doc-meta">
-                  <div class="pv-emisor-name">${e(EMISOR.razonSocial)}</div>
-                  <div class="pv-emisor-tag">${e(EMISOR.tagline)}</div>
-                </div>
-              </header>
-              <div class="pv-info-row">
-                <span><b>Proforma</b> ${e(p.numero)}</span>
-                <span>${fmtDate(p.emitida)}</span>
-              </div>
-              <div class="pv-grid-2">
-                <section class="pv-card">
-                  <div class="pv-card-label">CLIENTE</div>
-                  <div class="pv-card-strong">${e(c.razon_social || "—")}</div>
-                  ${c.ruc ? `<div class="pv-card-row">RUC ${e(c.ruc)}</div>` : ""}
-                  ${c.contacto ? `<div class="pv-card-row">${e(c.contacto)}</div>` : ""}
-                  ${c.email ? `<div class="pv-card-row">${e(c.email)}</div>` : ""}
-                  ${c.telefono ? `<div class="pv-card-row">${e(c.telefono)}</div>` : ""}
-                </section>
-                <section class="pv-card">
-                  <div class="pv-card-label">TÉRMINOS</div>
-                  <dl class="pv-terms">
-                    <dt>Tiempo entrega</dt><dd>${e(EMISOR.defaults.tiempoEntrega)}</dd>
-                    <dt>Lugar entrega</dt><dd>${e(EMISOR.defaults.lugarEntrega)}</dd>
-                    <dt>Garantía</dt><dd>${e(EMISOR.defaults.garantia)}</dd>
-                    <dt>Validez</dt><dd>${fmtDate(p.validez)}</dd>
-                    <dt>Condiciones</dt><dd>${e(EMISOR.defaults.condiciones)}</dd>
-                  </dl>
-                </section>
-              </div>
-              <table class="pv-items">
-                <thead>
-                  <tr>
-                    <th class="pv-th-num">CANT</th><th>DESCRIPCIÓN</th>
-                    <th class="pv-right">P. UND</th><th class="pv-right">SUBTOTAL</th>
-                  </tr>
-                </thead>
-                <tbody>${items.map(itemRowHtml).join("")}</tbody>
-              </table>
-              <div class="pv-totales">
-                <div><span>Subtotal</span><b>S/ ${money(p.subtotal)}</b></div>
-                <div><span>IGV (18%)</span><b>S/ ${money(p.igv)}</b></div>
-                <div class="pv-total-row"><span>Total</span><b>S/ ${money(p.total)}</b></div>
-              </div>
-              <div class="pv-page-foot">1 / 2</div>
-            </article>
-            <article class="pv-page">
-              ${showBloques ? `
-                <div class="pv-grid-2">
-                  <section class="pv-block pv-block-ok">
-                    <div class="pv-block-title">SERVICIOS INCLUIDOS</div>
-                    ${BLOQUES_PANTALLA.servicios.map((x) => `<div>· ${e(x)}</div>`).join("")}
-                  </section>
-                  <section class="pv-block pv-block-no">
-                    <div class="pv-block-title">NO INCLUIDO</div>
-                    ${BLOQUES_PANTALLA.noIncluido.map((x) => `<div>· ${e(x)}</div>`).join("")}
-                  </section>
-                </div>` : ""}
-              <section class="pv-cuentas">
-                <div class="pv-card-label">CUENTAS BANCARIAS</div>
-                ${EMISOR.cuentas.map((b) => `
-                  <div class="pv-cuenta"><b>${e(b.banco)} ${e(b.moneda)}:</b> ${e(b.numero)} · <b>CCI</b> ${e(b.cci)}</div>
-                `).join("")}
-                <div class="pv-cuenta-pago"><b>Forma de pago:</b> ${e(EMISOR.defaults.formaPago)}</div>
-              </section>
-              <div class="pv-firma">
-                <div class="pv-firma-label">Atentamente,</div>
-                <div class="pv-firma-name">${e(EMISOR.firmante)}</div>
-              </div>
-              <div class="pv-page-foot">2 / 2</div>
-            </article>
+            <article class="pv-page">${content}</article>
           </div>
         </div>
       </main>
-
       <div class="vp-blackout" aria-hidden="true">
         <div class="vp-blackout-text">Vista pausada — esta página oculta el contenido cuando no está en foco</div>
       </div>
@@ -170,7 +130,7 @@ const renderViewer = (data, slug) => {
   `;
 };
 
-const PAGE_W = 794;
+const PAGE_W = 595;
 
 const installProtections = (root) => {
   const stop = (e) => { e.preventDefault(); e.stopPropagation(); return false; };
