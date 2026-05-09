@@ -5,7 +5,7 @@
 import { supabase } from "../lib/supabase.js";
 import { fmtMoney, escapeHtml as e } from "../lib/utils.js";
 import { EMISOR, BLOQUES_PANTALLA } from "../data/empresa.js";
-import { renderPlanilla } from "../lib/planillas.js";
+import { renderPlanilla, renderPlanillaWith } from "../lib/planillas.js";
 
 const fmtDate = (iso) => {
   if (!iso) return "—";
@@ -82,7 +82,10 @@ const buildData = (payload) => {
 
 const renderViewer = async (payload, slug) => {
   const p = payload.proforma;
-  const inner = await renderPlanilla(payload.skin_codigo || "corporate", buildData(payload));
+  const data = buildData(payload);
+  const inner = payload.skin_html
+    ? renderPlanillaWith(payload.skin_html, data)
+    : await renderPlanilla(payload.skin_codigo || "corporate", data);
   const ts = new Date().toISOString().slice(0, 16).replace("T", " ");
   const wm = `${slug.slice(0, 8)} · ${ts}`;
   return `

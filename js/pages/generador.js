@@ -7,7 +7,8 @@ import { supabase } from "../lib/supabase.js";
 import { toast } from "../lib/toast.js";
 import { EMISOR, FORMAS_PAGO, BLOQUES_PANTALLA } from "../data/empresa.js";
 import { parsePaste, PRODUCT_CODES } from "../lib/parser.js";
-import { renderPlanilla, PLANILLAS_DISPONIBLES } from "../lib/planillas.js";
+import { renderPlanilla } from "../lib/planillas.js";
+import { SKINS, defaultSkinCodigo } from "../data/skins.js";
 
 const fmtDate = (iso) => {
   const d = new Date(iso);
@@ -30,7 +31,7 @@ const initialState = () => ({
   },
   publicSlug: null,
   proformaId: null, // uuid devuelto por createProforma; null hasta primer guardado
-  skinCodigo: "corporate",
+  skinCodigo: defaultSkinCodigo(),
   emitidaIso: new Date().toISOString().slice(0, 10),
 });
 
@@ -119,12 +120,6 @@ const renderEditor = (s) => `
           <span class="mono">${e(s.numero)}</span>
           <span class="dot">·</span>
           <span class="status status-${s.estado}">${e(s.estado)}</span>
-          <span class="dot">·</span>
-          <select class="gen-skin-select" data-f="skinCodigo" title="Planilla del PDF">
-            ${PLANILLAS_DISPONIBLES.map((c) =>
-              `<option value="${c}"${c === s.skinCodigo ? " selected" : ""}>${c}</option>`
-            ).join("")}
-          </select>
         </div>
       </div>
       <div class="gen-actions">
@@ -186,6 +181,22 @@ const renderEditor = (s) => `
                 ${FORMAS_PAGO.map((f) => `<option ${f === s.terminos.formaPago ? "selected" : ""}>${e(f)}</option>`).join("")}
               </select>
             </label>
+          </div>
+        </section>
+
+        <section class="gen-section">
+          <div class="gen-section-title">PLANILLA</div>
+          <div class="gen-form">
+            <label class="gen-field gen-field-full"><span>Skin del PDF</span>
+              <select class="input" data-f="skinCodigo">
+                ${SKINS.map((sk) =>
+                  `<option value="${e(sk.codigo)}"${sk.codigo === s.skinCodigo ? " selected" : ""}>${e(sk.nombre)} · ${e(sk.codigo)}</option>`
+                ).join("")}
+              </select>
+            </label>
+          </div>
+          <div class="gen-section-hint" style="margin-top:6px">
+            Para crear, editar o subir nuevas planillas: tab <b>Plantillas</b>.
           </div>
         </section>
       </aside>

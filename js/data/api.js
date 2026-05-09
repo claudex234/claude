@@ -170,3 +170,37 @@ export const ensurePublicLink = async (proformaId) => {
   if (e2) throw e2;
   return slug;
 };
+
+// === Skins / Planillas ================================================
+
+export const upsertSkin = async ({ id, codigo, nombre, descripcion, html, activa }) => {
+  const payload = { codigo, nombre, descripcion: descripcion || null, html: html || null, activa: !!activa };
+  if (id) {
+    const { data, error } = await supabase.from("skins").update(payload).eq("id", id).select().single();
+    if (error) throw error;
+    return data;
+  }
+  const { data, error } = await supabase.from("skins").insert(payload).select().single();
+  if (error) throw error;
+  return data;
+};
+
+export const deleteSkin = async (id) => {
+  const { error } = await supabase.from("skins").delete().eq("id", id);
+  if (error) throw error;
+};
+
+export const setDefaultSkin = async (id) => {
+  // Solo una activa a la vez. Hacemos dos updates secuenciales (RLS no
+  // permite multi-row update con CASE pero ambos updates están permitidos
+  // a usuarios autenticados).
+  await supabase.from("skins").update({ activa: false }).neq("id", id);
+  const { error } = await supabase.from("skins").update({ activa: true }).eq("id", id);
+  if (error) throw error;
+};
+
+export const fetchSkins = async () => {
+  const { data, error } = await supabase.from("skins").select("*").order("created_at");
+  if (error) throw error;
+  return data || [];
+};

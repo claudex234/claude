@@ -1,120 +1,296 @@
-import { html, raw, el, on } from "../lib/utils.js";
-import { icon } from "../lib/icons.js";
-import { TEMPLATES } from "../data/metrics.js";
-import { SKINS } from "../data/productos.js";
+// Manager de planillas (skins). Lista skins, permite crearlas, editarlas
+// (HTML en textarea), marcarlas como default y eliminarlas.
 
-const skinPreview = (s) => {
-  const fontFam = s.cover.font === "serif" ? '"Fraunces", serif'
-    : s.cover.font === "mono" ? '"JetBrains Mono", monospace'
-    : '"Inter", sans-serif';
-  return `
-    <div style="height:180px;background:${s.cover.bg};padding:14px 16px;display:flex;flex-direction:column;gap:8px;font-family:${fontFam};position:relative;overflow:hidden">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+import { html, raw, el, on, escapeHtml as e } from "../lib/utils.js";
+import { icon } from "../lib/icons.js";
+import { SKINS } from "../data/skins.js";
+import { upsertSkin, deleteSkin, setDefaultSkin, fetchSkins } from "../data/api.js";
+import { resolvePlanillaHtml, renderPlanillaWith } from "../lib/planillas.js";
+import { toast } from "../lib/toast.js";
+
+const slugify = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+  .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
+
+// Datos de ejemplo livianos para el preview en miniatura.
+const SAMPLE_DATA = {
+  numero: "PRF-2026-0001",
+  fecha: "08/05/2026",
+  emisor: {
+    razonSocial: "EDUBOARD EIRL",
+    ruc: "20603573758",
+    firmante: "Manuel Dueñas Cazani",
+    logoSvg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 170 36"><g fill="none" stroke="#0a0a0a" stroke-width="2"><line x1="8" y1="1" x2="162" y2="1"/><line x1="169" y1="8" x2="169" y2="28"/><line x1="8" y1="35" x2="162" y2="35"/><line x1="1" y1="8" x2="1" y2="28"/><path d="M8 1 Q 1 1 1 8"/><path d="M162 1 Q 169 1 169 8"/><path d="M8 35 Q 1 35 1 28"/><path d="M162 35 Q 169 35 169 28"/></g><text x="50%" y="58%" dominant-baseline="middle" text-anchor="middle" font-size="18" font-family="system-ui" fill="#0a0a0a" letter-spacing="3"><tspan font-weight="700">EDU</tspan><tspan>BOARD</tspan></text></svg>',
+    cuentas: [{ banco: "BCP", moneda: "Soles", numero: "194-…", cci: "002 …" }],
+  },
+  cliente: { razon: "Cliente Demo S.A.C.", ruc: "20512345678", contacto: "María Q.", email: "demo@x.pe", telefono: "+51 987 654 321" },
+  terminos: { tiempoEntrega: "07 días", lugarEntrega: "Lima", garantia: "2 años", validez: 15, condiciones: "T/T" },
+  items: [{ qty: 1, precio: "8,500.00", total: "8,500.00", nombre: "Pantalla PRO 75″", codigo: "PRO", imagen: "", specs: ["4K UHD", "Android 13"], specsHighlight: ["RAM 8 GB", "IA educativa"], incluye: ["Cable USB", "Manual"] }],
+  totales: { subtotal: "8,500.00", igv: "1,530.00", total: "10,030.00" },
+  showBloques: true,
+  bloques: { servicios: ["Entrega e instalación"], noIncluido: ["Cables eléctricos"] },
+};
+
+const skinCard = (s) => `
+  <div class="skin-card${s.activa ? " skin-card-active" : ""}" data-codigo="${e(s.codigo)}">
+    <div class="skin-card-preview" data-preview-for="${e(s.codigo)}">
+      <div class="skin-card-loading">Cargando…</div>
+    </div>
+    <div class="skin-card-body">
+      <div class="skin-card-row">
         <div>
-          <div style="width:36px;height:6px;background:${s.cover.accent};margin-bottom:4px;border-radius:1px"></div>
-          <div style="width:60px;height:4px;background:${s.cover.accent};opacity:.4;border-radius:1px"></div>
+          <div class="skin-card-name">${e(s.nombre)}</div>
+          <div class="skin-card-code">${e(s.codigo)}</div>
         </div>
-        <div style="font-size:8px;color:${s.cover.accent};font-weight:700;letter-spacing:1px">PROFORMA</div>
+        ${s.activa ? '<span class="badge badge-accent">Default</span>' : ""}
       </div>
-      <div style="font-size:11px;font-weight:700;color:${s.cover.accent};margin-top:4px">Cliente Demo S.A.C.</div>
-      <div style="display:flex;flex-direction:column;gap:3px;margin-top:4px">
-        ${[80,65,90,55].map(w => `
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <div style="width:${w}%;height:3px;background:${s.cover.accent};opacity:.25;border-radius:1px"></div>
-            <div style="width:22px;height:3px;background:${s.cover.accent};opacity:.5;border-radius:1px"></div>
-          </div>
-        `).join("")}
-      </div>
-      <div style="margin-top:auto;padding-top:8px;border-top:1px solid ${s.cover.accent}33;display:flex;justify-content:space-between;align-items:center">
-        <div style="width:30px;height:4px;background:${s.cover.accent};opacity:.6;border-radius:1px"></div>
-        <div style="font-size:10px;font-weight:700;color:${s.cover.accent}">S/ 12,400</div>
+      ${s.desc ? `<div class="skin-card-desc">${e(s.desc)}</div>` : ""}
+      <div class="skin-card-actions">
+        <button class="btn btn-sm" data-action="edit" data-id="${e(s.id)}">${raw(icon("edit", 11))} Editar</button>
+        ${!s.activa ? `<button class="btn btn-sm" data-action="default" data-id="${e(s.id)}">Marcar default</button>` : ""}
+        <button class="btn btn-sm" data-action="duplicate" data-id="${e(s.id)}">Duplicar</button>
+        <button class="btn btn-sm" data-action="delete" data-id="${e(s.id)}" style="color:var(--danger)">${raw(icon("trash", 11))}</button>
       </div>
     </div>
-  `;
+  </div>`;
+
+const editorMarkup = (skin) => {
+  const isNew = !skin.id;
+  return `
+    <div class="skin-editor-shell" data-skin-editor>
+      <header class="skin-editor-bar">
+        <div>
+          <div class="skin-editor-title">${isNew ? "Nueva planilla" : "Editar planilla"}</div>
+          <div class="skin-editor-sub">${e(skin.nombre || "(sin nombre)")} · <span class="mono">${e(skin.codigo || "?")}</span></div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn" data-action="upload">${raw(icon("download", 13))} Subir HTML</button>
+          <button class="btn" data-action="cancel">Cancelar</button>
+          <button class="btn btn-primary" data-action="save">${raw(icon("send", 13))} Guardar</button>
+        </div>
+      </header>
+      <div class="skin-editor-grid">
+        <aside class="skin-editor-meta">
+          <label class="gen-field"><span>Nombre</span><input class="input" data-meta="nombre" value="${e(skin.nombre || "")}"></label>
+          <label class="gen-field"><span>Código</span><input class="input" data-meta="codigo" value="${e(skin.codigo || "")}" placeholder="ej. minimal"></label>
+          <label class="gen-field"><span>Descripción</span><textarea class="input" data-meta="descripcion" rows="3">${e(skin.desc || "")}</textarea></label>
+          <label class="gen-field" style="flex-direction:row;align-items:center;gap:8px">
+            <input type="checkbox" data-meta="activa" ${skin.activa ? "checked" : ""}>
+            <span style="text-transform:none;letter-spacing:0">Marcar como default</span>
+          </label>
+          <details style="margin-top:14px;font-size:11.5px;color:var(--text-3)">
+            <summary style="cursor:pointer">Tokens disponibles</summary>
+            <pre style="font-size:10.5px;line-height:1.5;background:var(--bg-soft);padding:8px;border-radius:4px;overflow:auto;white-space:pre-wrap">{{numero}}, {{fecha}}
+{{emisor.razonSocial}}, {{emisor.ruc}}
+{{!emisor.logoSvg}}, {{emisor.firmante}}
+{{cliente.razon}}, {{cliente.ruc}}, ...
+
+{{#each items}}
+  {{nombre}}, {{qty}}, {{precio}}, {{total}}
+  {{codigo}}, {{!imagen}}
+  {{#each specs}}{{this}}{{/each}}
+  {{#each specsHighlight}}{{this}}{{/each}}
+  {{#each incluye}}{{this}}{{/each}}
+{{/each}}
+
+{{totales.subtotal}}, {{totales.igv}}, {{totales.total}}
+{{#if showBloques}}…{{/if}}
+{{#each bloques.servicios}}…{{/each}}
+{{#each emisor.cuentas}}…{{/each}}</pre>
+          </details>
+          <input type="file" data-file accept=".html,text/html" style="display:none">
+        </aside>
+        <div class="skin-editor-code">
+          <textarea class="skin-editor-textarea" data-html spellcheck="false">${e(skin.html || "")}</textarea>
+        </div>
+        <div class="skin-editor-preview" data-preview>
+          <div style="padding:24px;color:var(--text-mute);font-size:12px">El preview aparece al editar.</div>
+        </div>
+      </div>
+    </div>`;
+};
+
+const renderMiniPreview = async (codigo, container) => {
+  try {
+    const tpl = await resolvePlanillaHtml(codigo);
+    const inner = renderPlanillaWith(tpl, SAMPLE_DATA);
+    container.innerHTML = `<div class="skin-mini-doc"><article class="skin-mini-page">${inner}</article></div>`;
+    requestAnimationFrame(() => {
+      const page = container.querySelector(".skin-mini-page");
+      if (!page) return;
+      const scale = container.clientWidth / 794;
+      page.style.transform = `scale(${scale})`;
+      page.style.transformOrigin = "top left";
+    });
+  } catch (err) {
+    container.innerHTML = `<div style="padding:14px;color:var(--danger);font-size:11px">${e(err.message || err)}</div>`;
+  }
 };
 
 export const render = (root) => {
-  let tab = "skins";
+  let editing = null;
 
-  const buildSkins = () => html`
-    <div style="padding:12px 14px;background:var(--info-soft);border:1px solid var(--info);border-radius:var(--radius);margin-bottom:16px;font-size:12.5px;display:flex;gap:10px;align-items:center">
-      ${raw(icon("palette", 14))}
-      <div style="flex:1">El skin define cómo se ve el PDF que recibe el cliente. Puedes asignar uno por defecto y cambiarlo por proforma.</div>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(300px, 1fr));gap:16px">
-      ${raw(SKINS.map(s => `
-        <div class="card" style="padding:0;overflow:hidden;cursor:pointer;border-color:${s.activa?"var(--accent)":"var(--border)"};border-width:${s.activa?2:1}px">
-          ${skinPreview(s)}
-          <div style="padding:14px;position:relative">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
-              <div style="min-width:0">
-                <div style="font-size:14px;font-weight:650">${s.nombre}</div>
-                <div style="font-size:11.5px;color:var(--text-3);margin-top:2px;line-height:1.4">${s.desc}</div>
-              </div>
-              ${s.activa ? '<span class="badge badge-accent" style="flex-shrink:0">Activo</span>' : ''}
-            </div>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
-              <span style="font-size:11px;color:var(--text-mute)">${s.uso} proformas con este skin</span>
-              <div style="display:flex;gap:6px">
-                <button class="btn btn-sm">${icon("edit", 11)} Editar</button>
-                ${!s.activa ? '<button class="btn btn-sm btn-primary">Usar</button>' : ''}
-              </div>
-            </div>
-          </div>
-        </div>
-      `).join(""))}
-    </div>
-  `;
-
-  const buildContent = () => html`
-    <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:16px">
-      ${raw(TEMPLATES.map(t => `
-        <div class="card" style="padding:0;cursor:pointer">
-          <div style="height:100px;background:${t.default ? "linear-gradient(135deg, var(--accent), var(--accent-strong))" : "var(--bg-sunken)"};border-radius:var(--radius) var(--radius) 0 0;display:grid;place-items:center;color:${t.default ? "white" : "var(--text-mute)"};position:relative">
-            ${icon("template", 32)}
-            ${t.default ? '<span style="position:absolute;top:10px;right:10px;font-size:10px;padding:2px 8px;background:rgba(255,255,255,.2);border-radius:999px;color:white;font-weight:600">POR DEFECTO</span>' : ''}
-          </div>
-          <div style="padding:16px">
-            <div style="font-size:14px;font-weight:600;margin-bottom:4px">${t.nombre}</div>
-            <div style="font-size:12px;color:var(--text-3);display:flex;justify-content:space-between">
-              <span>${t.items} líneas</span><span>${t.uso} usos</span>
-            </div>
-          </div>
-        </div>
-      `).join(""))}
-    </div>
-  `;
-
-  const build = () => el(html`
+  const buildList = () => html`
     <div class="page fade-in">
       <div class="page-header">
         <div>
           <h1 class="page-title">Plantillas</h1>
-          <p class="page-sub">Skins visuales para tus proformas y plantillas de contenido reutilizables.</p>
+          <p class="page-sub">${SKINS.length} skins disponibles. Cada una es un HTML autocontenido con tokens.</p>
         </div>
-        <button class="btn btn-primary">${raw(icon("plus"))} ${tab === "skins" ? "Nuevo skin" : "Nueva plantilla"}</button>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" data-action="new">${raw(icon("plus"))} Nueva planilla</button>
+        </div>
       </div>
-      <div style="display:flex;gap:4px;padding:4px;background:var(--bg-soft);border-radius:var(--radius-sm);margin-bottom:20px;width:fit-content">
-        ${raw([{id:"skins",l:"Skins visuales",c:SKINS.length},{id:"contenido",l:"Plantillas de contenido",c:TEMPLATES.length}].map(t => `
-          <button class="btn btn-sm" data-tab="${t.id}" style="
-            background:${tab === t.id ? "var(--surface)" : "transparent"};border:none;
-            box-shadow:${tab === t.id ? "var(--shadow-sm)" : "none"};
-            color:${tab === t.id ? "var(--text)" : "var(--text-3)"};
-            font-weight:${tab === t.id ? 600 : 500}">${t.l} <span style="margin-left:4px;color:var(--text-mute)">${t.c}</span></button>
-        `).join(""))}
+      <div class="skin-grid">
+        ${raw(SKINS.map(skinCard).join(""))}
       </div>
-      ${raw(tab === "skins" ? buildSkins() : buildContent())}
+      ${SKINS.length === 0 ? raw('<div class="card" style="padding:24px;text-align:center;color:var(--text-mute)">Sin planillas todavía. Click "Nueva planilla".</div>') : ""}
     </div>
-  `);
+  `;
 
-  let node = build();
+  let node = el(buildList());
   root.appendChild(node);
 
-  const wire = (target) => {
-    on(target, "click", "[data-tab]", (_, btn) => {
-      tab = btn.dataset.tab;
-      const next = build(); node.replaceWith(next); node = next; wire(node);
+  const renderAllPreviews = () => requestAnimationFrame(() => {
+    SKINS.forEach((s) => {
+      const slot = node.querySelector(`[data-preview-for="${CSS.escape(s.codigo)}"]`);
+      if (slot) renderMiniPreview(s.codigo, slot);
+    });
+  });
+
+  const remountList = () => {
+    const next = el(buildList());
+    node.replaceWith(next);
+    node = next;
+    wireList();
+    renderAllPreviews();
+  };
+
+  const refreshSKINS = async () => {
+    const rows = await fetchSkins();
+    SKINS.length = 0;
+    for (const r of rows) {
+      SKINS.push({
+        id: r.id, codigo: r.codigo, nombre: r.nombre,
+        desc: r.descripcion || "", cover: r.cover || {},
+        activa: !!r.activa, html: r.html || null, uso: 0,
+      });
+    }
+  };
+
+  const openEditor = async (skin) => {
+    editing = { ...skin };
+    if (!editing.html) {
+      try { editing.html = await resolvePlanillaHtml(editing.codigo || "corporate"); }
+      catch { editing.html = ""; }
+    }
+    const next = el(editorMarkup(editing));
+    node.replaceWith(next);
+    node = next;
+    wireEditor();
+    runPreview();
+  };
+
+  const closeEditor = () => { editing = null; remountList(); };
+
+  const runPreview = () => {
+    const target = node.querySelector("[data-preview]");
+    if (!target) return;
+    try {
+      const inner = renderPlanillaWith(editing.html || "", SAMPLE_DATA);
+      target.innerHTML = `<div class="skin-mini-doc"><article class="skin-mini-page">${inner}</article></div>`;
+      requestAnimationFrame(() => {
+        const page = target.querySelector(".skin-mini-page");
+        if (!page) return;
+        const cw = target.clientWidth;
+        const scale = Math.min(1, cw / 794);
+        page.style.transform = `scale(${scale})`;
+        page.style.transformOrigin = "top left";
+      });
+    } catch (err) {
+      target.innerHTML = `<div style="padding:14px;color:var(--danger);font-size:11.5px;font-family:var(--font-mono);white-space:pre-wrap">${e(err.message || err)}</div>`;
+    }
+  };
+
+  const wireList = () => {
+    on(node, "click", "[data-action='new']", () => {
+      openEditor({ codigo: "", nombre: "", desc: "", html: "", activa: false });
+    });
+    on(node, "click", "[data-action='edit']", (_, btn) => {
+      const skin = SKINS.find((s) => s.id === btn.dataset.id);
+      if (skin) openEditor(skin);
+    });
+    on(node, "click", "[data-action='duplicate']", async (_, btn) => {
+      const skin = SKINS.find((s) => s.id === btn.dataset.id);
+      if (!skin) return;
+      const html = skin.html || await resolvePlanillaHtml(skin.codigo).catch(() => "");
+      openEditor({ codigo: `${skin.codigo}-copy`, nombre: `${skin.nombre} (copia)`, desc: skin.desc, html, activa: false });
+    });
+    on(node, "click", "[data-action='default']", async (_, btn) => {
+      try {
+        await setDefaultSkin(btn.dataset.id);
+        await refreshSKINS();
+        toast("Marcado como default", { type: "ok" });
+        remountList();
+      } catch (err) { toast(err.message || "Error", { type: "err" }); }
+    });
+    on(node, "click", "[data-action='delete']", async (_, btn) => {
+      const skin = SKINS.find((s) => s.id === btn.dataset.id);
+      if (!skin) return;
+      if (!confirm(`¿Eliminar la planilla "${skin.nombre}"? Las proformas que la usen volverán al default.`)) return;
+      try {
+        await deleteSkin(skin.id);
+        await refreshSKINS();
+        toast("Planilla eliminada", { type: "ok" });
+        remountList();
+      } catch (err) { toast(err.message || "Error", { type: "err" }); }
     });
   };
-  wire(node);
+
+  const wireEditor = () => {
+    on(node, "click", "[data-action='cancel']", closeEditor);
+    on(node, "input", "[data-meta]", (ev) => {
+      const k = ev.target.dataset.meta;
+      if (k === "activa") editing.activa = ev.target.checked;
+      else if (k === "descripcion") editing.desc = ev.target.value;
+      else editing[k] = ev.target.value;
+    });
+    on(node, "input", "[data-html]", (ev) => {
+      editing.html = ev.target.value;
+      clearTimeout(node._t);
+      node._t = setTimeout(runPreview, 250);
+    });
+    on(node, "click", "[data-action='upload']", () => node.querySelector("[data-file]").click());
+    on(node, "change", "[data-file]", async (ev) => {
+      const f = ev.target.files?.[0];
+      if (!f) return;
+      const text = await f.text();
+      editing.html = text;
+      const ta = node.querySelector("[data-html]");
+      if (ta) ta.value = text;
+      runPreview();
+      toast(`Cargado ${f.name}`, { type: "ok" });
+    });
+    on(node, "click", "[data-action='save']", async () => {
+      if (!editing.codigo?.trim()) editing.codigo = slugify(editing.nombre);
+      if (!editing.codigo) { toast("Falta el código", { type: "err" }); return; }
+      if (!editing.nombre?.trim()) { toast("Falta el nombre", { type: "err" }); return; }
+      try {
+        const saved = await upsertSkin({
+          id: editing.id,
+          codigo: editing.codigo.trim(),
+          nombre: editing.nombre.trim(),
+          descripcion: editing.desc,
+          html: editing.html,
+          activa: editing.activa,
+        });
+        if (editing.activa) await setDefaultSkin(saved.id);
+        await refreshSKINS();
+        toast("Planilla guardada", { type: "ok" });
+        closeEditor();
+      } catch (err) { toast(err.message || "Error", { type: "err" }); }
+    });
+  };
+
+  wireList();
+  renderAllPreviews();
 };

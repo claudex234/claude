@@ -17,12 +17,16 @@ const adaptProducto = (row) => ({
   incluye: row.incluye || [],
 });
 
+// Skin (planilla). Conserva tanto el uuid (id) como el codigo (clave que
+// usa el resto de la app). El html es el template cargado desde DB.
 const adaptSkin = (row) => ({
-  id: row.codigo,
+  id: row.id,
+  codigo: row.codigo,
   nombre: row.nombre,
   desc: row.descripcion || "",
   cover: row.cover || {},
   activa: !!row.activa,
+  html: row.html || null,
   uso: 0,
 });
 

@@ -21,4 +21,6 @@ const PANTALLA_SVG = "data:image/svg+xml;utf8," + encodeURIComponent(`
 export const FALLBACK_IMAGE = PANTALLA_SVG;
 
 export const PRODUCTOS = {};
-export const SKINS = [];
+// SKINS migró a ./skins.js — re-exporto acá para compatibilidad con
+// imports legacy. Nuevos imports deben venir de ./skins.js.
+export { SKINS } from "./skins.js";
