@@ -77,9 +77,9 @@ const looksLikePerson = (line) => {
   if (RX_RUC_ANY.test(t)) return false;
   const words = t.split(/\s+/).filter(Boolean);
   if (words.length < 2 || words.length > 5) return false;
-  // Mayoría de palabras capitalizadas.
-  const cap = words.filter((w) => /^[A-ZÁÉÍÓÚÑ][a-záéíóúñ.']*$/.test(w));
-  return cap.length >= Math.max(2, Math.floor(words.length * 0.6));
+  // Aceptamos 2-5 palabras de letras (caps o lower) — la gente tipea
+  // nombres con cualquier capitalización.
+  return words.every((w) => /^[A-Za-zÁÉÍÓÚÑáéíóúñ.'-]{2,}$/.test(w));
 };
 
 const looksLikeEmpresa = (line) => RX_CORP_END.test(line) || RX_EDU_START.test(line) || RX_CORP_ANY.test(line);

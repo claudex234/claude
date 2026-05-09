@@ -695,7 +695,9 @@ body {
   --hl-bg: #fff8c4;
   --hl-color: #0a2540;
   width: 794px;
-  height: 1123px;
+  /* min-height A4 para mantener el "look" de hoja, pero crece con el
+     contenido. Antes era height fijo y dejaba un hueco enorme abajo. */
+  min-height: 1123px;
   /* Padding ajustado: top chico para subir todo. */
   padding: 18px 32px 42px;
   box-sizing: border-box;

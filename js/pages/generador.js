@@ -135,10 +135,6 @@ const renderPreview = (s) => {
           <div class="pv-total-row"><span>Total</span><b>S/ ${money(t.total)}</b></div>
         </div>
 
-        <div class="pv-page-foot">1 / 2</div>
-      </article>
-
-      <article class="pv-page">
         ${showBloques ? `
           <div class="pv-grid-2">
             <section class="pv-block pv-block-ok">
@@ -162,8 +158,6 @@ const renderPreview = (s) => {
           <div class="pv-firma-label">Atentamente,</div>
           <div class="pv-firma-name">${e(EMISOR.firmante)}</div>
         </div>
-
-        <div class="pv-page-foot">2 / 2</div>
       </article>
     </div>`;
 };
