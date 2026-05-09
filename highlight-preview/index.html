@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Highlight options — preview</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 32px;
+      background: #1a1d23;
+      color: #e6e8ec;
+      font-family: "Inter", system-ui, sans-serif;
+      line-height: 1.5;
+    }
+    h1 { margin: 0 0 8px; font-size: 22px; }
+    .subtitle { color: #8a8f9a; margin-bottom: 24px; font-size: 13px; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+      gap: 24px;
+    }
+    .option {
+      background: #fff;
+      color: #0a2540;
+      border-radius: 6px;
+      padding: 24px 22px 22px;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.18);
+    }
+    .option-header {
+      display: flex; justify-content: space-between; align-items: baseline;
+      border-bottom: 1px solid #e3e8ee;
+      padding-bottom: 10px;
+      margin-bottom: 14px;
+    }
+    .option-name { font-size: 15px; font-weight: 700; }
+    .option-tag {
+      font-size: 10px;
+      font-family: ui-monospace, monospace;
+      color: #6b7c93;
+      background: #f6f9fc;
+      border: 1px solid #e3e8ee;
+      padding: 2px 7px;
+      border-radius: 999px;
+    }
+    .item-name {
+      font-weight: 700;
+      font-size: 12px;
+      margin-bottom: 6px;
+    }
+
+    /* Estilos comunes a todas las opciones (igual al preview real) */
+    .specs > div { padding: 1px 0; font-size: 11px; }
+    .specs-after { font-size: 10.5px; color: #6b7c93; line-height: 1.2; margin-top: 6px; }
+    .specs-after > div { padding: 1px 0; }
+
+    /* === OPCIÓN 0: actual (lo que tenés ahora) === */
+    .opt0 .hi {
+      background: #fff8c4;
+      padding: 5px 8px;
+      border-radius: 3px;
+      margin: 3px 0;
+      font-size: 11px;
+      line-height: 1.2;
+    }
+
+    /* === OPCIÓN 1: marker plano amarillo cálido === */
+    .opt1 .hi {
+      background: #fff59d;
+      padding: 2px 6px 4px;
+      border-radius: 0;
+      margin: 3px 0;
+      font-size: 11px;
+      line-height: 1.25;
+    }
+
+    /* === OPCIÓN 2: doble pasada (gradient vertical) === */
+    .opt2 .hi {
+      background: linear-gradient(180deg, #fff8c4 0%, #fff8c4 45%, #ffe066 100%);
+      padding: 3px 6px;
+      border-radius: 0;
+      margin: 3px 0;
+      font-size: 11px;
+      line-height: 1.2;
+    }
+
+    /* === OPCIÓN 3: hand-drawn con rotación + bordes irregulares === */
+    .opt3 .hi {
+      background: #fff59d;
+      padding: 3px 6px;
+      border-radius: 2px 8px 4px 6px / 4px 2px 6px 4px;
+      margin: 3px 0;
+      font-size: 11px;
+      line-height: 1.25;
+      transform: rotate(-0.3deg);
+    }
+
+    /* === OPCIÓN 4: highlight inline (cada spec en su propia "barra") === */
+    .opt4 .hi { font-size: 11px; line-height: 1.45; margin: 3px 0; }
+    .opt4 .hi > div {
+      display: inline;
+      background: linear-gradient(180deg, transparent 55%, #fff59d 55%);
+      padding: 0 2px;
+      box-decoration-break: clone;
+      -webkit-box-decoration-break: clone;
+    }
+    .opt4 .hi > div + div { display: block; margin-top: 2px; }
+    .opt4 .hi > div { display: block; }
+    .opt4 .hi > div span {
+      background: linear-gradient(180deg, transparent 55%, #fff59d 55%);
+      padding: 0 2px;
+      box-decoration-break: clone;
+      -webkit-box-decoration-break: clone;
+    }
+
+    /* === OPCIÓN 5: marker grueso con doble sombra a los lados === */
+    .opt5 .hi {
+      background: #fff59d;
+      padding: 3px 6px;
+      border-radius: 2px;
+      margin: 3px 0;
+      font-size: 11px;
+      line-height: 1.2;
+      box-shadow: -3px 0 0 #fff59d, 3px 0 0 #fff59d;
+    }
+
+    /* === OPCIÓN 6: subrayado con marker (texto sin fondo, raya gruesa abajo) === */
+    .opt6 .hi {
+      background: linear-gradient(180deg, transparent 65%, #ffe066 65%, #ffe066 95%, transparent 95%);
+      padding: 0 4px;
+      border-radius: 0;
+      margin: 3px 0;
+      font-size: 11px;
+      line-height: 1.4;
+    }
+
+    /* === OPCIÓN 7: marker translúcido (multiply, como tinta) === */
+    .opt7 .hi {
+      background: rgba(255, 230, 90, 0.55);
+      mix-blend-mode: multiply;
+      padding: 3px 6px;
+      border-radius: 1px;
+      margin: 3px 0;
+      font-size: 11px;
+      line-height: 1.2;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Comparativa de resaltadores</h1>
+<div class="subtitle">8 estilos visuales para el bloque amarillo de specs destacadas. El que prefieras lo aplico al editor + visor público.</div>
+
+<div class="grid">
+
+  <div class="option opt0">
+    <div class="option-header">
+      <div class="option-name">0 · Actual</div>
+      <div class="option-tag">flat block</div>
+    </div>
+    <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
+    <div class="hi">
+      <div>CPU Octacore A755 @1.8 GHz</div>
+      <div>Memoria RAM 8 GB</div>
+      <div>Almacenamiento 64 GB ampliable</div>
+      <div>IA educativa</div>
+      <div>Huella dactilar</div>
+    </div>
+    <div class="specs-after">
+      <div>Resolución 4K UHD</div>
+      <div>Android 13</div>
+      <div>RAM 8 GB</div>
+    </div>
+  </div>
+
+  <div class="option opt1">
+    <div class="option-header">
+      <div class="option-name">1 · Marker plano cálido</div>
+      <div class="option-tag">#fff59d, sin radius</div>
+    </div>
+    <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
+    <div class="hi">
+      <div>CPU Octacore A755 @1.8 GHz</div>
+      <div>Memoria RAM 8 GB</div>
+      <div>Almacenamiento 64 GB ampliable</div>
+      <div>IA educativa</div>
+      <div>Huella dactilar</div>
+    </div>
+    <div class="specs-after">
+      <div>Resolución 4K UHD</div>
+      <div>Android 13</div>
+      <div>RAM 8 GB</div>
+    </div>
+  </div>
+
+  <div class="option opt2">
+    <div class="option-header">
+      <div class="option-name">2 · Doble pasada</div>
+      <div class="option-tag">gradient vertical</div>
+    </div>
+    <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
+    <div class="hi">
+      <div>CPU Octacore A755 @1.8 GHz</div>
+      <div>Memoria RAM 8 GB</div>
+      <div>Almacenamiento 64 GB ampliable</div>
+      <div>IA educativa</div>
+      <div>Huella dactilar</div>
+    </div>
+    <div class="specs-after">
+      <div>Resolución 4K UHD</div>
+      <div>Android 13</div>
+      <div>RAM 8 GB</div>
+    </div>
+  </div>
+
+  <div class="option opt3">
+    <div class="option-header">
+      <div class="option-name">3 · Hand-drawn</div>
+      <div class="option-tag">rot -0.3°, bordes irregulares</div>
+    </div>
+    <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
+    <div class="hi">
+      <div>CPU Octacore A755 @1.8 GHz</div>
+      <div>Memoria RAM 8 GB</div>
+      <div>Almacenamiento 64 GB ampliable</div>
+      <div>IA educativa</div>
+      <div>Huella dactilar</div>
+    </div>
+    <div class="specs-after">
+      <div>Resolución 4K UHD</div>
+      <div>Android 13</div>
+      <div>RAM 8 GB</div>
+    </div>
+  </div>
+
+  <div class="option opt4">
+    <div class="option-header">
+      <div class="option-name">4 · Inline por línea</div>
+      <div class="option-tag">solo detrás del texto</div>
+    </div>
+    <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
+    <div class="hi">
+      <div><span>CPU Octacore A755 @1.8 GHz</span></div>
+      <div><span>Memoria RAM 8 GB</span></div>
+      <div><span>Almacenamiento 64 GB ampliable</span></div>
+      <div><span>IA educativa</span></div>
+      <div><span>Huella dactilar</span></div>
+    </div>
+    <div class="specs-after">
+      <div>Resolución 4K UHD</div>
+      <div>Android 13</div>
+      <div>RAM 8 GB</div>
+    </div>
+  </div>
+
+  <div class="option opt5">
+    <div class="option-header">
+      <div class="option-name">5 · Marker grueso</div>
+      <div class="option-tag">box-shadow lateral</div>
+    </div>
+    <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
+    <div class="hi">
+      <div>CPU Octacore A755 @1.8 GHz</div>
+      <div>Memoria RAM 8 GB</div>
+      <div>Almacenamiento 64 GB ampliable</div>
+      <div>IA educativa</div>
+      <div>Huella dactilar</div>
+    </div>
+    <div class="specs-after">
+      <div>Resolución 4K UHD</div>
+      <div>Android 13</div>
+      <div>RAM 8 GB</div>
+    </div>
+  </div>
+
+  <div class="option opt6">
+    <div class="option-header">
+      <div class="option-name">6 · Subrayado fluo</div>
+      <div class="option-tag">band horizontal abajo</div>
+    </div>
+    <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
+    <div class="hi">
+      <div>CPU Octacore A755 @1.8 GHz</div>
+      <div>Memoria RAM 8 GB</div>
+      <div>Almacenamiento 64 GB ampliable</div>
+      <div>IA educativa</div>
+      <div>Huella dactilar</div>
+    </div>
+    <div class="specs-after">
+      <div>Resolución 4K UHD</div>
+      <div>Android 13</div>
+      <div>RAM 8 GB</div>
+    </div>
+  </div>
+
+  <div class="option opt7">
+    <div class="option-header">
+      <div class="option-name">7 · Tinta translúcida</div>
+      <div class="option-tag">rgba + multiply</div>
+    </div>
+    <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
+    <div class="hi">
+      <div>CPU Octacore A755 @1.8 GHz</div>
+      <div>Memoria RAM 8 GB</div>
+      <div>Almacenamiento 64 GB ampliable</div>
+      <div>IA educativa</div>
+      <div>Huella dactilar</div>
+    </div>
+    <div class="specs-after">
+      <div>Resolución 4K UHD</div>
+      <div>Android 13</div>
+      <div>RAM 8 GB</div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>
