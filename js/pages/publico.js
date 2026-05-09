@@ -297,14 +297,15 @@ export const render = async (root) => {
   const ro = new ResizeObserver(() => fitDoc(root));
   if (stage) ro.observe(stage);
   requestAnimationFrame(() => {
-    fitDoc(root);
-    // Resaltador estilo marker (Rough Notation) por línea destacada.
+    // Orden importa: dibujamos el highlight ANTES del transform: scale.
+    // Si Rough Notation lee posiciones ya escaladas, queda desplazado.
     root.querySelectorAll("[data-hl]").forEach((el) => {
       annotate(el, {
         type: "highlight", color: "#ffe066",
         iterations: 2, animationDuration: 700, padding: [1, 2],
       }).show();
     });
+    fitDoc(root);
   });
 
   return () => {

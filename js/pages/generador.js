@@ -301,7 +301,7 @@ export const render = (root) => {
 
   const ro = new ResizeObserver(() => fitPreview());
   ro.observe(node.querySelector(".gen-preview"));
-  requestAnimationFrame(() => { fitPreview(); applyHighlights(); });
+  requestAnimationFrame(() => { applyHighlights(); fitPreview(); });
 
   const refreshChips = () => {
     const target = node.querySelector("[data-chips]");
@@ -348,8 +348,12 @@ export const render = (root) => {
     const fit = node.querySelector(".pv-fit");
     if (fit) {
       fit.innerHTML = renderPreview(s);
-      fitPreview();
+      // Orden importa: aplicamos el highlight ANTES del transform: scale.
+      // Si Rough Notation lee posiciones ya escaladas, dibuja desplazado.
+      // Al hacerlo a escala 1, la SVG queda dentro del .pv-doc y se
+      // escala junto con el resto cuando fitPreview aplica el transform.
       applyHighlights();
+      fitPreview();
     }
   };
 
