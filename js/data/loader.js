@@ -1,9 +1,10 @@
 // Carga datos desde Supabase y los inyecta en los contenedores compartidos
-// (PRODUCTOS, SKINS, PROFORMAS, etc.). Se llama una vez tras el login.
+// (PRODUCTOS, SKINS, PROFORMAS). Se llama una vez tras el login.
 import { supabase } from "../lib/supabase.js";
-import { PRODUCTOS, SKINS, PROFORMAS_PRODUCTOS, FALLBACK_IMAGE } from "./productos.js";
+import { PRODUCTOS, PROFORMAS_PRODUCTOS, FALLBACK_IMAGE } from "./productos.js";
+import { SKINS } from "./skins.js";
 import { PROFORMAS } from "./proformas.js";
-import { TEMPLATES, METRICS } from "./metrics.js";
+import { METRICS } from "./metrics.js";
 
 const adaptProducto = (row) => ({
   codigo: row.codigo,
@@ -28,14 +29,6 @@ const adaptSkin = (row) => ({
   activa: !!row.activa,
   html: row.html || null,
   uso: 0,
-});
-
-const adaptTemplate = (row) => ({
-  id: row.id,
-  nombre: row.nombre,
-  uso: row.uso || 0,
-  default: !!row.is_default,
-  items: Array.isArray(row.items) ? row.items.length : (row.items || 0),
 });
 
 const adaptProforma = (row, clientesById, slugByProformaId, skinCodigoById) => {
@@ -70,10 +63,9 @@ const adaptProforma = (row, clientesById, slugByProformaId, skinCodigoById) => {
 };
 
 export const loadAll = async () => {
-  const [productosRes, skinsRes, plantillasRes, clientesRes, proformasRes, linksRes] = await Promise.all([
+  const [productosRes, skinsRes, clientesRes, proformasRes, linksRes] = await Promise.all([
     supabase.from("productos").select("*").eq("activo", true).order("precio_default"),
     supabase.from("skins").select("*").order("created_at"),
-    supabase.from("plantillas").select("*").order("created_at"),
     supabase.from("clientes").select("*"),
     supabase.from("proformas").select("*").order("created_at", { ascending: false }),
     supabase.from("proforma_links").select("proforma_id, slug"),
@@ -81,7 +73,6 @@ export const loadAll = async () => {
 
   if (productosRes.error) console.error("productos:", productosRes.error);
   if (skinsRes.error) console.error("skins:", skinsRes.error);
-  if (plantillasRes.error) console.error("plantillas:", plantillasRes.error);
   if (clientesRes.error) console.error("clientes:", clientesRes.error);
   if (proformasRes.error) console.error("proformas:", proformasRes.error);
   if (linksRes.error) console.error("links:", linksRes.error);
@@ -95,10 +86,6 @@ export const loadAll = async () => {
   // Skins
   SKINS.length = 0;
   for (const row of skinsRes.data || []) SKINS.push(adaptSkin(row));
-
-  // Plantillas
-  TEMPLATES.length = 0;
-  for (const row of plantillasRes.data || []) TEMPLATES.push(adaptTemplate(row));
 
   // Clientes (para resolver razón social en proformas)
   const clientesById = new Map();

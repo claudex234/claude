@@ -1,5 +1,4 @@
-// Contenedor mutable. `js/data/loader.js` rellena TEMPLATES desde la tabla `plantillas`.
-// METRICS por ahora se calcula del lado cliente con ceros hasta tener proformas reales.
+// Métricas mínimas calculadas del lado cliente. Se llenan en loader.js.
 export const METRICS = {
   enviadasMes: 0,
   vistasMes: 0,
@@ -11,5 +10,3 @@ export const METRICS = {
   aperturasDia: new Array(30).fill(0),
   topClientes: [],
 };
-
-export const TEMPLATES = [];
