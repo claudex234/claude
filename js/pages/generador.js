@@ -46,15 +46,19 @@ const itemRowHtml = (p) => {
   const incluye = (ref.incluye || []).map((x) => `<div>${e(x)}</div>`).join("");
   return `
     <tr>
-      <td class="pv-num">${p.qty}</td>
       <td>
         <div class="pv-item-title">${e(p.nombre)}</div>
         ${hi ? `<div class="pv-item-hi">${hi}</div>` : ""}
         ${specs ? `<div class="pv-item-specs">${specs}</div>` : ""}
         ${incluye ? `<div class="pv-incluye-title">INCLUIDO EN EL PAQUETE</div><div class="pv-item-specs">${incluye}</div>` : ""}
       </td>
-      <td class="pv-num pv-right">S/ ${money(p.precio)}</td>
-      <td class="pv-num pv-right pv-strong">S/ ${money(p.qty * p.precio)}</td>
+      <td class="pv-c">
+        ${ref.imagen ? `<img class="pv-item-img" src="${e(ref.imagen)}" alt="${e(ref.codigo || p.modelo)}">` : ""}
+        ${ref.codigo ? `<div class="pv-item-codigo">${e(ref.codigo)}</div>` : ""}
+      </td>
+      <td class="pv-num pv-c pv-strong">${p.qty}</td>
+      <td class="pv-num pv-right">${money(p.precio)}</td>
+      <td class="pv-num pv-right pv-strong">${money(p.qty * p.precio)}</td>
     </tr>`;
 };
 
@@ -70,18 +74,19 @@ const renderPreview = (s) => {
         <header class="pv-header">
           <div class="pv-emisor">
             <div class="pv-logo-svg">${EMISOR.logoSvg}</div>
-            <div class="pv-emisor-tag">${e(EMISOR.subtagline)}</div>
+            <div class="pv-emisor-meta">
+              <div class="pv-emisor-name">${e(EMISOR.razonSocial)}</div>
+              <div class="pv-emisor-ruc">RUC ${e(EMISOR.ruc)}</div>
+            </div>
           </div>
           <div class="pv-doc-meta">
-            <div class="pv-emisor-name">${e(EMISOR.razonSocial)}</div>
-            <div class="pv-emisor-tag">${e(EMISOR.tagline)}</div>
+            <div class="pv-eyebrow">Cotización</div>
+            <div class="pv-mono pv-mono-strong">${e(s.numero)}</div>
+            <div class="pv-muted">${fmtDate(s.emitidaIso)}</div>
           </div>
         </header>
 
-        <div class="pv-info-row">
-          <span><b>Proforma</b> ${e(s.numero)}</span>
-          <span>${fmtDate(s.emitidaIso)}</span>
-        </div>
+        <h2 class="pv-title">Cotización</h2>
 
         <div class="pv-grid-2">
           <section class="pv-card">
@@ -105,18 +110,22 @@ const renderPreview = (s) => {
         </div>
 
         <table class="pv-items">
+          <colgroup>
+            <col class="col-desc"><col class="col-img"><col class="col-qty"><col class="col-p"><col class="col-pt">
+          </colgroup>
           <thead>
             <tr>
-              <th class="pv-th-num">CANT</th>
               <th>DESCRIPCIÓN</th>
-              <th class="pv-right">P. UND</th>
-              <th class="pv-right">SUBTOTAL</th>
+              <th class="pv-c">IMAGEN</th>
+              <th class="pv-c">CANT</th>
+              <th class="pv-right">P.</th>
+              <th class="pv-right">PT</th>
             </tr>
           </thead>
           <tbody>
             ${s.productos.length
               ? s.productos.map(itemRowHtml).join("")
-              : `<tr><td colspan="4" class="pv-empty">Agregá productos para verlos acá</td></tr>`}
+              : `<tr><td colspan="5" class="pv-empty">Agregá productos para verlos acá</td></tr>`}
           </tbody>
         </table>
 
@@ -147,7 +156,6 @@ const renderPreview = (s) => {
           ${EMISOR.cuentas.map((b) => `
             <div class="pv-cuenta"><b>${e(b.banco)} ${e(b.moneda)}:</b> ${e(b.numero)} · <b>CCI</b> ${e(b.cci)}</div>
           `).join("")}
-          <div class="pv-cuenta-pago"><b>Forma de pago:</b> ${e(tm.formaPago)}</div>
         </section>
 
         <div class="pv-firma">

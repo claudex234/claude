@@ -5,13 +5,12 @@
 // el <svg ...> ... </svg> entero). Conviene que tenga viewBox y no width/height
 // fijos para que escale solo dentro del contenedor.
 
+// Logo: todo negro, "EDU" más grande/grueso que "BOARD".
 const PLACEHOLDER_LOGO_SVG = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 220 60" preserveAspectRatio="xMinYMid meet">
-  <rect x="2" y="2" width="216" height="56" rx="4" fill="none" stroke="#e63946" stroke-width="3"/>
-  <text x="110" y="38" text-anchor="middle"
-        font-family="'Inter', system-ui, sans-serif" font-weight="800"
-        font-size="26" letter-spacing="2" fill="#1a1d23">
-    <tspan fill="#1a1d23">EDU</tspan><tspan dx="6" fill="#e63946">BOARD</tspan>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" preserveAspectRatio="xMinYMid meet">
+  <text x="0" y="44" font-family="'Inter', system-ui, sans-serif"
+        fill="#0a0a0a" letter-spacing="-0.5">
+    <tspan font-size="42" font-weight="900">EDU</tspan><tspan font-size="32" font-weight="600" dx="4">BOARD</tspan>
   </text>
 </svg>
 `.trim();
@@ -53,8 +52,8 @@ export const BLOQUES_PANTALLA = {
     "Entrega, instalación y capacitación, previa coordinación",
   ],
   noIncluido: [
-    "Extensiones, tomas de luz, cables, otras instalaciones eléctricas",
+    "Extensiones, cables, otras instalaciones",
     "Reforzamientos de pared o drywall",
-    "Computadoras u otros equipos",
+    "Computadoras u otros equipos, hardware o software",
   ],
 };
