@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <title>Highlight options — preview</title>
+  <title>Highlight options — preview SVG</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -16,14 +16,14 @@
       line-height: 1.5;
     }
     h1 { margin: 0 0 8px; font-size: 22px; }
-    .subtitle { color: #8a8f9a; margin-bottom: 24px; font-size: 13px; }
+    .subtitle { color: #8a8f9a; margin-bottom: 24px; font-size: 13px; max-width: 720px; }
     .grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
       gap: 24px;
     }
     .option {
-      background: #fff;
+      background: #fffdf8;
       color: #0a2540;
       border-radius: 6px;
       padding: 24px 22px 22px;
@@ -50,118 +50,123 @@
       font-size: 12px;
       margin-bottom: 6px;
     }
-
-    /* Estilos comunes a todas las opciones (igual al preview real) */
     .specs > div { padding: 1px 0; font-size: 11px; }
     .specs-after { font-size: 10.5px; color: #6b7c93; line-height: 1.2; margin-top: 6px; }
     .specs-after > div { padding: 1px 0; }
 
-    /* === OPCIÓN 0: actual (lo que tenés ahora) === */
-    .opt0 .hi {
+    /* ============================================================
+       Para todas las opciones SVG se necesita el filter inyectado
+       una sola vez en la página (lo está al final del body).
+       ============================================================ */
+
+    /* === A · CSS plano (lo que tenés ahora, baseline) === */
+    .optA .hi {
       background: #fff8c4;
       padding: 5px 8px;
       border-radius: 3px;
-      margin: 3px 0;
       font-size: 11px;
       line-height: 1.2;
     }
 
-    /* === OPCIÓN 1: marker plano amarillo cálido === */
-    .opt1 .hi {
-      background: #fff59d;
-      padding: 2px 6px 4px;
-      border-radius: 0;
-      margin: 3px 0;
-      font-size: 11px;
-      line-height: 1.25;
-    }
-
-    /* === OPCIÓN 2: doble pasada (gradient vertical) === */
-    .opt2 .hi {
-      background: linear-gradient(180deg, #fff8c4 0%, #fff8c4 45%, #ffe066 100%);
-      padding: 3px 6px;
-      border-radius: 0;
-      margin: 3px 0;
+    /* === B · SVG filter feTurbulence + feDisplacementMap ===
+       El filtro distorsiona los bordes del rectángulo amarillo,
+       como si el marcador hubiera "salpicado". */
+    .optB .hi {
+      background: #ffe066;
+      padding: 5px 8px;
+      filter: url(#hi-rough);
       font-size: 11px;
       line-height: 1.2;
     }
 
-    /* === OPCIÓN 3: hand-drawn con rotación + bordes irregulares === */
-    .opt3 .hi {
-      background: #fff59d;
-      padding: 3px 6px;
-      border-radius: 2px 8px 4px 6px / 4px 2px 6px 4px;
-      margin: 3px 0;
-      font-size: 11px;
-      line-height: 1.25;
-      transform: rotate(-0.3deg);
-    }
-
-    /* === OPCIÓN 4: highlight inline (cada spec en su propia "barra") === */
-    .opt4 .hi { font-size: 11px; line-height: 1.45; margin: 3px 0; }
-    .opt4 .hi > div {
-      display: inline;
-      background: linear-gradient(180deg, transparent 55%, #fff59d 55%);
-      padding: 0 2px;
-      box-decoration-break: clone;
-      -webkit-box-decoration-break: clone;
-    }
-    .opt4 .hi > div + div { display: block; margin-top: 2px; }
-    .opt4 .hi > div { display: block; }
-    .opt4 .hi > div span {
-      background: linear-gradient(180deg, transparent 55%, #fff59d 55%);
-      padding: 0 2px;
-      box-decoration-break: clone;
-      -webkit-box-decoration-break: clone;
-    }
-
-    /* === OPCIÓN 5: marker grueso con doble sombra a los lados === */
-    .opt5 .hi {
-      background: #fff59d;
-      padding: 3px 6px;
-      border-radius: 2px;
-      margin: 3px 0;
+    /* === C · Path SVG como background (forma orgánica) ===
+       Un SVG con un cuadrilátero ondulado se estira al 100% del
+       contenedor. Se ve diferente cada vez que cambia el ancho. */
+    .optC .hi {
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 40' preserveAspectRatio='none'><path d='M3,10 C 40,4 90,14 198,7 C 200,7 200,33 198,34 C 130,38 70,32 4,36 C 2,36 2,10 3,10 Z' fill='%23ffe066'/></svg>");
+      background-repeat: no-repeat;
+      background-size: 100% 100%;
+      padding: 5px 10px;
       font-size: 11px;
       line-height: 1.2;
-      box-shadow: -3px 0 0 #fff59d, 3px 0 0 #fff59d;
     }
 
-    /* === OPCIÓN 6: subrayado con marker (texto sin fondo, raya gruesa abajo) === */
-    .opt6 .hi {
-      background: linear-gradient(180deg, transparent 65%, #ffe066 65%, #ffe066 95%, transparent 95%);
-      padding: 0 4px;
-      border-radius: 0;
-      margin: 3px 0;
+    /* === D · Multiply ink (gradient + blend) ===
+       Color amarillo translúcido en mix-blend-mode multiply,
+       como si la tinta del marcador se mezclara con el papel. */
+    .optD .hi {
+      background: linear-gradient(180deg, rgba(255, 240, 100, 0.45) 0%, rgba(255, 215, 60, 0.85) 100%);
+      mix-blend-mode: multiply;
+      padding: 4px 7px;
+      border-radius: 1px;
+      font-size: 11px;
+      line-height: 1.2;
+    }
+
+    /* === E · SVG path background + multiply (combo) ===
+       Mejor look: forma orgánica + mix-blend con el papel. */
+    .optE .hi {
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 50' preserveAspectRatio='none'><defs><linearGradient id='g' x1='0' x2='0' y1='0' y2='1'><stop offset='0%' stop-color='%23fff8c4'/><stop offset='60%' stop-color='%23ffe066'/><stop offset='100%' stop-color='%23fdd835'/></linearGradient></defs><path d='M5,12 C 60,6 130,18 296,9 C 299,9 299,42 296,43 C 200,47 100,40 6,45 C 2,45 2,12 5,12 Z' fill='url(%23g)' opacity='0.85'/></svg>");
+      background-repeat: no-repeat;
+      background-size: 100% 100%;
+      mix-blend-mode: multiply;
+      padding: 5px 10px;
+      font-size: 11px;
+      line-height: 1.2;
+    }
+
+    /* === F · Filter turbulence + multiply (todo junto) === */
+    .optF .hi {
+      background: linear-gradient(180deg, rgba(255, 235, 100, 0.7), rgba(255, 215, 60, 0.9));
+      mix-blend-mode: multiply;
+      filter: url(#hi-rough);
+      padding: 5px 10px;
+      font-size: 11px;
+      line-height: 1.2;
+    }
+
+    /* === G · Subrayado con SVG path (tipo notebook) ===
+       Sólo la mitad inferior está pintada, con forma irregular. */
+    .optG .hi {
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 50' preserveAspectRatio='none'><path d='M2,30 C 50,28 130,33 298,29 C 299,29 299,46 298,47 C 200,49 100,46 4,48 C 2,48 2,30 2,30 Z' fill='%23ffe066' opacity='0.85'/></svg>");
+      background-repeat: no-repeat;
+      background-size: 100% 100%;
+      padding: 3px 8px 5px;
       font-size: 11px;
       line-height: 1.4;
     }
 
-    /* === OPCIÓN 7: marker translúcido (multiply, como tinta) === */
-    .opt7 .hi {
-      background: rgba(255, 230, 90, 0.55);
-      mix-blend-mode: multiply;
-      padding: 3px 6px;
-      border-radius: 1px;
-      margin: 3px 0;
-      font-size: 11px;
-      line-height: 1.2;
+    /* === H · Inline por línea con turbulence ===
+       Cada línea individual con bordes distorsionados. La más cara
+       pero la que más parece marcador real. */
+    .optH .hi { font-size: 11px; line-height: 1.5; }
+    .optH .hi > div {
+      display: inline;
+      box-decoration-break: clone;
+      -webkit-box-decoration-break: clone;
+      background: #ffe066;
+      padding: 1px 4px;
+      filter: url(#hi-rough);
     }
+    .optH .hi > div + div { display: block; margin-top: 2px; }
+    .optH .hi > div { display: block; }
+
   </style>
 </head>
 <body>
 
-<h1>Comparativa de resaltadores</h1>
-<div class="subtitle">8 estilos visuales para el bloque amarillo de specs destacadas. El que prefieras lo aplico al editor + visor público.</div>
+<h1>Comparativa de resaltadores (con SVG)</h1>
+<div class="subtitle">8 variantes — A es la actual (CSS plano). B-H usan filtros SVG, paths SVG como background, mix-blend-mode multiply, o combinaciones. Las filter URL apuntan al &lt;svg&gt; al final del body con &lt;feTurbulence&gt; + &lt;feDisplacementMap&gt;.</div>
 
 <div class="grid">
 
-  <div class="option opt0">
+  <div class="option optA">
     <div class="option-header">
-      <div class="option-name">0 · Actual</div>
-      <div class="option-tag">flat block</div>
+      <div class="option-name">A · Actual (CSS plano)</div>
+      <div class="option-tag">baseline</div>
     </div>
     <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
-    <div class="hi">
+    <div class="hi specs">
       <div>CPU Octacore A755 @1.8 GHz</div>
       <div>Memoria RAM 8 GB</div>
       <div>Almacenamiento 64 GB ampliable</div>
@@ -175,13 +180,13 @@
     </div>
   </div>
 
-  <div class="option opt1">
+  <div class="option optB">
     <div class="option-header">
-      <div class="option-name">1 · Marker plano cálido</div>
-      <div class="option-tag">#fff59d, sin radius</div>
+      <div class="option-name">B · SVG turbulence (bordes rugosos)</div>
+      <div class="option-tag">filter: url(#hi-rough)</div>
     </div>
     <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
-    <div class="hi">
+    <div class="hi specs">
       <div>CPU Octacore A755 @1.8 GHz</div>
       <div>Memoria RAM 8 GB</div>
       <div>Almacenamiento 64 GB ampliable</div>
@@ -195,13 +200,13 @@
     </div>
   </div>
 
-  <div class="option opt2">
+  <div class="option optC">
     <div class="option-header">
-      <div class="option-name">2 · Doble pasada</div>
-      <div class="option-tag">gradient vertical</div>
+      <div class="option-name">C · Path SVG ondulado</div>
+      <div class="option-tag">background-image SVG</div>
     </div>
     <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
-    <div class="hi">
+    <div class="hi specs">
       <div>CPU Octacore A755 @1.8 GHz</div>
       <div>Memoria RAM 8 GB</div>
       <div>Almacenamiento 64 GB ampliable</div>
@@ -215,13 +220,13 @@
     </div>
   </div>
 
-  <div class="option opt3">
+  <div class="option optD">
     <div class="option-header">
-      <div class="option-name">3 · Hand-drawn</div>
-      <div class="option-tag">rot -0.3°, bordes irregulares</div>
+      <div class="option-name">D · Multiply ink</div>
+      <div class="option-tag">mix-blend-mode</div>
     </div>
     <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
-    <div class="hi">
+    <div class="hi specs">
       <div>CPU Octacore A755 @1.8 GHz</div>
       <div>Memoria RAM 8 GB</div>
       <div>Almacenamiento 64 GB ampliable</div>
@@ -235,33 +240,13 @@
     </div>
   </div>
 
-  <div class="option opt4">
+  <div class="option optE">
     <div class="option-header">
-      <div class="option-name">4 · Inline por línea</div>
-      <div class="option-tag">solo detrás del texto</div>
+      <div class="option-name">E · Path SVG + multiply</div>
+      <div class="option-tag">combo natural</div>
     </div>
     <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
-    <div class="hi">
-      <div><span>CPU Octacore A755 @1.8 GHz</span></div>
-      <div><span>Memoria RAM 8 GB</span></div>
-      <div><span>Almacenamiento 64 GB ampliable</span></div>
-      <div><span>IA educativa</span></div>
-      <div><span>Huella dactilar</span></div>
-    </div>
-    <div class="specs-after">
-      <div>Resolución 4K UHD</div>
-      <div>Android 13</div>
-      <div>RAM 8 GB</div>
-    </div>
-  </div>
-
-  <div class="option opt5">
-    <div class="option-header">
-      <div class="option-name">5 · Marker grueso</div>
-      <div class="option-tag">box-shadow lateral</div>
-    </div>
-    <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
-    <div class="hi">
+    <div class="hi specs">
       <div>CPU Octacore A755 @1.8 GHz</div>
       <div>Memoria RAM 8 GB</div>
       <div>Almacenamiento 64 GB ampliable</div>
@@ -275,13 +260,13 @@
     </div>
   </div>
 
-  <div class="option opt6">
+  <div class="option optF">
     <div class="option-header">
-      <div class="option-name">6 · Subrayado fluo</div>
-      <div class="option-tag">band horizontal abajo</div>
+      <div class="option-name">F · Turbulence + multiply</div>
+      <div class="option-tag">todo en uno</div>
     </div>
     <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
-    <div class="hi">
+    <div class="hi specs">
       <div>CPU Octacore A755 @1.8 GHz</div>
       <div>Memoria RAM 8 GB</div>
       <div>Almacenamiento 64 GB ampliable</div>
@@ -295,10 +280,30 @@
     </div>
   </div>
 
-  <div class="option opt7">
+  <div class="option optG">
     <div class="option-header">
-      <div class="option-name">7 · Tinta translúcida</div>
-      <div class="option-tag">rgba + multiply</div>
+      <div class="option-name">G · Subrayado SVG</div>
+      <div class="option-tag">solo banda inferior</div>
+    </div>
+    <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
+    <div class="hi specs">
+      <div>CPU Octacore A755 @1.8 GHz</div>
+      <div>Memoria RAM 8 GB</div>
+      <div>Almacenamiento 64 GB ampliable</div>
+      <div>IA educativa</div>
+      <div>Huella dactilar</div>
+    </div>
+    <div class="specs-after">
+      <div>Resolución 4K UHD</div>
+      <div>Android 13</div>
+      <div>RAM 8 GB</div>
+    </div>
+  </div>
+
+  <div class="option optH">
+    <div class="option-header">
+      <div class="option-name">H · Inline por línea + turbulence</div>
+      <div class="option-tag">la más realista</div>
     </div>
     <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
     <div class="hi">
@@ -316,6 +321,18 @@
   </div>
 
 </div>
+
+<!-- Filtro SVG global usado por las opciones B, F y H. feTurbulence
+     genera ruido fractal; feDisplacementMap usa ese ruido para
+     desplazar los píxeles del rectángulo, dando bordes "vibrados". -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="hi-rough" x="-4%" y="-25%" width="108%" height="150%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.04 0.06" numOctaves="2" seed="3" />
+      <feDisplacementMap in="SourceGraphic" scale="3" />
+    </filter>
+  </defs>
+</svg>
 
 </body>
 </html>
