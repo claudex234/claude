@@ -750,16 +750,18 @@ body {
 .pv-strong { font-weight: 700; color: var(--text); }
 .pv-item-title { font-weight: 700; font-size: 12px; margin-bottom: 3px; }
 /* Highlight tipo "marker" del prof: amarillo más sólido, sin border-left. */
-/* Specs destacadas: cada línea es <div><span data-hl>texto</span></div>.
-   El span es display:inline con un SVG marker como background-image y
-   box-decoration-break:clone — el resaltador se ajusta al ancho exacto
-   del texto, está dentro del flujo del documento (escala con el transform
-   sin problemas) y si el texto se quiebra, cada visual line tiene su
-   propia "pasada". Sin JS, sin librería externa. */
+/* Specs destacadas: efecto marker hecho 100% con CSS (sin SVG, sin JS).
+   - display: inline + box-decoration-break: clone → se ajusta al ancho
+     del texto y soporta wrap.
+   - Gradient vertical → simula presión: claro arriba, denso al medio,
+     más saturado al final.
+   - border-radius asimétrico → no se ve cuadrado perfecto.
+   - mix-blend-mode: multiply → la tinta se mezcla con el papel.
+   - Sombra lateral muy leve → simula "bleed" en los extremos. */
 .pv-item-hi {
   margin: 4px 0;
   font-size: 11px;
-  line-height: 1.7;          /* aire entre líneas para que no se solapen */
+  line-height: 1.7;
   color: var(--text);
 }
 .pv-item-hi > div { margin: 1px 0; }
@@ -767,11 +769,17 @@ body {
   display: inline;
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 22' preserveAspectRatio='none'><path d='M2,5 C 25,3 50,7 75,4 C 100,2 125,6 150,3 C 175,5 200,2 225,6 C 250,3 275,7 300,3 C 325,5 350,2 375,5 L 398,4 L 398,18 C 375,20 350,17 325,19 C 300,16 275,21 250,17 C 225,21 200,16 175,20 C 150,17 125,21 100,18 C 75,21 50,16 25,19 L 2,17 Z' fill='%23ffe066'/></svg>");
-  background-repeat: no-repeat;
-  background-size: 100% 100%;
-  padding: 1px 4px;
+  background: linear-gradient(180deg,
+    rgba(255, 245, 160, 0.55) 0%,
+    rgba(255, 224, 102, 0.92) 35%,
+    rgba(253, 216, 53, 0.92) 70%,
+    rgba(255, 235, 100, 0.6) 100%);
   mix-blend-mode: multiply;
+  padding: 1px 5px 2px;
+  border-radius: 2px 5px 3px 4px / 4px 2px 5px 3px;
+  box-shadow:
+    -2px 0 1px -1px rgba(255, 224, 102, 0.45),
+     2px 0 1px -1px rgba(255, 224, 102, 0.45);
 }
 .pv-item-specs { font-size: 10.5px; color: var(--text-3); line-height: 1.2; margin-top: 3px; }
 .pv-incluye-title { margin-top: 6px; font-size: 9.5px; font-weight: 700; color: var(--text-mute); letter-spacing: .6px; }
