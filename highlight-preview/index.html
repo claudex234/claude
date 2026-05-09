@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <title>Highlight options — per-line preview</title>
+  <title>Highlight options — strokes detrás del texto</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -52,136 +52,92 @@
     }
     .specs-after { font-size: 10.5px; color: #6b7c93; line-height: 1.2; margin-top: 6px; }
     .specs-after > div { padding: 1px 0; }
-    .hi { font-size: 11px; line-height: 1.45; }
 
-    /* === A · Bloque (baseline anterior, opción C de la versión previa) === */
+    /* ============================================================
+       Todas las opciones: line-height fijo (16px) y un stroke SVG
+       como background que se repite cada esa misma altura, así cae
+       una marca DETRÁS de cada línea de texto. El texto no cambia
+       de posición ni tamaño.
+       ============================================================ */
+    .hi {
+      font-size: 11px;
+      line-height: 16px; /* fija para que el stroke coincida */
+      padding: 0;
+    }
+    .hi > div {
+      padding: 0; margin: 0;
+    }
+
+    /* === A · Stroke simple amarillo, repeat-y === */
     .optA .hi {
-      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 40' preserveAspectRatio='none'><path d='M3,10 C 40,4 90,14 198,7 C 200,7 200,33 198,34 C 130,38 70,32 4,36 C 2,36 2,10 3,10 Z' fill='%23ffe066'/></svg>");
-      background-repeat: no-repeat;
-      background-size: 100% 100%;
-      padding: 5px 10px;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 16' preserveAspectRatio='none'><path d='M2,3 C 60,2 140,5 298,2 C 300,2 300,13 298,14 C 150,16 70,12 4,15 C 2,15 2,3 2,3 Z' fill='%23ffe066'/></svg>");
+      background-repeat: repeat-y;
+      background-size: 100% 16px;
     }
 
-    /* === B · Una línea por spec, finita (delgada) === */
-    .optB .hi > div {
-      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 22' preserveAspectRatio='none'><path d='M3,4 C 70,2 160,7 297,3 C 299,3 299,19 297,19 C 160,21 70,17 4,20 C 2,20 2,4 3,4 Z' fill='%23ffe066'/></svg>");
-      background-repeat: no-repeat;
-      background-size: 100% 100%;
-      padding: 1px 6px;
-      margin: 2px 0;
-      display: inline-block;
-    }
-
-    /* === C · Por línea + multiply (tinta sobre papel) === */
-    .optC .hi > div {
-      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 22' preserveAspectRatio='none'><path d='M3,4 C 70,2 160,7 297,3 C 299,3 299,19 297,19 C 160,21 70,17 4,20 C 2,20 2,4 3,4 Z' fill='%23ffe066'/></svg>");
-      background-repeat: no-repeat;
-      background-size: 100% 100%;
-      padding: 1px 6px;
-      margin: 2px 0;
+    /* === B · Stroke + multiply (tinta sobre papel) === */
+    .optB .hi {
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 16' preserveAspectRatio='none'><path d='M2,3 C 60,2 140,5 298,2 C 300,2 300,13 298,14 C 150,16 70,12 4,15 C 2,15 2,3 2,3 Z' fill='%23ffe066'/></svg>");
+      background-repeat: repeat-y;
+      background-size: 100% 16px;
       mix-blend-mode: multiply;
-      display: inline-block;
     }
 
-    /* === D · Por línea con gradient (densidad despareja) === */
-    .optD .hi > div {
-      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 22' preserveAspectRatio='none'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='0'><stop offset='0%25' stop-color='%23fff8c4'/><stop offset='40%25' stop-color='%23ffe066'/><stop offset='100%25' stop-color='%23fdd835'/></linearGradient></defs><path d='M3,4 C 70,2 160,7 297,3 C 299,3 299,19 297,19 C 160,21 70,17 4,20 C 2,20 2,4 3,4 Z' fill='url(%23g)' opacity='0.9'/></svg>");
-      background-repeat: no-repeat;
-      background-size: 100% 100%;
-      padding: 1px 6px;
-      margin: 2px 0;
+    /* === C · Stroke con gradient horizontal (densidad variable) === */
+    .optC .hi {
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 16' preserveAspectRatio='none'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='0'><stop offset='0%25' stop-color='%23fff5a0'/><stop offset='50%25' stop-color='%23ffe066'/><stop offset='100%25' stop-color='%23fdd835'/></linearGradient></defs><path d='M2,3 C 60,2 140,5 298,2 C 300,2 300,13 298,14 C 150,16 70,12 4,15 C 2,15 2,3 2,3 Z' fill='url(%23g)'/></svg>");
+      background-repeat: repeat-y;
+      background-size: 100% 16px;
       mix-blend-mode: multiply;
-      display: inline-block;
     }
 
-    /* === E · Por línea con leve rotación (cada pasada un poco torcida) === */
-    .optE .hi > div {
-      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 22' preserveAspectRatio='none'><path d='M3,4 C 70,2 160,7 297,3 C 299,3 299,19 297,19 C 160,21 70,17 4,20 C 2,20 2,4 3,4 Z' fill='%23ffe066'/></svg>");
-      background-repeat: no-repeat;
-      background-size: 100% 100%;
-      padding: 1px 6px;
-      margin: 2px 0;
-      display: inline-block;
-    }
-    .optE .hi > div:nth-child(odd)  { transform: rotate(-0.4deg); }
-    .optE .hi > div:nth-child(even) { transform: rotate(0.3deg); }
-
-    /* === F · Por línea con paths levemente diferentes (variación) ===
-       Cada nth-child usa un SVG con waveform distinto: simula que
-       cada pasada del marcador no es idéntica a la anterior. */
-    .optF .hi > div {
-      background-repeat: no-repeat;
-      background-size: 100% 100%;
-      padding: 1px 6px;
-      margin: 2px 0;
+    /* === D · 5 strokes diferentes, posicionados (cada línea única) ===
+       Cada SVG es un stroke con waveform distinta. La línea N recibe
+       el stroke N. Funciona hasta 5 líneas; a partir de ahí repite. */
+    .optD .hi {
+      background-image:
+        url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 16' preserveAspectRatio='none'><path d='M2,4 C 60,2 140,5 298,2 C 300,2 300,13 298,14 C 150,16 70,12 4,15 C 2,15 2,4 2,4 Z' fill='%23ffe066'/></svg>"),
+        url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 16' preserveAspectRatio='none'><path d='M2,3 C 80,4 170,1 297,4 C 299,4 299,13 297,14 C 170,12 90,15 4,13 C 2,13 2,3 2,3 Z' fill='%23ffe066'/></svg>"),
+        url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 16' preserveAspectRatio='none'><path d='M2,4 C 100,1 180,7 298,3 C 300,3 300,14 298,14 C 200,15 80,13 4,14 C 2,14 2,4 2,4 Z' fill='%23ffe066'/></svg>"),
+        url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 16' preserveAspectRatio='none'><path d='M3,4 C 50,3 160,6 297,2 C 299,2 299,13 297,14 C 130,15 60,13 4,14 C 2,14 2,4 3,4 Z' fill='%23ffe066'/></svg>"),
+        url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 16' preserveAspectRatio='none'><path d='M2,3 C 90,5 180,1 298,4 C 300,4 300,14 298,13 C 180,15 70,12 4,14 C 2,14 2,3 2,3 Z' fill='%23ffe066'/></svg>");
+      background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, no-repeat;
+      background-position: 0 0, 0 16px, 0 32px, 0 48px, 0 64px;
+      background-size: 100% 16px;
       mix-blend-mode: multiply;
-      display: inline-block;
-    }
-    .optF .hi > div:nth-child(1) {
-      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 22' preserveAspectRatio='none'><path d='M2,5 C 60,2 140,8 298,4 C 300,4 300,19 298,19 C 150,21 70,17 4,20 C 2,20 2,5 2,5 Z' fill='%23ffe066'/></svg>");
-    }
-    .optF .hi > div:nth-child(2) {
-      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 22' preserveAspectRatio='none'><path d='M3,3 C 80,5 170,2 297,5 C 299,5 299,18 297,20 C 170,17 90,21 4,18 C 2,18 2,3 3,3 Z' fill='%23ffe066'/></svg>");
-    }
-    .optF .hi > div:nth-child(3) {
-      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 22' preserveAspectRatio='none'><path d='M2,4 C 100,1 180,9 298,3 C 300,3 300,20 298,20 C 200,22 80,18 4,19 C 2,19 2,4 2,4 Z' fill='%23ffe066'/></svg>");
-    }
-    .optF .hi > div:nth-child(4) {
-      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 22' preserveAspectRatio='none'><path d='M3,5 C 50,3 160,7 297,2 C 299,2 299,19 297,20 C 130,21 60,18 4,19 C 2,19 2,5 3,5 Z' fill='%23ffe066'/></svg>");
-    }
-    .optF .hi > div:nth-child(5) {
-      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 22' preserveAspectRatio='none'><path d='M2,3 C 90,5 180,1 298,4 C 300,4 300,20 298,18 C 180,21 70,17 4,20 C 2,20 2,3 2,3 Z' fill='%23ffe066'/></svg>");
-    }
-    .optF .hi > div:nth-child(n+6) {
-      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 22' preserveAspectRatio='none'><path d='M3,4 C 70,2 160,7 297,3 C 299,3 299,19 297,19 C 160,21 70,17 4,20 C 2,20 2,4 3,4 Z' fill='%23ffe066'/></svg>");
     }
 
-    /* === G · Combinación máxima: paths variables + multiply + rotación === */
-    .optG .hi > div {
-      background-repeat: no-repeat;
-      background-size: 100% 100%;
-      padding: 1px 6px;
-      margin: 2px 0;
+    /* === E · Stroke con feTurbulence (bordes irregulares por línea) === */
+    .optE .hi {
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 16' preserveAspectRatio='none'><defs><filter id='r'><feTurbulence type='fractalNoise' baseFrequency='0.05' numOctaves='2' seed='3'/><feDisplacementMap in='SourceGraphic' scale='1.5'/></filter></defs><path d='M2,3 C 60,2 140,5 298,2 C 300,2 300,13 298,14 C 150,16 70,12 4,15 C 2,15 2,3 2,3 Z' fill='%23ffe066' filter='url(%23r)'/></svg>");
+      background-repeat: repeat-y;
+      background-size: 100% 16px;
       mix-blend-mode: multiply;
-      display: inline-block;
     }
-    .optG .hi > div:nth-child(1) {
-      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 22' preserveAspectRatio='none'><defs><linearGradient id='g1' x1='0' y1='0' x2='1' y2='0'><stop offset='0%25' stop-color='%23fff5a0'/><stop offset='100%25' stop-color='%23ffd954'/></linearGradient></defs><path d='M2,5 C 60,2 140,8 298,4 C 300,4 300,19 298,19 C 150,21 70,17 4,20 C 2,20 2,5 2,5 Z' fill='url(%23g1)'/></svg>");
-      transform: rotate(-0.3deg);
-    }
-    .optG .hi > div:nth-child(2) {
-      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 22' preserveAspectRatio='none'><defs><linearGradient id='g2' x1='0' y1='0' x2='1' y2='0'><stop offset='0%25' stop-color='%23ffe066'/><stop offset='100%25' stop-color='%23fff5a0'/></linearGradient></defs><path d='M3,3 C 80,5 170,2 297,5 C 299,5 299,18 297,20 C 170,17 90,21 4,18 C 2,18 2,3 3,3 Z' fill='url(%23g2)'/></svg>");
-      transform: rotate(0.4deg);
-    }
-    .optG .hi > div:nth-child(3) {
-      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 22' preserveAspectRatio='none'><path d='M2,4 C 100,1 180,9 298,3 C 300,3 300,20 298,20 C 200,22 80,18 4,19 C 2,19 2,4 2,4 Z' fill='%23ffe066'/></svg>");
-      transform: rotate(-0.2deg);
-    }
-    .optG .hi > div:nth-child(4) {
-      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 22' preserveAspectRatio='none'><defs><linearGradient id='g4' x1='0' y1='0' x2='1' y2='0'><stop offset='0%25' stop-color='%23fff5a0'/><stop offset='100%25' stop-color='%23ffe066'/></linearGradient></defs><path d='M3,5 C 50,3 160,7 297,2 C 299,2 299,19 297,20 C 130,21 60,18 4,19 C 2,19 2,5 3,5 Z' fill='url(%23g4)'/></svg>");
-      transform: rotate(0.5deg);
-    }
-    .optG .hi > div:nth-child(5) {
-      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 22' preserveAspectRatio='none'><path d='M2,3 C 90,5 180,1 298,4 C 300,4 300,20 298,18 C 180,21 70,17 4,20 C 2,20 2,3 2,3 Z' fill='%23ffe066'/></svg>");
-      transform: rotate(-0.4deg);
-    }
-    .optG .hi > div:nth-child(n+6) {
-      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 22' preserveAspectRatio='none'><path d='M3,4 C 70,2 160,7 297,3 C 299,3 299,19 297,19 C 160,21 70,17 4,20 C 2,20 2,4 3,4 Z' fill='%23ffe066'/></svg>");
+
+    /* === F · Stroke más fino (sólo zona del texto x-height) ===
+       El stroke ocupa sólo la mitad-baja del line-height, como
+       cuando subrayás con resaltador y queda más concentrado abajo. */
+    .optF .hi {
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 16' preserveAspectRatio='none'><path d='M2,5 C 60,4 140,7 298,4 C 300,4 300,12 298,13 C 150,14 70,11 4,13 C 2,13 2,5 2,5 Z' fill='%23ffe066'/></svg>");
+      background-repeat: repeat-y;
+      background-size: 100% 16px;
+      mix-blend-mode: multiply;
     }
 
   </style>
 </head>
 <body>
 
-<h1>Resaltadores · una pasada por línea</h1>
-<div class="subtitle">Cada spec destacada es su propia pasada de marker (más delgada). El path SVG ondulado se aplica a cada &lt;div&gt; en vez de al bloque entero. La A es el bloque-grande de la versión previa (referencia), B en adelante son por-línea.</div>
+<h1>Resaltadores · una marca DETRÁS de cada línea</h1>
+<div class="subtitle">El stroke SVG queda como background-image y se repite cada line-height (16px). El texto NO cambia: las marcas se pintan detrás. La idea es exactamente como subrayás un párrafo con resaltador: cada línea recibe una pasada.</div>
 
 <div class="grid">
 
   <div class="option optA">
     <div class="option-header">
-      <div class="option-name">A · Bloque (referencia)</div>
-      <div class="option-tag">SVG path al contenedor</div>
+      <div class="option-name">A · Simple amarillo</div>
+      <div class="option-tag">repeat-y</div>
     </div>
     <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
     <div class="hi">
@@ -200,8 +156,8 @@
 
   <div class="option optB">
     <div class="option-header">
-      <div class="option-name">B · Por línea, finita</div>
-      <div class="option-tag">SVG path por div</div>
+      <div class="option-name">B · A + multiply</div>
+      <div class="option-tag">tinta translúcida</div>
     </div>
     <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
     <div class="hi">
@@ -220,8 +176,8 @@
 
   <div class="option optC">
     <div class="option-header">
-      <div class="option-name">C · Por línea + multiply</div>
-      <div class="option-tag">tinta sobre papel</div>
+      <div class="option-name">C · Gradient + multiply</div>
+      <div class="option-tag">densidad variable horizontal</div>
     </div>
     <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
     <div class="hi">
@@ -240,8 +196,8 @@
 
   <div class="option optD">
     <div class="option-header">
-      <div class="option-name">D · Gradient horizontal</div>
-      <div class="option-tag">densidad variable</div>
+      <div class="option-name">D · 5 strokes únicos por línea</div>
+      <div class="option-tag">cada pasada distinta</div>
     </div>
     <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
     <div class="hi">
@@ -260,8 +216,8 @@
 
   <div class="option optE">
     <div class="option-header">
-      <div class="option-name">E · Por línea + rotación alternada</div>
-      <div class="option-tag">cada pasada torcida</div>
+      <div class="option-name">E · Stroke con turbulence</div>
+      <div class="option-tag">bordes vibrados</div>
     </div>
     <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
     <div class="hi">
@@ -280,28 +236,8 @@
 
   <div class="option optF">
     <div class="option-header">
-      <div class="option-name">F · Paths variables por línea</div>
-      <div class="option-tag">cada pasada distinta</div>
-    </div>
-    <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
-    <div class="hi">
-      <div>CPU Octacore A755 @1.8 GHz</div>
-      <div>Memoria RAM 8 GB</div>
-      <div>Almacenamiento 64 GB ampliable</div>
-      <div>IA educativa</div>
-      <div>Huella dactilar</div>
-    </div>
-    <div class="specs-after">
-      <div>Resolución 4K UHD</div>
-      <div>Android 13</div>
-      <div>RAM 8 GB</div>
-    </div>
-  </div>
-
-  <div class="option optG">
-    <div class="option-header">
-      <div class="option-name">G · Todo junto (paths + gradients + rot + multiply)</div>
-      <div class="option-tag">la más natural</div>
+      <div class="option-name">F · Stroke fino, ligado al texto</div>
+      <div class="option-tag">solo x-height</div>
     </div>
     <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
     <div class="hi">
