@@ -750,12 +750,12 @@ body {
 .pv-strong { font-weight: 700; color: var(--text); }
 .pv-item-title { font-weight: 700; font-size: 12px; margin-bottom: 3px; }
 /* Highlight tipo "marker" del prof: amarillo más sólido, sin border-left. */
-/* Specs destacadas: por ahora amarillo plano simple. La estructura
-   <span data-hl> queda lista para volver a probar efectos marker. */
+/* Specs destacadas: mismo tipo/interlineado que .pv-item-specs para que
+   se vean continuas. Sólo cambia el background del texto resaltado. */
 .pv-item-hi {
-  margin: 4px 0;
-  font-size: 11px;
-  line-height: 1.5;
+  margin: 3px 0;
+  font-size: 10.5px;
+  line-height: 1.2;
   color: var(--text);
 }
 .pv-item-hi [data-hl] {
