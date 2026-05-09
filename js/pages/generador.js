@@ -7,6 +7,7 @@ import { supabase } from "../lib/supabase.js";
 import { toast } from "../lib/toast.js";
 import { EMISOR, FORMAS_PAGO, BLOQUES_PANTALLA } from "../data/empresa.js";
 import { parsePaste, PRODUCT_CODES } from "../lib/parser.js";
+import { annotate } from "https://esm.sh/rough-notation@0.5.1";
 
 const fmtDate = (iso) => {
   const d = new Date(iso);
@@ -41,7 +42,10 @@ const totals = (productos) => {
 // ====== Preview (hoja A4) ======
 const itemRowHtml = (p) => {
   const ref = PRODUCTOS[p.modelo] || {};
-  const hi = (ref.specsHighlight || []).map((x) => `<div>${e(x)}</div>`).join("");
+  // Las specs destacadas se envuelven en <span data-hl>; el resaltador
+  // se dibuja después del render con Rough Notation, ajustado al ancho
+  // exacto del texto de cada línea.
+  const hi = (ref.specsHighlight || []).map((x) => `<div><span data-hl>${e(x)}</span></div>`).join("");
   const specs = (ref.specs || []).map((x) => `<div>${e(x)}</div>`).join("");
   const incluye = (ref.incluye || []).map((x) => `<div>${e(x)}</div>`).join("");
   return `
@@ -296,7 +300,7 @@ export const render = (root) => {
 
   const ro = new ResizeObserver(() => fitPreview());
   ro.observe(node.querySelector(".gen-preview"));
-  requestAnimationFrame(fitPreview);
+  requestAnimationFrame(() => { fitPreview(); applyHighlights(); });
 
   const refreshChips = () => {
     const target = node.querySelector("[data-chips]");
@@ -327,11 +331,24 @@ export const render = (root) => {
     if (counter) counter.textContent = `PRODUCTOS (${s.productos.length})`;
   };
 
+  // Aplica el resaltador estilo marker (Rough Notation) a cada span con
+  // data-hl. Cada span se rendea ajustado al ancho de su texto, así el
+  // stroke termina donde termina la línea.
+  const applyHighlights = () => {
+    node.querySelectorAll("[data-hl]").forEach((el) => {
+      annotate(el, {
+        type: "highlight", color: "#ffe066",
+        iterations: 2, animationDuration: 0, padding: [1, 2],
+      }).show();
+    });
+  };
+
   const refreshPreview = () => {
     const fit = node.querySelector(".pv-fit");
     if (fit) {
       fit.innerHTML = renderPreview(s);
       fitPreview();
+      applyHighlights();
     }
   };
 

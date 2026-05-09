@@ -1,5 +1,5 @@
 // Versión de la app (bumpeala manual en cada deploy).
-export const APP_VERSION = "0.6.6";
+export const APP_VERSION = "0.7.0";
 
 // Limpia el estado local y fuerza una recarga sin caché.
 export const clearCacheAndReload = async () => {
