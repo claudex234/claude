@@ -76,11 +76,14 @@ const looksLikePerson = (line) => {
   if (RX_TEL_MOBILE.test(t) || RX_TEL_FIJO.test(t)) return false;
   if (RX_RUC_ANY.test(t)) return false;
   const words = t.split(/\s+/).filter(Boolean);
-  if (words.length < 2 || words.length > 5) return false;
-  // Aceptamos 2-5 palabras de letras (caps o lower) — la gente tipea
-  // nombres con cualquier capitalización.
+  if (words.length < 1 || words.length > 5) return false;
+  // 1-5 palabras de letras, en cualquier mayúscula/minúscula.
   return words.every((w) => /^[A-Za-zÁÉÍÓÚÑáéíóúñ.'-]{2,}$/.test(w));
 };
+
+// Capitaliza cada palabra: "jose putito" → "Jose Putito"
+const titleCase = (s) =>
+  s.toLowerCase().replace(/(^|\s|-|')(\p{L})/gu, (_, sep, ch) => sep + ch.toUpperCase());
 
 const looksLikeEmpresa = (line) => RX_CORP_END.test(line) || RX_EDU_START.test(line) || RX_CORP_ANY.test(line);
 
@@ -124,7 +127,7 @@ export const parsePaste = (raw, productos) => {
     // 2) Email (puede convivir con otra info en la misma línea)
     if (!out.email) {
       const m = t.match(RX_EMAIL);
-      if (m) out.email = m[0];
+      if (m) out.email = m[0].toLowerCase();
     }
 
     // 3) RUC PRIMERO (más específico que teléfono). Si lo encontramos en
@@ -162,7 +165,7 @@ export const parsePaste = (raw, productos) => {
 
     // 6) Contacto (persona)
     if (!out.contacto && looksLikePerson(t)) {
-      out.contacto = t;
+      out.contacto = titleCase(t);
       continue;
     }
   }

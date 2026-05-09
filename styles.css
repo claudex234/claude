@@ -695,11 +695,9 @@ body {
   --hl-bg: #fff8c4;
   --hl-color: #0a2540;
   width: 794px;
-  /* min-height A4 para mantener el "look" de hoja, pero crece con el
-     contenido. Antes era height fijo y dejaba un hueco enorme abajo. */
-  min-height: 1123px;
-  /* Padding ajustado: top chico para subir todo. */
-  padding: 18px 32px 42px;
+  /* La hoja se adapta al contenido; sin min-height A4 ni flex column
+     que empujaba la firma al fondo y dejaba un hueco enorme. */
+  padding: 18px 32px 32px;
   box-sizing: border-box;
   background: #fff;
   color: var(--text);
@@ -707,8 +705,6 @@ body {
   border-radius: 4px;
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
   position: relative;
-  display: flex;
-  flex-direction: column;
 }
 .pv-header { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding-bottom: 0; margin-bottom: 0; }
 .pv-emisor { display: flex; flex-direction: row; gap: 10px; align-items: center; min-width: 0; }
@@ -779,7 +775,7 @@ body {
 .pv-cuenta { padding: 2px 0; color: var(--text-2); }
 .pv-cuenta-pago { margin-top: 5px; padding-top: 5px; border-top: 1px dashed var(--border); }
 
-.pv-firma { margin-top: auto; padding-top: 20px; }
+.pv-firma { margin-top: 14px; padding-top: 12px; }
 .pv-firma-label { font-size: 11px; color: var(--text-3); }
 .pv-firma-name { font-weight: 700; font-size: 12.5px; margin-top: 2px; }
 
