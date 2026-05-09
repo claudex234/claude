@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="utf-8">
-  <title>Highlight options — natural strokes</title>
+  <title>Highlight options — fit to text</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -46,111 +46,128 @@
       border-radius: 999px;
     }
     .item-name { font-weight: 700; font-size: 12px; margin-bottom: 6px; }
-    .specs-after { font-size: 10.5px; color: #6b7c93; line-height: 1.2; margin-top: 6px; }
-    .specs-after > div { padding: 1px 0; }
-    .hi { font-size: 11px; line-height: 16px; padding: 0; position: relative; }
+
+    /* line-height fijo */
+    .hi { font-size: 11px; line-height: 16px; padding: 0; }
     .hi > div { padding: 0; margin: 0; }
 
-    /* === A · Hand-crafted: UN solo SVG con 8 strokes únicos.
-       Cada uno tiene waveform, opacidad, posición x y rotación
-       distintas — toda la randomización pre-bakeada. === */
-    .optA .hi {
-      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 140' preserveAspectRatio='none'><g><path d='M-2,5 C 30,3 60,8 95,4 C 130,2 165,7 200,3 C 235,5 270,2 305,7 C 340,3 380,6 402,4 L 402,18 C 380,20 340,17 305,20 C 270,16 235,21 200,17 C 165,21 130,16 95,20 C 60,17 30,21 -2,18 Z' fill='%23ffe066' opacity='0.88' transform='rotate(-0.6 200 11)'/><path d='M3,21 C 35,23 70,18 105,21 C 140,17 175,22 210,19 C 245,23 280,18 315,21 C 350,17 380,20 397,19 L 397,33 C 380,35 350,37 315,33 C 280,37 245,32 210,36 C 175,32 140,37 105,34 C 70,37 35,33 3,35 Z' fill='%23ffd954' opacity='0.82' transform='rotate(0.5 200 27)'/><path d='M-1,38 C 40,36 80,42 120,37 C 160,34 200,40 240,36 C 280,38 320,34 360,40 C 380,37 395,38 401,38 L 401,52 C 395,54 380,52 360,55 C 320,51 280,55 240,52 C 200,56 160,50 120,54 C 80,51 40,56 -1,53 Z' fill='%23ffe066' opacity='0.85' transform='rotate(-0.4 200 45)'/><path d='M2,54 C 25,57 50,52 80,55 C 110,51 145,57 180,53 C 215,56 250,51 290,55 C 325,52 360,55 397,52 L 397,67 C 360,70 325,67 290,70 C 250,66 215,71 180,68 C 145,71 110,66 80,70 C 50,67 25,71 2,68 Z' fill='%23ffd954' opacity='0.8' transform='rotate(0.6 200 61)'/><path d='M-2,69 C 90,72 180,67 298,71 C 320,67 360,71 402,68 L 402,83 C 360,85 320,82 298,85 C 180,87 90,82 -2,85 Z' fill='%23ffe066' opacity='0.9' transform='rotate(-0.3 200 76)'/><path d='M3,84 C 50,86 110,81 200,84 C 290,82 360,86 397,82 L 397,97 C 360,100 290,97 200,100 C 110,97 50,100 3,98 Z' fill='%23ffd954' opacity='0.78' transform='rotate(0.4 200 91)'/><path d='M-1,99 C 60,101 130,96 220,99 C 310,97 360,100 401,98 L 401,114 C 360,116 310,113 220,116 C 130,113 60,116 -1,114 Z' fill='%23ffe066' opacity='0.85' transform='rotate(-0.5 200 107)'/><path d='M2,115 C 80,117 160,112 240,116 C 320,113 360,117 397,114 L 397,129 C 360,131 320,128 240,131 C 160,128 80,131 2,129 Z' fill='%23ffd954' opacity='0.8' transform='rotate(0.5 200 122)'/></g></svg>");
+    /* Spans inline-block — se ajustan al ancho del texto. */
+    .optA .hi > div span,
+    .optB .hi > div span {
+      display: inline-block;
+      padding: 0 2px;
       background-repeat: no-repeat;
-      background-size: 100% 132px;
+      background-size: 100% 22px;
       background-position: 0 -3px;
       mix-blend-mode: multiply;
     }
 
-    /* B/C/D usan Rough Notation por JS — solo wrapper. */
+    /* === A · Spans + 7 strokes únicos rotando ===
+       Cada línea recibe un SVG distinto vía nth-child. */
+    .optA .hi > div:nth-child(1) span {
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 22' preserveAspectRatio='none'><path d='M-2,5 C 30,3 60,8 95,4 C 130,2 165,7 200,3 C 235,5 270,2 305,7 C 340,3 380,6 402,4 L 402,18 C 380,20 340,17 305,20 C 270,16 235,21 200,17 C 165,21 130,16 95,20 C 60,17 30,21 -2,18 Z' fill='%23ffe066' opacity='0.88'/></svg>");
+    }
+    .optA .hi > div:nth-child(2) span {
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 22' preserveAspectRatio='none'><path d='M3,4 C 35,6 70,2 105,5 C 140,2 175,6 210,3 C 245,7 280,3 315,6 C 350,2 380,5 397,4 L 397,18 C 380,20 350,21 315,18 C 280,21 245,16 210,20 C 175,17 140,21 105,18 C 70,21 35,17 3,19 Z' fill='%23ffd954' opacity='0.85'/></svg>");
+    }
+    .optA .hi > div:nth-child(3) span {
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 22' preserveAspectRatio='none'><path d='M-1,6 C 40,4 80,9 120,5 C 160,2 200,8 240,4 C 280,7 320,3 360,7 C 380,5 395,5 401,5 L 401,18 C 395,20 380,18 360,21 C 320,17 280,21 240,18 C 200,22 160,16 120,20 C 80,17 40,22 -1,19 Z' fill='%23ffe066' opacity='0.85'/></svg>");
+    }
+    .optA .hi > div:nth-child(4) span {
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 22' preserveAspectRatio='none'><path d='M2,5 C 25,3 50,7 80,4 C 110,2 145,7 180,3 C 215,5 250,2 290,5 C 325,3 360,5 397,3 L 397,17 C 360,19 325,17 290,20 C 250,16 215,21 180,18 C 145,21 110,17 80,20 C 50,17 25,21 2,19 Z' fill='%23ffd954' opacity='0.82'/></svg>");
+    }
+    .optA .hi > div:nth-child(5) span {
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 22' preserveAspectRatio='none'><path d='M-2,4 C 90,7 180,2 298,5 C 320,2 360,6 402,3 L 402,18 C 360,20 320,18 298,20 C 180,22 90,17 -2,19 Z' fill='%23ffe066' opacity='0.9'/></svg>");
+    }
+    .optA .hi > div:nth-child(6) span {
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 22' preserveAspectRatio='none'><path d='M3,5 C 50,3 110,8 200,4 C 290,2 360,6 397,3 L 397,18 C 360,20 290,17 200,20 C 110,17 50,21 3,18 Z' fill='%23ffd954' opacity='0.8'/></svg>");
+    }
+    .optA .hi > div:nth-child(7) span {
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 22' preserveAspectRatio='none'><path d='M-1,6 C 60,4 130,9 220,5 C 310,3 360,7 401,4 L 401,18 C 360,21 310,18 220,21 C 130,18 60,21 -1,19 Z' fill='%23ffe066' opacity='0.85'/></svg>");
+    }
+    /* Rotación leve por línea (alternada) */
+    .optA .hi > div:nth-child(odd) span  { transform: rotate(-0.4deg); }
+    .optA .hi > div:nth-child(even) span { transform: rotate(0.3deg); }
+
+    /* === B · Spans + Rough Notation a cada span === */
+    /* (CSS solo prepara los spans inline-block; el highlight viene del JS) */
+
   </style>
 </head>
 <body>
 
-<h1>Resaltadores · más naturales (variación real por línea)</h1>
+<h1>Resaltadores · solo hasta donde termina el texto</h1>
 <div class="subtitle">
-A es lo más natural posible sin librería: un único SVG con 8 strokes pre-bakeados, cada uno con waveform / opacidad / rotación distintas. B-D usan <a href="https://roughnotation.com/" target="_blank" style="color:#fbbf24">Rough Notation</a> con distintos parámetros — esa lib hace randomización runtime, así que cada recarga se ve un poco diferente, igual que un marker real.
+Texto de prueba pegado del usuario. Las opciones envuelven cada línea en un &lt;span&gt; inline-block para que el stroke se ajuste exactamente al ancho del texto, no del contenedor.
 </div>
 
 <div class="grid">
 
   <div class="option optA">
     <div class="option-header">
-      <div class="option-name">A · 8 strokes únicos pre-bakeados</div>
-      <div class="option-tag">SVG estático + multiply</div>
+      <div class="option-name">A · Spans + 7 strokes únicos</div>
+      <div class="option-tag">SVG estático + multiply + rot</div>
     </div>
     <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
     <div class="hi">
-      <div>CPU Octacore A755 @1.8 GHz</div>
-      <div>Memoria RAM 8 GB</div>
-      <div>Almacenamiento 64 GB ampliable</div>
-      <div>IA educativa</div>
-      <div>Huella dactilar</div>
-    </div>
-    <div class="specs-after">
-      <div>Resolución 4K UHD</div>
-      <div>Android 13</div>
-      <div>RAM 8 GB</div>
+      <div><span>CPU Octacore A755 @2.0 GHz (gama alta)</span></div>
+      <div><span>GPU Mali-G610 (tareas gráficas)</span></div>
+      <div><span>NPU 6 TOPS (procesamiento neuronal)</span></div>
+      <div><span>Memoria RAM 16 GB</span></div>
+      <div><span>Almacenamiento 128 GB ampliable</span></div>
+      <div><span>IA educativa: genera clases, preguntas, tarjetas de estudio</span></div>
+      <div><span>Gestión de usuarios con huella dactilar</span></div>
     </div>
   </div>
 
   <div class="option optB">
     <div class="option-header">
-      <div class="option-name">B · Rough Notation default</div>
-      <div class="option-tag">iterations: 2</div>
+      <div class="option-name">B · Spans + Rough Notation</div>
+      <div class="option-tag">RN aplicado por línea</div>
     </div>
     <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
-    <div class="hi" data-rn data-iter="2" data-color="#ffe066">
-      <div>CPU Octacore A755 @1.8 GHz</div>
-      <div>Memoria RAM 8 GB</div>
-      <div>Almacenamiento 64 GB ampliable</div>
-      <div>IA educativa</div>
-      <div>Huella dactilar</div>
-    </div>
-    <div class="specs-after">
-      <div>Resolución 4K UHD</div>
-      <div>Android 13</div>
-      <div>RAM 8 GB</div>
+    <div class="hi">
+      <div><span data-rn>CPU Octacore A755 @2.0 GHz (gama alta)</span></div>
+      <div><span data-rn>GPU Mali-G610 (tareas gráficas)</span></div>
+      <div><span data-rn>NPU 6 TOPS (procesamiento neuronal)</span></div>
+      <div><span data-rn>Memoria RAM 16 GB</span></div>
+      <div><span data-rn>Almacenamiento 128 GB ampliable</span></div>
+      <div><span data-rn>IA educativa: genera clases, preguntas, tarjetas de estudio</span></div>
+      <div><span data-rn>Gestión de usuarios con huella dactilar</span></div>
     </div>
   </div>
 
   <div class="option optC">
     <div class="option-header">
-      <div class="option-name">C · Rough Notation denso</div>
-      <div class="option-tag">iterations: 4</div>
+      <div class="option-name">C · Rough Notation multiline</div>
+      <div class="option-tag">RN al contenedor, iter 3</div>
     </div>
     <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
-    <div class="hi" data-rn data-iter="4" data-color="#ffe066">
-      <div>CPU Octacore A755 @1.8 GHz</div>
-      <div>Memoria RAM 8 GB</div>
-      <div>Almacenamiento 64 GB ampliable</div>
-      <div>IA educativa</div>
-      <div>Huella dactilar</div>
-    </div>
-    <div class="specs-after">
-      <div>Resolución 4K UHD</div>
-      <div>Android 13</div>
-      <div>RAM 8 GB</div>
+    <div class="hi" data-rn-multi>
+      <div>CPU Octacore A755 @2.0 GHz (gama alta)</div>
+      <div>GPU Mali-G610 (tareas gráficas)</div>
+      <div>NPU 6 TOPS (procesamiento neuronal)</div>
+      <div>Memoria RAM 16 GB</div>
+      <div>Almacenamiento 128 GB ampliable</div>
+      <div>IA educativa: genera clases, preguntas, tarjetas de estudio</div>
+      <div>Gestión de usuarios con huella dactilar</div>
     </div>
   </div>
 
   <div class="option optD">
     <div class="option-header">
-      <div class="option-name">D · Rough Notation doble pasada</div>
+      <div class="option-name">D · RN doble pasada por span</div>
       <div class="option-tag">claro + dorado encima</div>
     </div>
     <div class="item-name">Pantalla Interactiva táctil 75" ED88PP-75 (PRO)</div>
-    <div class="hi" data-rn-double>
-      <div>CPU Octacore A755 @1.8 GHz</div>
-      <div>Memoria RAM 8 GB</div>
-      <div>Almacenamiento 64 GB ampliable</div>
-      <div>IA educativa</div>
-      <div>Huella dactilar</div>
-    </div>
-    <div class="specs-after">
-      <div>Resolución 4K UHD</div>
-      <div>Android 13</div>
-      <div>RAM 8 GB</div>
+    <div class="hi">
+      <div><span data-rn-double>CPU Octacore A755 @2.0 GHz (gama alta)</span></div>
+      <div><span data-rn-double>GPU Mali-G610 (tareas gráficas)</span></div>
+      <div><span data-rn-double>NPU 6 TOPS (procesamiento neuronal)</span></div>
+      <div><span data-rn-double>Memoria RAM 16 GB</span></div>
+      <div><span data-rn-double>Almacenamiento 128 GB ampliable</span></div>
+      <div><span data-rn-double>IA educativa: genera clases, preguntas, tarjetas de estudio</span></div>
+      <div><span data-rn-double>Gestión de usuarios con huella dactilar</span></div>
     </div>
   </div>
 
@@ -159,27 +176,35 @@ A es lo más natural posible sin librería: un único SVG con 8 strokes pre-bake
 <script type="module">
   import { annotate } from "https://unpkg.com/rough-notation?module";
 
+  // B: cada span recibe su propio annotation. El highlight termina
+  //    exactamente donde termina el texto.
   document.querySelectorAll("[data-rn]").forEach((el) => {
     annotate(el, {
-      type: "highlight",
-      color: el.dataset.color || "#ffe066",
-      multiline: true,
-      iterations: parseInt(el.dataset.iter, 10) || 2,
-      animationDuration: 900,
-      padding: [1, 2],
+      type: "highlight", color: "#ffe066",
+      iterations: 2, animationDuration: 700, padding: [1, 2],
     }).show();
   });
 
+  // C: un solo annotation al contenedor con multiline:true. RN detecta
+  //    cada línea por separado y dibuja por línea, ajustado al texto.
+  document.querySelectorAll("[data-rn-multi]").forEach((el) => {
+    annotate(el, {
+      type: "highlight", color: "#ffe066",
+      multiline: true, iterations: 3,
+      animationDuration: 800, padding: [1, 2],
+    }).show();
+  });
+
+  // D: dos pasadas por span — base clara + capa dorada encima
+  //    ligeramente descentrada.
   document.querySelectorAll("[data-rn-double]").forEach((el) => {
     annotate(el, {
       type: "highlight", color: "#fff5a0",
-      multiline: true, iterations: 3,
-      animationDuration: 0, padding: [2, 3],
+      iterations: 2, animationDuration: 0, padding: [2, 3],
     }).show();
     setTimeout(() => annotate(el, {
       type: "highlight", color: "#ffd954",
-      multiline: true, iterations: 2,
-      animationDuration: 0, padding: [-1, 2],
+      iterations: 2, animationDuration: 0, padding: [-1, 2],
     }).show(), 50);
   });
 </script>
