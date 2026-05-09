@@ -750,36 +750,20 @@ body {
 .pv-strong { font-weight: 700; color: var(--text); }
 .pv-item-title { font-weight: 700; font-size: 12px; margin-bottom: 3px; }
 /* Highlight tipo "marker" del prof: amarillo más sólido, sin border-left. */
-/* Specs destacadas: efecto marker hecho 100% con CSS (sin SVG, sin JS).
-   - display: inline + box-decoration-break: clone → se ajusta al ancho
-     del texto y soporta wrap.
-   - Gradient vertical → simula presión: claro arriba, denso al medio,
-     más saturado al final.
-   - border-radius asimétrico → no se ve cuadrado perfecto.
-   - mix-blend-mode: multiply → la tinta se mezcla con el papel.
-   - Sombra lateral muy leve → simula "bleed" en los extremos. */
+/* Specs destacadas: por ahora amarillo plano simple. La estructura
+   <span data-hl> queda lista para volver a probar efectos marker. */
 .pv-item-hi {
   margin: 4px 0;
   font-size: 11px;
-  line-height: 1.7;
+  line-height: 1.5;
   color: var(--text);
 }
-.pv-item-hi > div { margin: 1px 0; }
 .pv-item-hi [data-hl] {
   display: inline;
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
-  background: linear-gradient(180deg,
-    rgba(255, 245, 160, 0.55) 0%,
-    rgba(255, 224, 102, 0.92) 35%,
-    rgba(253, 216, 53, 0.92) 70%,
-    rgba(255, 235, 100, 0.6) 100%);
-  mix-blend-mode: multiply;
-  padding: 1px 5px 2px;
-  border-radius: 2px 5px 3px 4px / 4px 2px 5px 3px;
-  box-shadow:
-    -2px 0 1px -1px rgba(255, 224, 102, 0.45),
-     2px 0 1px -1px rgba(255, 224, 102, 0.45);
+  background: #fff8c4;
+  padding: 1px 4px;
 }
 .pv-item-specs { font-size: 10.5px; color: var(--text-3); line-height: 1.2; margin-top: 3px; }
 .pv-incluye-title { margin-top: 6px; font-size: 9.5px; font-weight: 700; color: var(--text-mute); letter-spacing: .6px; }
