@@ -696,8 +696,8 @@ body {
   --hl-color: #0a2540;
   width: 794px;
   height: 1123px;
-  /* Padding tipo prof: márgenes A4 más estándar y aprovechan más la hoja. */
-  padding: 28px 36px 56px;
+  /* Padding ajustado: top chico para subir todo. */
+  padding: 18px 32px 42px;
   box-sizing: border-box;
   background: #fff;
   color: var(--text);
@@ -708,9 +708,9 @@ body {
   display: flex;
   flex-direction: column;
 }
-.pv-header { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding-bottom: 4px; }
-.pv-emisor { display: flex; flex-direction: row; gap: 12px; align-items: center; min-width: 0; }
-.pv-logo-svg { width: 150px; flex: 0 0 150px; }
+.pv-header { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding-bottom: 0; margin-bottom: 0; }
+.pv-emisor { display: flex; flex-direction: row; gap: 10px; align-items: center; min-width: 0; }
+.pv-logo-svg { width: 130px; flex: 0 0 130px; }
 .pv-logo-svg svg { width: 100%; height: auto; display: block; }
 .pv-emisor-meta { display: flex; flex-direction: column; }
 .pv-emisor-name { font-weight: 700; font-size: 13px; color: var(--text); letter-spacing: -.2px; line-height: 1.2; }
@@ -720,10 +720,10 @@ body {
 .pv-mono { font-family: var(--font-mono); }
 .pv-mono-strong { font-family: var(--font-mono); font-weight: 700; font-size: 11px; color: var(--text); }
 .pv-muted { font-size: 10px; color: var(--text-3); margin-top: 1px; }
-/* Título "Cotización" centrado sin borde inferior */
-.pv-title { font-size: 15px; font-weight: 700; margin: 10px 0 12px; letter-spacing: -.3px; text-align: center; color: var(--text); }
+/* Título "Cotización" centrado, ajustado bien arriba */
+.pv-title { font-size: 15px; font-weight: 700; margin: 2px 0 6px; letter-spacing: -.3px; text-align: center; color: var(--text); }
 
-.pv-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pv-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
 /* Cards "flat": sin fondo, borde gris medio-oscuro y padding ajustado. */
 .pv-card { padding: 6px 11px; background: transparent; border: 1px solid #b0b8c2; border-radius: 5px; font-size: 11.5px; }
 .pv-card-label { font-size: 9.5px; font-weight: 700; color: var(--text-mute); letter-spacing: .8px; margin-bottom: 5px; }
@@ -734,7 +734,7 @@ body {
 .pv-terms dt { color: var(--text-3); }
 .pv-terms dd { margin: 0; color: var(--text); font-weight: 600; }
 
-.pv-items { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 11px; table-layout: fixed; }
+.pv-items { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 11px; table-layout: fixed; }
 .pv-items col.col-desc { width: 53%; }
 .pv-items col.col-img  { width: 18%; }
 .pv-items col.col-qty  { width: 8%; }

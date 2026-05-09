@@ -5,12 +5,24 @@
 // el <svg ...> ... </svg> entero). Conviene que tenga viewBox y no width/height
 // fijos para que escale solo dentro del contenedor.
 
-// Logo: todo negro, "EDU" más grande/grueso que "BOARD".
+// Logo oficial de EduBoard (port del SVG en duecaz/w2). Caja line-art con
+// esquinas redondeadas + texto EDU bold / BOARD regular, todo negro.
 const PLACEHOLDER_LOGO_SVG = `
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 60" preserveAspectRatio="xMinYMid meet">
-  <text x="0" y="44" font-family="'Inter', system-ui, sans-serif"
-        fill="#0a0a0a" letter-spacing="-0.5">
-    <tspan font-size="42" font-weight="900">EDU</tspan><tspan font-size="32" font-weight="600" dx="4">BOARD</tspan>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 170 36" preserveAspectRatio="xMinYMid meet" role="img">
+  <title>EduBoard</title>
+  <g fill="none" stroke="#0a0a0a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round">
+    <line x1="8" y1="1" x2="162" y2="1"/>
+    <line x1="169" y1="8" x2="169" y2="28"/>
+    <line x1="8" y1="35" x2="162" y2="35"/>
+    <line x1="1" y1="8" x2="1" y2="28"/>
+    <path d="M8 1 Q 1 1 1 8"/>
+    <path d="M162 1 Q 169 1 169 8"/>
+    <path d="M8 35 Q 1 35 1 28"/>
+    <path d="M162 35 Q 169 35 169 28"/>
+  </g>
+  <text x="50%" y="58%" dominant-baseline="middle" text-anchor="middle"
+        font-size="18" font-family="system-ui, sans-serif" fill="#0a0a0a" letter-spacing="3">
+    <tspan font-weight="700">EDU</tspan><tspan>BOARD</tspan>
   </text>
 </svg>
 `.trim();
