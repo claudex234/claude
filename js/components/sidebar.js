@@ -2,15 +2,16 @@ import { html, raw, el, on } from "../lib/utils.js";
 import { icon } from "../lib/icons.js";
 import { state, set } from "../lib/store.js";
 import { navigate, currentRoute } from "../lib/router.js";
+import { PROFORMAS } from "../data/proformas.js";
 
 const MAIN = [
-  { id: "proformas", icon: "list", label: "Proformas", badge: "47" },
+  { id: "proformas", icon: "list", label: "Proformas", badge: () => String(PROFORMAS.length || "") },
   { id: "generador", icon: "plus", label: "Nueva proforma" },
 ];
 const CATALOGO = [
   { id: "clientes", icon: "user", label: "Clientes" },
   { id: "productos", icon: "box", label: "Productos" },
-  { id: "stock", icon: "package", label: "Stock", badge: "1" },
+  { id: "stock", icon: "package", label: "Stock" },
   { id: "adjuntos", icon: "paperclip", label: "Adjuntos" },
   { id: "templates", icon: "template", label: "Plantillas" },
 ];
@@ -18,13 +19,16 @@ const OTROS = [
   { id: "config", icon: "settings", label: "Configuración" },
 ];
 
-const renderItem = (it, activePage, collapsed, extraActive = false) => html`
-  <button class="nav-item ${activePage === it.id || extraActive ? "active" : ""}" data-route="${it.id}" ${collapsed ? raw(`title="${it.label}"`) : ""}>
-    ${raw(icon(it.icon))}
-    ${collapsed ? "" : raw(`<span>${it.label}</span>`)}
-    ${it.badge && !collapsed ? raw(`<span class="nav-badge">${it.badge}</span>`) : ""}
-  </button>
-`;
+const renderItem = (it, activePage, collapsed, extraActive = false) => {
+  const badge = typeof it.badge === "function" ? it.badge() : it.badge;
+  return html`
+    <button class="nav-item ${activePage === it.id || extraActive ? "active" : ""}" data-route="${it.id}" ${collapsed ? raw(`title="${it.label}"`) : ""}>
+      ${raw(icon(it.icon))}
+      ${collapsed ? "" : raw(`<span>${it.label}</span>`)}
+      ${badge && !collapsed ? raw(`<span class="nav-badge">${badge}</span>`) : ""}
+    </button>
+  `;
+};
 
 export const mountSidebar = (container) => {
   const build = () => {

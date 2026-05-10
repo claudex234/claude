@@ -13,7 +13,7 @@ const THEMES = [
 const PAGES = [
   { id: "proformas", l: "Listado" },
   { id: "generador", l: "Generador" },
-  { id: "detalle", l: "Detalle + tracking ★" },
+  { id: "clientes", l: "Clientes" },
   { id: "templates", l: "Plantillas" },
   { id: "productos", l: "Productos" },
   { id: "stock", l: "Stock" },

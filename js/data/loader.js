@@ -1,85 +1,34 @@
-// Carga datos desde Supabase y los inyecta en los contenedores compartidos
-// (PRODUCTOS, SKINS, PROFORMAS). Se llama una vez tras el login.
+// Carga inicial desde Supabase. Inyecta los contenedores que viven en
+// data/{productos,skins,proformas,clientes}. Se llama una vez tras el login.
 import { supabase } from "../lib/supabase.js";
-import { PRODUCTOS, PROFORMAS_PRODUCTOS, adaptProducto } from "./productos.js";
-import { SKINS } from "./skins.js";
-import { PROFORMAS } from "./proformas.js";
-import { METRICS } from "./metrics.js";
+import { PRODUCTOS, adaptProducto } from "./productos.js";
+import { SKINS, adaptSkin } from "./skins.js";
+import { PROFORMAS, adaptProforma } from "./proformas.js";
 import { CLIENTES, PROFORMAS_POR_CLIENTE } from "./clientes.js";
 
-// Skin (planilla). Conserva tanto el uuid (id) como el codigo (clave que
-// usa el resto de la app). html y css son los archivos del template
-// guardados en DB; pueden ser null y caer al fallback de archivos.
-const adaptSkin = (row) => ({
-  id: row.id,
-  codigo: row.codigo,
-  nombre: row.nombre,
-  desc: row.descripcion || "",
-  cover: row.cover || {},
-  activa: !!row.activa,
-  html: row.html || null,
-  css: row.css || null,
-  uso: 0,
-});
-
-const adaptProforma = (row, clientesById, slugByProformaId, skinCodigoById) => {
-  const c = row.cliente_id ? clientesById.get(row.cliente_id) : null;
-  return {
-    id: row.numero,
-    proformaId: row.id,
-    slug: slugByProformaId.get(row.id) || null,
-    skinCodigo: skinCodigoById.get(row.skin_id) || "corporate",
-    cliente: c?.razon_social || "—",
-    contacto: c?.contacto || "",
-    cargo: c?.cargo || "",
-    ruc: c?.ruc || "",
-    email: c?.email || "",
-    telefono: c?.telefono || "",
-    monto: Number(row.total) || 0,
-    moneda: row.moneda || "PEN",
-    items: 0,
-    emitida: row.emitida || "",
-    validez: row.validez || "",
-    estado: row.estado || "borrador",
-    aperturas: 0,
-    tiempoTotal: 0,
-    ultimaVista: "—",
-    paginas: 0,
-    descargas: 0,
-    impresiones: 0,
-    reenvios: 0,
-    giroscopio: false,
-    asunto: row.asunto || "",
-  };
-};
-
 export const loadAll = async () => {
-  const [productosRes, skinsRes, clientesRes, proformasRes, linksRes] = await Promise.all([
+  const [productosRes, skinsRes, clientesRes, proformasRes, linksRes, itemsRes] = await Promise.all([
     supabase.from("productos").select("*").eq("activo", true).order("precio_default"),
     supabase.from("skins").select("*").order("created_at"),
     supabase.from("clientes").select("*"),
     supabase.from("proformas").select("*").order("created_at", { ascending: false }),
     supabase.from("proforma_links").select("proforma_id, slug"),
+    supabase.from("proforma_items").select("proforma_id"),
   ]);
 
-  if (productosRes.error) console.error("productos:", productosRes.error);
-  if (skinsRes.error) console.error("skins:", skinsRes.error);
-  if (clientesRes.error) console.error("clientes:", clientesRes.error);
-  if (proformasRes.error) console.error("proformas:", proformasRes.error);
-  if (linksRes.error) console.error("links:", linksRes.error);
-
-  // Productos: mapa por código
-  for (const k of Object.keys(PRODUCTOS)) delete PRODUCTOS[k];
-  for (const row of productosRes.data || []) {
-    PRODUCTOS[row.codigo] = adaptProducto(row);
+  for (const [k, r] of Object.entries({ productos: productosRes, skins: skinsRes, clientes: clientesRes, proformas: proformasRes, links: linksRes, items: itemsRes })) {
+    if (r.error) console.error(`${k}:`, r.error);
   }
+
+  // Productos (mapa por código)
+  for (const k of Object.keys(PRODUCTOS)) delete PRODUCTOS[k];
+  for (const row of productosRes.data || []) PRODUCTOS[row.codigo] = adaptProducto(row);
 
   // Skins
   SKINS.length = 0;
   for (const row of skinsRes.data || []) SKINS.push(adaptSkin(row));
 
-  // Clientes — guardo en memoria para la página de clientes y armo un
-  // mapa por id para resolver razón social en proformas.
+  // Clientes — array para la página + map por id para resolver razón social
   CLIENTES.length = 0;
   const clientesById = new Map();
   for (const row of clientesRes.data || []) {
@@ -88,34 +37,30 @@ export const loadAll = async () => {
   }
   CLIENTES.sort((a, b) => (a.razon_social || "").localeCompare(b.razon_social || ""));
 
-  // Slugs públicos por proforma
+  // Índices por proforma_id
   const slugByProformaId = new Map();
   for (const row of linksRes.data || []) slugByProformaId.set(row.proforma_id, row.slug);
 
-  // Map skin_id (uuid) → codigo (text) para que cada proforma sepa qué planilla usa
   const skinCodigoById = new Map();
   for (const row of skinsRes.data || []) skinCodigoById.set(row.id, row.codigo);
 
-  // Proformas
-  PROFORMAS.length = 0;
-  for (const k of Object.keys(PROFORMAS_PRODUCTOS)) delete PROFORMAS_PRODUCTOS[k];
-  for (const row of proformasRes.data || []) {
-    PROFORMAS.push(adaptProforma(row, clientesById, slugByProformaId, skinCodigoById));
+  const itemsCountByProforma = new Map();
+  for (const row of itemsRes.data || []) {
+    itemsCountByProforma.set(row.proforma_id, (itemsCountByProforma.get(row.proforma_id) || 0) + 1);
   }
 
-  // Conteo de proformas por cliente (para la columna "proformas" en /clientes)
+  // Proformas
+  PROFORMAS.length = 0;
+  for (const row of proformasRes.data || []) {
+    const p = adaptProforma(row, clientesById, slugByProformaId, skinCodigoById);
+    p.items = itemsCountByProforma.get(row.id) || 0;
+    PROFORMAS.push(p);
+  }
+
+  // Conteo de proformas por cliente (para la columna en /clientes)
   for (const k of Object.keys(PROFORMAS_POR_CLIENTE)) delete PROFORMAS_POR_CLIENTE[k];
   for (const row of proformasRes.data || []) {
     if (!row.cliente_id) continue;
     PROFORMAS_POR_CLIENTE[row.cliente_id] = (PROFORMAS_POR_CLIENTE[row.cliente_id] || 0) + 1;
   }
-
-  // Métricas mínimas calculadas del lado cliente
-  const enviadas = PROFORMAS.filter((p) => p.estado !== "borrador").length;
-  const vistas = PROFORMAS.filter((p) => ["vista", "aceptada"].includes(p.estado)).length;
-  METRICS.enviadasMes = enviadas;
-  METRICS.vistasMes = vistas;
-  METRICS.tasaApertura = enviadas ? Math.round((vistas / enviadas) * 100) : 0;
-  METRICS.montoEnviado = PROFORMAS.reduce((a, p) => a + (p.estado !== "borrador" ? p.monto : 0), 0);
-  METRICS.montoVisto = PROFORMAS.reduce((a, p) => a + (["vista", "aceptada"].includes(p.estado) ? p.monto : 0), 0);
 };

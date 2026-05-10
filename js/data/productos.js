@@ -20,10 +20,6 @@ export const FALLBACK_IMAGE = PANTALLA_SVG;
 
 export const PRODUCTOS = {};
 
-// TODO: pendiente de eliminar — nunca se popula y siempre devuelve {}.
-// Mantenerlo evita romper loader.js y listado.js mientras se confirma.
-export const PROFORMAS_PRODUCTOS = {};
-
 // Fila de la tabla `productos` → shape de memoria.
 export const adaptProducto = (row) => ({
   codigo: row.codigo,

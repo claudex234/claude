@@ -1,7 +1,6 @@
 import { html, raw, el, on, fmtMoney, fmtTime } from "../lib/utils.js";
 import { icon } from "../lib/icons.js";
 import { PROFORMAS } from "../data/proformas.js";
-import { PROFORMAS_PRODUCTOS } from "../data/productos.js";
 import { navigate } from "../lib/router.js";
 import { toast } from "../lib/toast.js";
 import { ensurePublicLink } from "../data/api.js";
@@ -14,24 +13,14 @@ const FILTERS = [
   { id: "vista", label: "Vistas" },
   { id: "borrador", label: "Sin abrir" },
 ];
-const PROD_FILTERS = [
-  { id: "todos", label: "Todos" },
-  { id: "PRO", label: "PRO" },
-  { id: "PLUS", label: "PLUS" },
-  { id: "ELITE", label: "ELITE" },
-];
 
 export const render = (root) => {
-  let state = { search: "", filter: "todas", productFilter: "todos", sort: "recientes" };
+  let state = { search: "", filter: "todas", sort: "recientes" };
 
   const compute = () => {
     let arr = PROFORMAS.filter(p => {
       if (state.filter === "vista" && p.estado !== "vista") return false;
       if (state.filter === "borrador" && p.estado !== "borrador") return false;
-      if (state.productFilter !== "todos") {
-        const prods = PROFORMAS_PRODUCTOS[p.id] || {};
-        if (!Object.keys(prods).includes(state.productFilter)) return false;
-      }
       const q = state.search.toLowerCase();
       if (q && !(p.cliente.toLowerCase().includes(q) || p.id.toLowerCase().includes(q))) return false;
       return true;
@@ -47,46 +36,40 @@ export const render = (root) => {
     borrador: PROFORMAS.filter(p => p.estado === "borrador").length,
   };
 
-  const renderRow = (p) => {
-    const prods = PROFORMAS_PRODUCTOS[p.id] || {};
-    const prodCode = Object.entries(prods).map(([k, v]) => `${v}${k}`).join(" + ");
-    return html`
-      <tr class="row" data-id="${p.id}" style="cursor:pointer">
-        <td>
-          <div class="cell-strong">${p.cliente}</div>
-          <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
-            <span style="font-size:11.5px;color:var(--text-mute);font-family:var(--font-mono)">${p.telefono}</span>
+  const renderRow = (p) => html`
+    <tr class="row" data-id="${p.id}" style="cursor:pointer">
+      <td>
+        <div class="cell-strong">${p.cliente}</div>
+        ${p.telefono ? raw(`<div style="font-size:11.5px;color:var(--text-mute);font-family:var(--font-mono);margin-top:2px">${p.telefono}</div>`) : ""}
+      </td>
+      <td>
+        <div style="font-size:13px;font-weight:600">${p.items} ${p.items === 1 ? "ítem" : "ítems"}</div>
+        <div style="font-size:11.5px;color:var(--text-mute);font-family:var(--font-mono);margin-top:2px">${fmtMoney(p.monto)}</div>
+      </td>
+      <td style="text-align:right">
+        ${p.estado === "vista" ? raw(`
+          <div style="font-size:12.5px;color:var(--text-2)">${p.ultimaVista}</div>
+          <div style="font-size:11.5px;color:var(--text-mute);margin-top:2px;display:flex;align-items:center;gap:4px;justify-content:flex-end">
+            <span>${fmtTime(p.tiempoTotal)}</span><span style="color:var(--text-mute)">·</span>${icon("eye", 11)} ${p.aperturas}
           </div>
-        </td>
-        <td>
-          <div style="font-size:13px;font-weight:600;font-family:var(--font-mono)">${prodCode || "—"}</div>
-          <div style="font-size:11.5px;color:var(--text-mute);font-family:var(--font-mono);margin-top:2px">${fmtMoney(p.monto)}</div>
-        </td>
-        <td style="text-align:right">
-          ${p.estado === "vista" ? raw(`
-            <div style="font-size:12.5px;color:var(--text-2)">${p.ultimaVista}</div>
-            <div style="font-size:11.5px;color:var(--text-mute);margin-top:2px;display:flex;align-items:center;gap:4px;justify-content:flex-end">
-              <span>${fmtTime(p.tiempoTotal)}</span><span style="color:var(--text-mute)">·</span>${icon("eye", 11)} ${p.aperturas}
-            </div>
-          `) : raw('<span style="font-size:12.5px;color:var(--text-mute)">Sin abrir</span>')}
-        </td>
-        <td>
-          ${p.estado === "vista"
-            ? raw('<span class="badge badge-info" style="font-size:10.5px"><span class="badge-dot"></span>Vista</span>')
-            : raw('<span class="badge" style="font-size:10.5px">Sin abrir</span>')}
-        </td>
-        <td data-stop>
-          <div style="display:flex;gap:6px;justify-content:flex-end;align-items:center">
-            <button class="btn btn-sm" data-action="link" data-id="${p.id}"
-              title="${p.slug ? "Copiar link público" : "Generar y copiar link público"}"
-              style="font-size:11px;padding:4px 9px;font-weight:600;${p.slug ? "color:var(--accent-strong)" : ""}">
-              ${raw(icon("link", 11))} ${p.slug ? "Link" : "Generar"}
-            </button>
-          </div>
-        </td>
-      </tr>
-    `;
-  };
+        `) : raw('<span style="font-size:12.5px;color:var(--text-mute)">Sin abrir</span>')}
+      </td>
+      <td>
+        ${p.estado === "vista"
+          ? raw('<span class="badge badge-info" style="font-size:10.5px"><span class="badge-dot"></span>Vista</span>')
+          : raw('<span class="badge" style="font-size:10.5px">Sin abrir</span>')}
+      </td>
+      <td data-stop>
+        <div style="display:flex;gap:6px;justify-content:flex-end;align-items:center">
+          <button class="btn btn-sm" data-action="link" data-id="${p.id}"
+            title="${p.slug ? "Copiar link público" : "Generar y copiar link público"}"
+            style="font-size:11px;padding:4px 9px;font-weight:600;${p.slug ? "color:var(--accent-strong)" : ""}">
+            ${raw(icon("link", 11))} ${p.slug ? "Link" : "Generar"}
+          </button>
+        </div>
+      </td>
+    </tr>
+  `;
 
   const build = () => {
     const filtered = compute();
@@ -116,14 +99,6 @@ export const render = (root) => {
                 color:${state.filter === f.id ? "var(--text)" : "var(--text-3)"};
                 font-weight:${state.filter === f.id ? 600 : 500}">${f.label} <span style="color:var(--text-mute);margin-left:4px">${counts[f.id]}</span></button>`).join(""))}
             </div>
-            <div style="display:flex;gap:4px;padding:3px;background:var(--bg-soft);border-radius:var(--radius-sm)">
-              ${raw(PROD_FILTERS.map(f => `<button class="btn btn-sm" data-pfilter="${f.id}" style="
-                background:${state.productFilter === f.id ? "var(--surface)" : "transparent"};
-                border:none;
-                box-shadow:${state.productFilter === f.id ? "var(--shadow-sm)" : "none"};
-                color:${state.productFilter === f.id ? "var(--text)" : "var(--text-3)"};
-                font-weight:${state.productFilter === f.id ? 600 : 500}">${f.label}</button>`).join(""))}
-            </div>
             <div style="margin-left:auto;font-size:12px;color:var(--text-mute)">
               Ordenar:
               <select data-sort style="border:none;background:transparent;font-weight:600;color:var(--text-2);cursor:pointer">
@@ -141,7 +116,7 @@ export const render = (root) => {
               <thead>
                 <tr>
                   <th>Cliente</th>
-                  <th>Producto</th>
+                  <th>Ítems / monto</th>
                   <th style="text-align:right">Última vista</th>
                   <th>Estado</th>
                   <th style="width:140px"></th>
@@ -186,13 +161,10 @@ export const render = (root) => {
       btn.textContent = proforma.slug ? "Copiando…" : "Generando…";
       try {
         const wasNew = !proforma.slug;
-        if (wasNew) {
-          proforma.slug = await ensurePublicLink(proforma.proformaId);
-        }
+        if (wasNew) proforma.slug = await ensurePublicLink(proforma.proformaId);
         const url = publicLinkFor(proforma.slug);
         const copied = await copyToClipboard(url);
         toast(copied ? `Link copiado · ${url}` : `Link listo · ${url}`, { type: "ok", ms: 7000 });
-        // Si lo acabo de generar, lo abro en otra pestaña para que veas el resultado.
         if (wasNew) window.open(url, "_blank", "noopener");
         refresh();
       } catch (err) {
@@ -203,7 +175,6 @@ export const render = (root) => {
       }
     });
     on(target, "click", "[data-filter]", (_, btn) => { state.filter = btn.dataset.filter; refresh(); });
-    on(target, "click", "[data-pfilter]", (_, btn) => { state.productFilter = btn.dataset.pfilter; refresh(); });
     on(target, "input", "[data-search]", (e) => {
       state.search = e.target.value;
       const cursor = e.target.selectionStart;
