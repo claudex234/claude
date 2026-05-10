@@ -2,7 +2,7 @@ import { fmtMoney, on, escapeHtml as e, el } from "../lib/utils.js";
 import { PRODUCTOS } from "../data/productos.js";
 import { PROFORMAS } from "../data/proformas.js";
 import { navigate } from "../lib/router.js";
-import { createProforma, nextNumero, ensurePublicLink } from "../data/api.js";
+import { createProforma, updateProforma, nextNumero, ensurePublicLink, fetchProformaDetail } from "../data/api.js";
 import { supabase } from "../lib/supabase.js";
 import { toast } from "../lib/toast.js";
 import { EMISOR, FORMAS_PAGO, BLOQUES_PANTALLA } from "../data/empresa.js";
@@ -33,6 +33,7 @@ const initialState = () => ({
   proformaId: null, // uuid devuelto por createProforma; null hasta primer guardado
   skinCodigo: defaultSkinCodigo(),
   emitidaIso: new Date().toISOString().slice(0, 10),
+  isEdit: false,
 });
 
 const totals = (productos) => {
@@ -126,7 +127,9 @@ const renderEditor = (s) => `
         <button class="btn btn-sm" data-action="pdf">PDF</button>
         <button class="btn btn-sm btn-link" data-action="generar-link">${s.publicSlug ? "Copiar link" : "Generar link"}</button>
         <button class="btn btn-sm btn-wsp" data-action="wsp">WhatsApp</button>
-        <button class="btn btn-sm btn-primary" data-action="enviar">Enviar al cliente</button>
+        ${s.isEdit
+          ? `<button class="btn btn-sm btn-primary" data-action="guardar">Guardar cambios</button>`
+          : `<button class="btn btn-sm btn-primary" data-action="enviar">Enviar al cliente</button>`}
       </div>
     </header>
 
@@ -205,24 +208,96 @@ const renderEditor = (s) => `
   </div>`;
 
 // ====== Mount ======
-export const render = (root) => {
+export const render = (root, ctx) => {
   const s = initialState();
+  const editId = ctx?.params?.[0] || null;
 
-  // Próximo número (no bloquea)
-  (async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        s.numero = await nextNumero(user.id);
-        const m = node.querySelector(".gen-bar-meta .mono");
-        if (m) m.textContent = s.numero;
-        refreshPreview();
-      }
-    } catch (err) { console.warn("nextNumero:", err); }
-  })();
+  if (editId) {
+    s.isEdit = true;
+    s.numero = editId; // placeholder hasta cargar
+    s.asunto = "";
+  }
+
+  // Próximo número (sólo en alta) — no bloquea.
+  if (!s.isEdit) {
+    (async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          s.numero = await nextNumero(user.id);
+          const m = node.querySelector(".gen-bar-meta .mono");
+          if (m) m.textContent = s.numero;
+          refreshPreview();
+        }
+      } catch (err) { console.warn("nextNumero:", err); }
+    })();
+  }
 
   const node = el(renderEditor(s));
   root.appendChild(node);
+
+  // En modo edición: traer la proforma y rellenar el form.
+  if (s.isEdit) {
+    (async () => {
+      try {
+        const detail = await fetchProformaDetail(editId);
+        if (!detail) {
+          toast(`No existe ${editId}`, { type: "err" });
+          navigate("proformas");
+          return;
+        }
+        const p = detail.proforma;
+        const c = detail.cliente || {};
+        s.proformaId = p.id;
+        s.numero = p.numero;
+        s.estado = p.estado || "borrador";
+        s.asunto = p.asunto || "";
+        s.publicSlug = detail.slug || null;
+        s.skinCodigo = detail.skin?.codigo || defaultSkinCodigo();
+        s.emitidaIso = p.emitida || s.emitidaIso;
+        s.cliente = {
+          razonSocial: c.razon_social || "",
+          ruc: c.ruc || "",
+          contacto: c.contacto || "",
+          email: c.email || "",
+          telefono: c.telefono || "",
+        };
+        s.rucSeguro = /^20\d{9}$/.test((c.ruc || "").trim());
+        s.productos = (detail.items || []).map((it) => {
+          const code = it.productos?.codigo || "";
+          const ref = PRODUCTOS[code] || {};
+          return {
+            modelo: code,
+            qty: Number(it.qty) || 1,
+            precio: Number(it.precio_unit) || 0,
+            nombre: it.descripcion || ref.nombre || "",
+          };
+        });
+
+        // Rehidratar todos los inputs visibles que dependen del state.
+        const setVal = (sel, val) => {
+          const i = node.querySelector(sel);
+          if (i) i.value = val;
+        };
+        setVal(`[data-f='asunto']`, s.asunto);
+        ["razonSocial", "ruc", "contacto", "email", "telefono"].forEach((k) => {
+          setVal(`[data-f='${k}']`, s.cliente[k]);
+        });
+        setVal(`[data-f='skinCodigo']`, s.skinCodigo);
+        const meta = node.querySelector(".gen-bar-meta .mono");
+        if (meta) meta.textContent = s.numero;
+        const status = node.querySelector(".gen-bar-meta .status");
+        if (status) {
+          status.textContent = s.estado;
+          status.className = `status status-${s.estado}`;
+        }
+        refreshAll();
+      } catch (err) {
+        console.error("[generador edit]", err);
+        toast(err.message || "No pude cargar la proforma", { type: "err" });
+      }
+    })();
+  }
 
   // Escala la hoja A4 (794px de ancho) para que llene el ancho disponible.
   // Como un visor PDF: el contenido nunca se reorganiza, sólo cambia la
@@ -393,6 +468,44 @@ export const render = (root) => {
       s.proformaId = proforma.id;
       toast(`${proforma.numero} enviada`, { type: "ok" });
       navigate("proformas");
+    } catch (err) {
+      console.error(err);
+      toast(err.message || "No pude guardar", { type: "err" });
+      btns.forEach((b) => (b.disabled = false));
+      if (btn && original) btn.innerHTML = original;
+    }
+  });
+  on(node, "click", "[data-action='guardar']", async (ev) => {
+    if (!validate()) return;
+    if (!s.proformaId) { toast("Esperá a que cargue la proforma", { type: "err" }); return; }
+    const btns = node.querySelectorAll("[data-action]");
+    btns.forEach((b) => (b.disabled = true));
+    const btn = ev.target.closest("button");
+    const original = btn?.innerHTML;
+    if (btn) btn.textContent = "Guardando…";
+    try {
+      const { proforma, totals: t } = await updateProforma(s.proformaId, {
+        cliente: s.cliente,
+        asunto: s.asunto,
+        items: s.productos,
+        skinCodigo: s.skinCodigo,
+      });
+      // Sincronizar PROFORMAS en memoria
+      const rec = PROFORMAS.find((p) => p.proformaId === s.proformaId);
+      if (rec) {
+        rec.cliente = s.cliente.razonSocial;
+        rec.contacto = s.cliente.contacto;
+        rec.ruc = s.cliente.ruc;
+        rec.email = s.cliente.email;
+        rec.telefono = s.cliente.telefono;
+        rec.monto = t.total;
+        rec.items = s.productos.length;
+        rec.asunto = s.asunto;
+        rec.skinCodigo = s.skinCodigo;
+        rec.estado = proforma.estado;
+      }
+      toast(`${proforma.numero} actualizada`, { type: "ok" });
+      navigate("detalle/" + proforma.numero);
     } catch (err) {
       console.error(err);
       toast(err.message || "No pude guardar", { type: "err" });

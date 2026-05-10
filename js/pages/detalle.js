@@ -56,7 +56,7 @@ const view = (d) => {
         <div style="display:flex;gap:8px">
           ${d.slug ? raw(`<button class="btn" data-action="copy-link">${icon("forward", 13)} Copiar link público</button>`) : ""}
           <button class="btn">${raw(icon("download"))} PDF</button>
-          <button class="btn btn-primary">${raw(icon("edit"))} Editar</button>
+          <button class="btn btn-primary" data-action="edit">${raw(icon("edit"))} Editar</button>
         </div>
       </div>
 
@@ -182,6 +182,7 @@ export const render = async (root, ctx) => {
   node.replaceWith(next);
 
   on(next, "click", "[data-action='back']", () => navigate("proformas"));
+  on(next, "click", "[data-action='edit']", () => navigate("generador/" + detail.proforma.numero));
   on(next, "click", "[data-action='copy-link']", async () => {
     if (!detail.slug) return;
     const url = `${location.origin}${location.pathname}#/p/${detail.slug}`;

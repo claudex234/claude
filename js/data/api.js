@@ -152,6 +152,70 @@ export const createProforma = async ({ estado, cliente, asunto, items, skinCodig
   return { proforma: prof, slug, totals: { subtotal, igv, total } };
 };
 
+// Edita una proforma existente. Reemplaza todos los items (borra + inserta)
+// y actualiza cliente/totales/skin/asunto. No cambia el numero ni emitida.
+// estado: si viene, se actualiza; si no, queda como estaba.
+export const updateProforma = async (proformaId, { cliente, asunto, items, skinCodigo, estado }) => {
+  if (!proformaId) throw new Error("Falta proformaId");
+  if (!Array.isArray(items) || !items.length) throw new Error("Agregá al menos un ítem");
+  const user = await requireUser();
+
+  const cliente_id = await findOrCreateCliente(user.id, {
+    razon_social: cliente.razonSocial,
+    ruc: cliente.ruc,
+    contacto: cliente.contacto,
+    email: cliente.email,
+    telefono: cliente.telefono,
+  });
+
+  const subtotal = items.reduce((a, it) => a + it.qty * it.precio, 0);
+  const igv = +(subtotal * 0.18).toFixed(2);
+  const total = +(subtotal + igv).toFixed(2);
+
+  let skin_id = null;
+  if (skinCodigo) {
+    const { data: skinRow } = await supabase
+      .from("skins").select("id").eq("codigo", skinCodigo).limit(1).maybeSingle();
+    skin_id = skinRow?.id || null;
+  }
+
+  const patch = {
+    cliente_id,
+    asunto: asunto || null,
+    subtotal, igv, total,
+    skin_id,
+  };
+  if (estado) patch.estado = estado;
+
+  const { data: prof, error } = await supabase
+    .from("proformas")
+    .update(patch)
+    .eq("id", proformaId)
+    .select()
+    .single();
+  if (error) throw error;
+
+  // Reemplazo total de items: la edición es destructiva sobre la lista.
+  const { error: eDel } = await supabase.from("proforma_items").delete().eq("proforma_id", proformaId);
+  if (eDel) throw eDel;
+
+  const codes = [...new Set(items.map((i) => i.modelo).filter(Boolean))];
+  const productoIds = await resolveProductoIds(codes);
+  const itemRows = items.map((it, i) => ({
+    proforma_id: proformaId,
+    producto_id: productoIds[it.modelo] || null,
+    qty: it.qty,
+    descripcion: it.nombre,
+    precio_unit: it.precio,
+    total: it.qty * it.precio,
+    posicion: i,
+  }));
+  const { error: eIns } = await supabase.from("proforma_items").insert(itemRows);
+  if (eIns) throw eIns;
+
+  return { proforma: prof, totals: { subtotal, igv, total } };
+};
+
 // Devuelve el slug público existente, o crea uno si no existe.
 export const ensurePublicLink = async (proformaId) => {
   if (!proformaId) throw new Error("Falta proformaId");
@@ -193,7 +257,7 @@ export const fetchProformaDetail = async (idOrNumero) => {
     prof.cliente_id
       ? supabase.from("clientes").select("*").eq("id", prof.cliente_id).maybeSingle()
       : Promise.resolve({ data: null }),
-    supabase.from("proforma_items").select("*").eq("proforma_id", prof.id).order("posicion"),
+    supabase.from("proforma_items").select("*, productos(codigo)").eq("proforma_id", prof.id).order("posicion"),
     supabase.from("proforma_links").select("slug").eq("proforma_id", prof.id).limit(1),
     prof.skin_id
       ? supabase.from("skins").select("codigo, nombre").eq("id", prof.skin_id).maybeSingle()
