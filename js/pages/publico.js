@@ -86,13 +86,14 @@ const renderViewer = async (payload, slug) => {
   const inner = (payload.skin_html || payload.skin_css)
     ? renderPlanillaWith({ html: payload.skin_html, css: payload.skin_css }, data)
     : await renderPlanilla(payload.skin_codigo || "corporate", data);
+  // Watermark off por defecto. Se activa con `?wm=1` en la URL del visor
+  // para shares sensibles donde sí queremos dejar huella en una captura.
+  const wmEnabled = /[?&]wm=1\b/.test(location.hash) || /[?&]wm=1\b/.test(location.search);
   const ts = new Date().toISOString().slice(0, 16).replace("T", " ");
   const wm = `${slug.slice(0, 8)} · ${ts}`;
   return `
     <div class="vp-shell">
-      <div class="vp-watermark" aria-hidden="true">
-        ${Array.from({ length: 60 }, () => `<span>${e(wm)}</span>`).join("")}
-      </div>
+      ${wmEnabled ? `<div class="vp-watermark" aria-hidden="true">${Array.from({ length: 60 }, () => `<span>${e(wm)}</span>`).join("")}</div>` : ""}
       <header class="vp-bar">
         <div class="vp-bar-emisor">
           <div>
