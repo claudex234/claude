@@ -7,6 +7,7 @@ import { SKINS } from "../data/skins.js";
 import { upsertSkin, deleteSkin, setDefaultSkin, fetchSkins } from "../data/api.js";
 import { resolvePlanilla, renderPlanillaWith } from "../lib/planillas.js";
 import { toast } from "../lib/toast.js";
+import { PAGE_W } from "../lib/a4_fit.js";
 
 const slugify = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
   .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
@@ -123,7 +124,7 @@ const renderMiniPreview = async (codigo, container) => {
     requestAnimationFrame(() => {
       const page = container.querySelector(".skin-mini-page");
       if (!page) return;
-      const scale = container.clientWidth / 794;
+      const scale = container.clientWidth / PAGE_W;
       page.style.transform = `scale(${scale})`;
       page.style.transformOrigin = "top left";
     });
@@ -212,7 +213,7 @@ export const render = (root) => {
       requestAnimationFrame(() => {
         const page = target.querySelector(".skin-mini-page");
         if (!page) return;
-        const scale = Math.min(1, target.clientWidth / 794);
+        const scale = Math.min(1, target.clientWidth / PAGE_W);
         page.style.transform = `scale(${scale})`;
         page.style.transformOrigin = "top left";
       });

@@ -1,20 +1,17 @@
 import { fmtMoney, on, escapeHtml as e, el } from "../lib/utils.js";
 import { PRODUCTOS } from "../data/productos.js";
-import { PROFORMAS } from "../data/proformas.js";
+import { PROFORMAS, toMemoryProforma } from "../data/proformas.js";
 import { navigate } from "../lib/router.js";
 import { createProforma, updateProforma, nextNumero, ensurePublicLink, fetchProformaDetail } from "../data/api.js";
 import { supabase } from "../lib/supabase.js";
 import { toast } from "../lib/toast.js";
-import { EMISOR, FORMAS_PAGO, BLOQUES_PANTALLA } from "../data/empresa.js";
+import { EMISOR, FORMAS_PAGO } from "../data/empresa.js";
 import { parsePaste, PRODUCT_CODES } from "../lib/parser.js";
 import { renderPlanilla } from "../lib/planillas.js";
 import { SKINS, defaultSkinCodigo } from "../data/skins.js";
-
-const fmtDate = (iso) => {
-  const d = new Date(iso);
-  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
-};
-const money = (n) => fmtMoney(n).replace("S/ ", "");
+import { copyToClipboard } from "../lib/clipboard.js";
+import { mountA4Fit } from "../lib/a4_fit.js";
+import { fromEditorState } from "../lib/planilla_data.js";
 
 const initialState = () => ({
   numero: "PRF-…",
@@ -42,60 +39,10 @@ const totals = (productos) => {
   return { subtotal, igv, total: +(subtotal + igv).toFixed(2) };
 };
 
-// ====== Preview (hoja A4) ======
-// Construye el shape `data` que consumen las planillas (ver
-// /planillas/<codigo>/index.html para los tokens disponibles).
-const buildData = (s) => {
-  const t = totals(s.productos);
-  return {
-    numero: s.numero,
-    fecha: fmtDate(s.emitidaIso),
-    emisor: EMISOR,
-    cliente: {
-      razon: s.cliente.razonSocial || "—",
-      ruc: s.cliente.ruc,
-      contacto: s.cliente.contacto,
-      email: s.cliente.email,
-      telefono: s.cliente.telefono,
-    },
-    terminos: {
-      tiempoEntrega: s.terminos.tiempoEntrega,
-      lugarEntrega: EMISOR.defaults.lugarEntrega,
-      garantia: EMISOR.defaults.garantia,
-      validez: s.terminos.validez,
-      condiciones: EMISOR.defaults.condiciones,
-    },
-    items: s.productos.map((p) => {
-      const ref = PRODUCTOS[p.modelo] || {};
-      return {
-        qty: p.qty,
-        precio: money(p.precio),
-        total: money(p.qty * p.precio),
-        nombre: p.nombre,
-        codigo: ref.codigo || p.modelo,
-        imagen: ref.imagen,
-        specs: ref.specs || [],
-        specsHighlight: ref.specsHighlight || [],
-        incluye: ref.incluye || [],
-      };
-    }),
-    totales: {
-      subtotal: money(t.subtotal),
-      igv: money(t.igv),
-      total: money(t.total),
-    },
-    showBloques: s.productos.length > 0,
-    bloques: {
-      servicios: BLOQUES_PANTALLA.servicios,
-      noIncluido: BLOQUES_PANTALLA.noIncluido,
-    },
-  };
-};
-
 // Renderiza el preview vía la planilla seleccionada. Async porque la
 // primera vez se hace fetch del HTML (después la lib lo cachea).
 const renderPreview = async (s) => {
-  const inner = await renderPlanilla(s.skinCodigo, buildData(s));
+  const inner = await renderPlanilla(s.skinCodigo, fromEditorState(s, PRODUCTOS, totals(s.productos)));
   return `<div class="pv-doc"><article class="pv-page">${inner}</article></div>`;
 };
 
@@ -125,11 +72,9 @@ const renderEditor = (s) => `
       </div>
       <div class="gen-actions">
         <button class="btn btn-sm" data-action="pdf">PDF</button>
-        <button class="btn btn-sm btn-link" data-action="generar-link">${s.publicSlug ? "Copiar link" : "Generar link"}</button>
-        <button class="btn btn-sm btn-wsp" data-action="wsp">WhatsApp</button>
         ${s.isEdit
           ? `<button class="btn btn-sm btn-primary" data-action="guardar">Guardar cambios</button>`
-          : `<button class="btn btn-sm btn-primary" data-action="enviar">Enviar al cliente</button>`}
+          : `<button class="btn btn-sm btn-primary btn-link" data-action="generar-link">${s.publicSlug ? "Copiar link" : "Generar link"}</button>`}
       </div>
     </header>
 
@@ -299,29 +244,8 @@ export const render = (root, ctx) => {
     })();
   }
 
-  // Escala la hoja A4 (794px de ancho) para que llene el ancho disponible.
-  // Como un visor PDF: el contenido nunca se reorganiza, sólo cambia la
-  // escala visual. Usamos transform: scale + wrapper con dimensiones
-  // explícitas para que el layout/scroll coincida con lo que se ve.
-  const PAGE_W = 794;
-  const fitPreview = () => {
-    const container = node.querySelector(".gen-preview");
-    const fit = container?.querySelector(".pv-fit");
-    const doc = fit?.querySelector(".pv-doc");
-    if (!container || !fit || !doc) return;
-    const cw = container.clientWidth - 48; // padding lateral
-    if (cw <= 0) return;
-    const scale = Math.max(0.3, cw / PAGE_W);
-    doc.style.transformOrigin = "top left";
-    doc.style.transform = `scale(${scale})`;
-    // El wrapper ocupa el espacio "post-escala" para que el scroll
-    // vertical del container sea correcto.
-    fit.style.width = (PAGE_W * scale) + "px";
-    fit.style.height = (doc.scrollHeight * scale) + "px";
-  };
-
-  const ro = new ResizeObserver(() => fitPreview());
-  ro.observe(node.querySelector(".gen-preview"));
+  const a4 = mountA4Fit(node.querySelector(".gen-preview"), { paddingX: 48 });
+  const fitPreview = a4.update;
   // Primer render asíncrono después de pintar el placeholder.
   requestAnimationFrame(() => { refreshPreview(); });
 
@@ -432,49 +356,6 @@ export const render = (root, ctx) => {
     return true;
   };
 
-  on(node, "click", "[data-action='enviar']", async (ev) => {
-    if (!validate()) return;
-    const btns = node.querySelectorAll("[data-action]");
-    btns.forEach((b) => (b.disabled = true));
-    const btn = ev.target.closest("button");
-    const original = btn?.innerHTML;
-    if (btn) btn.textContent = "Enviando…";
-    try {
-      const { proforma, slug, totals: t } = await createProforma({
-        estado: "enviada",
-        cliente: s.cliente,
-        asunto: s.asunto,
-        items: s.productos,
-        skinCodigo: s.skinCodigo,
-      });
-      PROFORMAS.unshift({
-        id: proforma.numero,
-        proformaId: proforma.id,
-        slug: slug || null,
-        skinCodigo: s.skinCodigo,
-        cliente: s.cliente.razonSocial,
-        contacto: s.cliente.contacto,
-        ruc: s.cliente.ruc,
-        email: s.cliente.email,
-        telefono: s.cliente.telefono,
-        monto: t.total, moneda: "PEN",
-        items: s.productos.length,
-        emitida: proforma.emitida, validez: proforma.validez, estado: proforma.estado,
-        aperturas: 0, tiempoTotal: 0, ultimaVista: "—",
-        paginas: 0, descargas: 0, impresiones: 0, reenvios: 0, giroscopio: false,
-        asunto: s.asunto,
-      });
-      s.publicSlug = slug;
-      s.proformaId = proforma.id;
-      toast(`${proforma.numero} enviada`, { type: "ok" });
-      navigate("proformas");
-    } catch (err) {
-      console.error(err);
-      toast(err.message || "No pude guardar", { type: "err" });
-      btns.forEach((b) => (b.disabled = false));
-      if (btn && original) btn.innerHTML = original;
-    }
-  });
   on(node, "click", "[data-action='guardar']", async (ev) => {
     if (!validate()) return;
     if (!s.proformaId) { toast("Esperá a que cargue la proforma", { type: "err" }); return; }
@@ -521,27 +402,6 @@ export const render = (root, ctx) => {
     const url = `${location.origin}${location.pathname}#/print/${s.numero}`;
     window.open(url, "_blank", "noopener");
   });
-  // Copy con fallback: navigator.clipboard puede fallar fuera de https
-  // o sin user gesture (después de un await).
-  const copyToClipboard = async (text) => {
-    try {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(text);
-        return true;
-      }
-    } catch {}
-    try {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.position = "fixed"; ta.style.opacity = "0";
-      document.body.appendChild(ta);
-      ta.focus(); ta.select();
-      const ok = document.execCommand("copy");
-      ta.remove();
-      return ok;
-    } catch { return false; }
-  };
-
   const publicUrl = (slug) => `${location.origin}${location.pathname}#/p/${slug}`;
 
   // Genera (o reutiliza) el link público. Si la proforma todavía no se
@@ -567,17 +427,11 @@ export const render = (root, ctx) => {
         // Reflejar en la barra y el listado
         const m = node.querySelector(".gen-bar-meta .mono");
         if (m) m.textContent = s.numero;
-        PROFORMAS.unshift({
-          id: proforma.numero, proformaId: proforma.id, slug: null,
-          skinCodigo: s.skinCodigo,
-          cliente: s.cliente.razonSocial, contacto: s.cliente.contacto,
-          ruc: s.cliente.ruc, email: s.cliente.email, telefono: s.cliente.telefono,
-          monto: t.total, moneda: "PEN", items: s.productos.length,
-          emitida: proforma.emitida, validez: proforma.validez, estado: "borrador",
-          aperturas: 0, tiempoTotal: 0, ultimaVista: "—",
-          paginas: 0, descargas: 0, impresiones: 0, reenvios: 0, giroscopio: false,
-          asunto: s.asunto,
-        });
+        PROFORMAS.unshift(toMemoryProforma({
+          proforma, slug: null,
+          cliente: s.cliente, items: s.productos, total: t.total,
+          skinCodigo: s.skinCodigo, asunto: s.asunto,
+        }));
       }
       // Ahora sí, asegurar el slug público.
       const wasNew = !s.publicSlug;
@@ -601,14 +455,6 @@ export const render = (root, ctx) => {
       if (btn && original) { btn.disabled = false; btn.innerHTML = original; }
     }
   });
-  on(node, "click", "[data-action='wsp']", () => {
-    const tel = (s.cliente.telefono || "").replace(/[^\d+]/g, "");
-    if (!tel) return toast("Cargá un teléfono primero", { type: "err" });
-    const link = s.publicSlug ? publicUrl(s.publicSlug) : "";
-    const msg = encodeURIComponent(`Hola ${s.cliente.contacto || ""}, te paso la proforma ${s.numero}: ${s.asunto || ""}.${link ? " " + link : ""}`);
-    window.open(`https://wa.me/${tel.replace(/^\+/, "")}?text=${msg}`, "_blank");
-  });
-
   // Cleanup al cambiar de ruta
-  return () => ro.disconnect();
+  return () => a4.dispose();
 };

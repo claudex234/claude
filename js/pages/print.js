@@ -3,63 +3,10 @@
 // dispara window.print() al cargar para que el browser ofrezca el
 // diálogo de impresión / "Guardar como PDF".
 
-import { fmtMoney, escapeHtml as e } from "../lib/utils.js";
+import { escapeHtml as e } from "../lib/utils.js";
 import { fetchProformaDetail } from "../data/api.js";
 import { renderPlanilla } from "../lib/planillas.js";
-import { EMISOR, BLOQUES_PANTALLA } from "../data/empresa.js";
-
-const fmtDate = (iso) => {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(+d)) return iso;
-  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
-};
-const money = (n) => fmtMoney(n).replace("S/ ", "");
-
-const buildData = (detail) => {
-  const p = detail.proforma;
-  const c = detail.cliente || {};
-  return {
-    numero: p.numero,
-    fecha: fmtDate(p.emitida),
-    emisor: EMISOR,
-    cliente: {
-      razon: c.razon_social || "—",
-      ruc: c.ruc, contacto: c.contacto, email: c.email, telefono: c.telefono,
-    },
-    terminos: {
-      tiempoEntrega: EMISOR.defaults.tiempoEntrega,
-      lugarEntrega: EMISOR.defaults.lugarEntrega,
-      garantia: EMISOR.defaults.garantia,
-      validez: 15,
-      condiciones: EMISOR.defaults.condiciones,
-    },
-    items: (detail.items || []).map((it) => {
-      const code = it.productos?.codigo || "";
-      return {
-        qty: it.qty,
-        precio: money(it.precio_unit),
-        total: money(it.total),
-        nombre: it.descripcion || "",
-        codigo: code,
-        imagen: "",
-        specs: [],
-        specsHighlight: [],
-        incluye: [],
-      };
-    }),
-    totales: {
-      subtotal: money(p.subtotal),
-      igv: money(p.igv),
-      total: money(p.total),
-    },
-    showBloques: (detail.items || []).length > 0,
-    bloques: {
-      servicios: BLOQUES_PANTALLA.servicios,
-      noIncluido: BLOQUES_PANTALLA.noIncluido,
-    },
-  };
-};
+import { fromDetail } from "../lib/planilla_data.js";
 
 const showError = (root, msg) => {
   root.innerHTML = `
@@ -140,7 +87,7 @@ export const render = async (root, ctx) => {
   }
 
   try {
-    const inner = await renderPlanilla(detail.skin?.codigo || "corporate", buildData(detail));
+    const inner = await renderPlanilla(detail.skin?.codigo || "corporate", fromDetail(detail));
     const page = root.querySelector("[data-page]");
     if (page) page.innerHTML = inner;
   } catch (err) {

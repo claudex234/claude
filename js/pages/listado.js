@@ -5,37 +5,14 @@ import { PROFORMAS_PRODUCTOS } from "../data/productos.js";
 import { navigate } from "../lib/router.js";
 import { toast } from "../lib/toast.js";
 import { ensurePublicLink } from "../data/api.js";
+import { copyToClipboard } from "../lib/clipboard.js";
 
 const publicLinkFor = (slug) => `${location.origin}${location.pathname}#/p/${slug}`;
-
-// Copy con fallback: navigator.clipboard puede fallar fuera de https,
-// sin user gesture, o en algunos browsers. Probamos execCommand como
-// segundo intento y devolvemos true/false.
-const copyToClipboard = async (text) => {
-  try {
-    if (navigator.clipboard && window.isSecureContext) {
-      await navigator.clipboard.writeText(text);
-      return true;
-    }
-  } catch {}
-  try {
-    const ta = document.createElement("textarea");
-    ta.value = text;
-    ta.style.position = "fixed";
-    ta.style.opacity = "0";
-    document.body.appendChild(ta);
-    ta.focus();
-    ta.select();
-    const ok = document.execCommand("copy");
-    ta.remove();
-    return ok;
-  } catch { return false; }
-};
 
 const FILTERS = [
   { id: "todas", label: "Todas" },
   { id: "vista", label: "Vistas" },
-  { id: "enviada", label: "Sin abrir" },
+  { id: "borrador", label: "Sin abrir" },
 ];
 const PROD_FILTERS = [
   { id: "todos", label: "Todos" },
@@ -45,12 +22,12 @@ const PROD_FILTERS = [
 ];
 
 export const render = (root) => {
-  let state = { search: "", filter: "todas", productFilter: "todos", sort: "recientes", selected: new Set() };
+  let state = { search: "", filter: "todas", productFilter: "todos", sort: "recientes" };
 
   const compute = () => {
     let arr = PROFORMAS.filter(p => {
       if (state.filter === "vista" && p.estado !== "vista") return false;
-      if (state.filter === "enviada" && p.estado !== "enviada") return false;
+      if (state.filter === "borrador" && p.estado !== "borrador") return false;
       if (state.productFilter !== "todos") {
         const prods = PROFORMAS_PRODUCTOS[p.id] || {};
         if (!Object.keys(prods).includes(state.productFilter)) return false;
@@ -67,16 +44,14 @@ export const render = (root) => {
   const counts = {
     todas: PROFORMAS.length,
     vista: PROFORMAS.filter(p => p.estado === "vista").length,
-    enviada: PROFORMAS.filter(p => p.estado === "enviada").length,
+    borrador: PROFORMAS.filter(p => p.estado === "borrador").length,
   };
 
   const renderRow = (p) => {
     const prods = PROFORMAS_PRODUCTOS[p.id] || {};
     const prodCode = Object.entries(prods).map(([k, v]) => `${v}${k}`).join(" + ");
-    const checked = state.selected.has(p.id);
     return html`
       <tr class="row" data-id="${p.id}" style="cursor:pointer">
-        <td data-stop><input type="checkbox" data-check ${checked ? raw('checked') : ''}></td>
         <td>
           <div class="cell-strong">${p.cliente}</div>
           <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
@@ -98,7 +73,7 @@ export const render = (root) => {
         <td>
           ${p.estado === "vista"
             ? raw('<span class="badge badge-info" style="font-size:10.5px"><span class="badge-dot"></span>Vista</span>')
-            : raw('<span class="badge" style="font-size:10.5px">Enviada</span>')}
+            : raw('<span class="badge" style="font-size:10.5px">Sin abrir</span>')}
         </td>
         <td data-stop>
           <div style="display:flex;gap:6px;justify-content:flex-end;align-items:center">
@@ -107,7 +82,6 @@ export const render = (root) => {
               style="font-size:11px;padding:4px 9px;font-weight:600;${p.slug ? "color:var(--accent-strong)" : ""}">
               ${raw(icon("link", 11))} ${p.slug ? "Link" : "Generar"}
             </button>
-            <button class="btn-icon btn-ghost" title="Eliminar" style="color:var(--danger);opacity:.7">${raw(icon("trash", 14))}</button>
           </div>
         </td>
       </tr>
@@ -124,12 +98,6 @@ export const render = (root) => {
             <p class="page-sub">${PROFORMAS.length} proformas · ${counts.vista} vistas por el cliente</p>
           </div>
           <div style="display:flex;gap:8px">
-            ${state.selected.size > 0 ? raw(`
-              <span style="align-self:center;font-size:12.5px;color:var(--text-3);margin-right:4px">${state.selected.size} seleccionada${state.selected.size !== 1 ? "s" : ""}</span>
-              <button class="btn">${icon("refresh", 13)} Actualizar estado</button>
-              <button class="btn" style="color:var(--danger)">${icon("trash", 13)} Eliminar</button>
-            `) : ""}
-            <button class="btn">${raw(icon("download"))} Exportar</button>
             <button class="btn btn-primary" data-action="nueva">${raw(icon("plus"))} Nueva proforma</button>
           </div>
         </div>
@@ -172,7 +140,6 @@ export const render = (root) => {
             <table class="table">
               <thead>
                 <tr>
-                  <th style="width:36px"></th>
                   <th>Cliente</th>
                   <th>Producto</th>
                   <th style="text-align:right">Última vista</th>
@@ -187,12 +154,8 @@ export const render = (root) => {
           </div>
         </div>
 
-        <div style="display:flex;justify-content:space-between;margin-top:12px;font-size:12px;color:var(--text-3)">
-          <span>Mostrando ${filtered.length} de ${PROFORMAS.length}</span>
-          <div style="display:flex;gap:4px">
-            <button class="btn btn-sm" disabled style="opacity:.5">← Anterior</button>
-            <button class="btn btn-sm">Siguiente →</button>
-          </div>
+        <div style="margin-top:12px;font-size:12px;color:var(--text-3)">
+          Mostrando ${filtered.length} de ${PROFORMAS.length}
         </div>
       </div>
     `);
@@ -254,13 +217,6 @@ export const render = (root) => {
     on(target, "click", "tr.row", (e, tr) => {
       if (e.target.closest("[data-stop]")) return;
       navigate("detalle/" + tr.dataset.id);
-    });
-    on(target, "change", "[data-check]", (e) => {
-      const tr = e.target.closest("tr");
-      if (!tr) return;
-      if (e.target.checked) state.selected.add(tr.dataset.id);
-      else state.selected.delete(tr.dataset.id);
-      refresh();
     });
   };
 

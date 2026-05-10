@@ -2,18 +2,12 @@
 // La sección de tracking queda con placeholders hasta que cableemos
 // proforma_aperturas (último item del roadmap).
 
-import { html, raw, el, on, fmtMoney, escapeHtml as e } from "../lib/utils.js";
+import { html, raw, el, on, fmtMoney, fmtDate, escapeHtml as e } from "../lib/utils.js";
 import { icon } from "../lib/icons.js";
 import { navigate } from "../lib/router.js";
 import { fetchProformaDetail, ensurePublicLink } from "../data/api.js";
 import { toast } from "../lib/toast.js";
-
-const fmtDate = (iso) => {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(+d)) return iso;
-  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
-};
+import { copyToClipboard } from "../lib/clipboard.js";
 
 const skeleton = () => html`
   <div class="page fade-in">
@@ -185,31 +179,12 @@ export const render = async (root, ctx) => {
 
   const publicUrl = (slug) => `${location.origin}${location.pathname}#/p/${slug}`;
 
-  const copyText = async (text) => {
-    try {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(text);
-        return true;
-      }
-    } catch {}
-    try {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.position = "fixed"; ta.style.opacity = "0";
-      document.body.appendChild(ta);
-      ta.focus(); ta.select();
-      const ok = document.execCommand("copy");
-      ta.remove();
-      return ok;
-    } catch { return false; }
-  };
-
   on(next, "click", "[data-action='back']", () => navigate("proformas"));
   on(next, "click", "[data-action='edit']", () => navigate("generador/" + detail.proforma.numero));
   on(next, "click", "[data-action='copy-link']", async () => {
     if (!detail.slug) return;
     const url = publicUrl(detail.slug);
-    const ok = await copyText(url);
+    const ok = await copyToClipboard(url);
     toast(ok ? `Link copiado · ${url}` : `Link · ${url}`, { type: ok ? "ok" : "info", ms: 7000 });
   });
   on(next, "click", "[data-action='gen-link']", async (ev) => {
@@ -219,7 +194,7 @@ export const render = async (root, ctx) => {
       const slug = await ensurePublicLink(detail.proforma.id);
       detail.slug = slug;
       const url = publicUrl(slug);
-      const ok = await copyText(url);
+      const ok = await copyToClipboard(url);
       toast(ok ? `Link copiado · ${url}` : `Link generado · ${url}`, { type: "ok", ms: 7000 });
       window.open(url, "_blank", "noopener");
       // Mutar el botón a 'Copiar link' (mismo handler de copy-link).

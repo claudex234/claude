@@ -19,6 +19,15 @@ export const escapeHtml = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({
   "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
 })[c]);
 
+// Fecha ISO (yyyy-mm-dd o full timestamp) → dd/mm/yyyy. Si no parsea
+// devuelve el string tal cual; si viene null/undefined devuelve un guión.
+export const fmtDate = (iso) => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(+d)) return iso;
+  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+};
+
 // Tagged template que devuelve string HTML; valores se escapan automáticamente.
 // Para inyectar HTML crudo, usá `raw(str)`.
 const RAW = Symbol("raw");

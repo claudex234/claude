@@ -3,16 +3,11 @@
 // disuadir capturas/descargas. (Bloquear capturas 100% es imposible
 // en un browser; esto sólo dificulta y deja huella.)
 import { supabase } from "../lib/supabase.js";
-import { fmtMoney, escapeHtml as e } from "../lib/utils.js";
-import { EMISOR, BLOQUES_PANTALLA } from "../data/empresa.js";
+import { escapeHtml as e } from "../lib/utils.js";
+import { EMISOR } from "../data/empresa.js";
 import { renderPlanilla, renderPlanillaWith } from "../lib/planillas.js";
-
-const fmtDate = (iso) => {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
-};
-const money = (n) => fmtMoney(n).replace("S/ ", "");
+import { mountA4Fit } from "../lib/a4_fit.js";
+import { fromRpcPayload } from "../lib/planilla_data.js";
 
 const slugFromHash = () => {
   const m = location.hash.match(/^#\/?p\/([A-Za-z0-9_-]+)/);
@@ -33,56 +28,9 @@ const logApertura = async (slug) => {
   }
 };
 
-// Construye el shape `data` que consumen las planillas. El payload del
-// RPC viene en snake_case; lo normalizo acá.
-const buildData = (payload) => {
-  const p = payload.proforma;
-  const c = payload.cliente || {};
-  return {
-    numero: p.numero,
-    fecha: fmtDate(p.emitida),
-    emisor: EMISOR,
-    cliente: {
-      razon: c.razon_social || "—",
-      ruc: c.ruc, contacto: c.contacto, email: c.email, telefono: c.telefono,
-    },
-    terminos: {
-      tiempoEntrega: EMISOR.defaults.tiempoEntrega,
-      lugarEntrega: EMISOR.defaults.lugarEntrega,
-      garantia: EMISOR.defaults.garantia,
-      validez: 15,
-      condiciones: EMISOR.defaults.condiciones,
-    },
-    items: (payload.items || []).map((it) => {
-      const ref = it.producto || {};
-      return {
-        qty: it.qty,
-        precio: money(it.precio_unit),
-        total: money(it.total),
-        nombre: it.descripcion || ref.nombre || "",
-        codigo: ref.codigo || "",
-        imagen: ref.imagen || "",
-        specs: ref.specs || [],
-        specsHighlight: ref.specs_highlight || [],
-        incluye: ref.incluye || [],
-      };
-    }),
-    totales: {
-      subtotal: money(p.subtotal),
-      igv: money(p.igv),
-      total: money(p.total),
-    },
-    showBloques: (payload.items || []).length > 0,
-    bloques: {
-      servicios: BLOQUES_PANTALLA.servicios,
-      noIncluido: BLOQUES_PANTALLA.noIncluido,
-    },
-  };
-};
-
 const renderViewer = async (payload, slug) => {
   const p = payload.proforma;
-  const data = buildData(payload);
+  const data = fromRpcPayload(payload);
   const inner = (payload.skin_html || payload.skin_css)
     ? renderPlanillaWith({ html: payload.skin_html, css: payload.skin_css }, data)
     : await renderPlanilla(payload.skin_codigo || "corporate", data);
@@ -117,8 +65,6 @@ const renderViewer = async (payload, slug) => {
       </div>
     </div>`;
 };
-
-const PAGE_W = 794;
 
 const installProtections = (root) => {
   const stop = (e) => { e.preventDefault(); e.stopPropagation(); return false; };
@@ -166,20 +112,6 @@ const installProtections = (root) => {
     document.removeEventListener("visibilitychange", onVis);
     document.body.classList.remove("vp-hidden", "vp-public");
   };
-};
-
-const fitDoc = (root) => {
-  const stage = root.querySelector(".vp-stage");
-  const fit = root.querySelector(".vp-fit");
-  const doc = root.querySelector(".pv-doc");
-  if (!stage || !fit || !doc) return;
-  const cw = stage.clientWidth - 64;
-  if (cw <= 0) return;
-  const scale = Math.max(0.3, Math.min(1.4, cw / PAGE_W));
-  doc.style.transformOrigin = "top left";
-  doc.style.transform = `scale(${scale})`;
-  fit.style.width = (PAGE_W * scale) + "px";
-  fit.style.height = (doc.scrollHeight * scale) + "px";
 };
 
 const showError = (root, title, detail) => {
@@ -235,12 +167,10 @@ export const render = async (root) => {
   const cleanupProt = installProtections(root);
 
   const stage = root.querySelector(".vp-stage");
-  const ro = new ResizeObserver(() => fitDoc(root));
-  if (stage) ro.observe(stage);
-  requestAnimationFrame(() => fitDoc(root));
+  const a4 = stage ? mountA4Fit(stage, { paddingX: 64, maxScale: 1.4, fitSelector: ".vp-fit" }) : { dispose: () => {} };
 
   return () => {
-    ro.disconnect();
+    a4.dispose();
     cleanupProt();
   };
 };
