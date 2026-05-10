@@ -1,6 +1,6 @@
 // Barrel: re-exporta las APIs de Supabase divididas por dominio.
 // Los módulos vivos están en data/api/{proformas,clientes,skins}.js
-// más data/api/_helpers.js (no exportado a páginas).
+// más data/api/helpers.js (no exportado a páginas).
 export {
   nextNumero,
   createProforma,

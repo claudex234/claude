@@ -1,6 +1,6 @@
 // API de clientes: alta, edición, borrado, listado.
 import { supabase } from "../../lib/supabase.js";
-import { requireUser } from "./_helpers.js";
+import { requireUser } from "./helpers.js";
 
 export const upsertCliente = async ({ id, razon_social, ruc, contacto, cargo, email, telefono }) => {
   const user = await requireUser();

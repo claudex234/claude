@@ -4,7 +4,7 @@ import { supabase } from "../../lib/supabase.js";
 import {
   requireUser, randomSlug, findOrCreateCliente,
   resolveProductoIds, resolveSkinId, computeTotals,
-} from "./_helpers.js";
+} from "./helpers.js";
 
 // Próximo correlativo PRF-YYYY-NNNN para el usuario actual.
 export const nextNumero = async (userId) => {
