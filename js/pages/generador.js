@@ -1,4 +1,5 @@
-import { fmtMoney, on, escapeHtml as e, el } from "../lib/utils.js";
+import { fmtMoney, on, escapeHtml as e, el, raw } from "../lib/utils.js";
+import { icon } from "../lib/icons.js";
 import { PRODUCTOS } from "../data/productos.js";
 import { PROFORMAS, toMemoryProforma } from "../data/proformas.js";
 import { navigate } from "../lib/router.js";
@@ -83,7 +84,12 @@ const renderEditor = (s) => `
         <section class="gen-section">
           <div class="gen-section-head">
             <span class="gen-section-title">✦ PEGÁ DATOS DEL CLIENTE + PRODUCTO</span>
-            <span class="gen-section-hint">la última línea = código del producto</span>
+            <div style="display:flex;gap:8px;align-items:center">
+              <span class="gen-section-hint">la última línea = código del producto</span>
+              <button type="button" class="btn btn-sm" data-action="mic" title="Dictar (Web Speech, en español)" style="padding:4px 8px;display:flex;align-items:center;gap:4px">
+                ${icon("mic", 13)}
+              </button>
+            </div>
           </div>
           <textarea class="gen-paste" data-f="raw" rows="6" placeholder="Pegá razón social, RUC, contacto, email, teléfono, código…">${e(s.raw)}</textarea>
           <div class="gen-chips" data-chips></div>
@@ -326,6 +332,59 @@ export const render = (root, ctx) => {
   on(node, "input", "[data-f]", handleField);
   on(node, "change", "[data-f]", handleField);
 
+  // === Dictado por voz (Web Speech API) ===
+  // Click toggle: arranca/para. Lo dictado se appendea al textarea y
+  // dispara el mismo handler de paste para que se re-parsee al toque.
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let mic = null; // instancia de SpeechRecognition viva
+  const stopMic = () => {
+    if (!mic) return;
+    try { mic.stop(); } catch {}
+    mic = null;
+    const btn = node.querySelector("[data-action='mic']");
+    if (btn) { btn.classList.remove("recording"); btn.style.background = ""; btn.style.color = ""; }
+  };
+  on(node, "click", "[data-action='mic']", (ev) => {
+    const btn = ev.target.closest("[data-action='mic']");
+    if (!SR) {
+      toast("Tu browser no soporta dictado (probá Chrome o Edge)", { type: "err" });
+      return;
+    }
+    if (mic) { stopMic(); return; }
+    mic = new SR();
+    mic.lang = "es-PE";
+    mic.continuous = true;
+    mic.interimResults = false;
+    mic.onresult = (event) => {
+      const ta = node.querySelector("[data-f='raw']");
+      if (!ta) return;
+      const chunks = [];
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) chunks.push(event.results[i][0].transcript.trim());
+      }
+      if (!chunks.length) return;
+      const sep = ta.value && !ta.value.endsWith("\n") ? "\n" : "";
+      ta.value = ta.value + sep + chunks.join("\n");
+      ta.dispatchEvent(new Event("input", { bubbles: true }));
+    };
+    mic.onerror = (e) => {
+      toast(`Mic: ${e.error || "error"}`, { type: "err" });
+      stopMic();
+    };
+    mic.onend = () => stopMic();
+    try {
+      mic.start();
+      btn.classList.add("recording");
+      btn.style.background = "var(--danger)";
+      btn.style.color = "white";
+      toast("Dictando… (click en el mic para parar)", { type: "info", ms: 3000 });
+    } catch (err) {
+      console.error(err);
+      stopMic();
+      toast("No pude arrancar el mic", { type: "err" });
+    }
+  });
+
   // Productos
   on(node, "click", "[data-action='add-prod']", (ev) => {
     const code = ev.target.dataset.code;
@@ -456,5 +515,5 @@ export const render = (root, ctx) => {
     }
   });
   // Cleanup al cambiar de ruta
-  return () => a4.dispose();
+  return () => { a4.dispose(); stopMic(); };
 };
