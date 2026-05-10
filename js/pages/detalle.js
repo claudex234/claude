@@ -5,7 +5,7 @@
 import { html, raw, el, on, fmtMoney, escapeHtml as e } from "../lib/utils.js";
 import { icon } from "../lib/icons.js";
 import { navigate } from "../lib/router.js";
-import { fetchProformaDetail } from "../data/api.js";
+import { fetchProformaDetail, ensurePublicLink } from "../data/api.js";
 import { toast } from "../lib/toast.js";
 
 const fmtDate = (iso) => {
@@ -54,8 +54,10 @@ const view = (d) => {
           <p class="page-sub">${c.razon_social || "—"}${p.asunto ? ` · ${p.asunto}` : ""}</p>
         </div>
         <div style="display:flex;gap:8px">
-          ${d.slug ? raw(`<button class="btn" data-action="copy-link">${icon("forward", 13)} Copiar link público</button>`) : ""}
-          <button class="btn">${raw(icon("download"))} PDF</button>
+          ${d.slug
+            ? raw(`<button class="btn" data-action="copy-link">${icon("link", 13)} Copiar link</button>`)
+            : raw(`<button class="btn" data-action="gen-link">${icon("link", 13)} Generar página</button>`)}
+          <button class="btn" data-action="pdf">${raw(icon("download"))} PDF</button>
           <button class="btn btn-primary" data-action="edit">${raw(icon("edit"))} Editar</button>
         </div>
       </div>
@@ -181,16 +183,60 @@ export const render = async (root, ctx) => {
   const next = el(view(detail));
   node.replaceWith(next);
 
+  const publicUrl = (slug) => `${location.origin}${location.pathname}#/p/${slug}`;
+
+  const copyText = async (text) => {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(text);
+        return true;
+      }
+    } catch {}
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      const ok = document.execCommand("copy");
+      ta.remove();
+      return ok;
+    } catch { return false; }
+  };
+
   on(next, "click", "[data-action='back']", () => navigate("proformas"));
   on(next, "click", "[data-action='edit']", () => navigate("generador/" + detail.proforma.numero));
   on(next, "click", "[data-action='copy-link']", async () => {
     if (!detail.slug) return;
-    const url = `${location.origin}${location.pathname}#/p/${detail.slug}`;
+    const url = publicUrl(detail.slug);
+    const ok = await copyText(url);
+    toast(ok ? `Link copiado · ${url}` : `Link · ${url}`, { type: ok ? "ok" : "info", ms: 7000 });
+  });
+  on(next, "click", "[data-action='gen-link']", async (ev) => {
+    const btn = ev.target.closest("button");
+    if (btn) { btn.disabled = true; btn.textContent = "Generando…"; }
     try {
-      await navigator.clipboard?.writeText(url);
-      toast(`Link copiado · ${url}`, { type: "ok", ms: 6000 });
-    } catch {
-      toast(`Link · ${url}`, { type: "info", ms: 8000 });
+      const slug = await ensurePublicLink(detail.proforma.id);
+      detail.slug = slug;
+      const url = publicUrl(slug);
+      const ok = await copyText(url);
+      toast(ok ? `Link copiado · ${url}` : `Link generado · ${url}`, { type: "ok", ms: 7000 });
+      window.open(url, "_blank", "noopener");
+      // Mutar el botón a 'Copiar link' (mismo handler de copy-link).
+      if (btn) {
+        btn.disabled = false;
+        btn.dataset.action = "copy-link";
+        btn.innerHTML = `${icon("link", 13)} Copiar link`;
+      }
+    } catch (err) {
+      console.error(err);
+      toast(err.message || "No pude generar la página", { type: "err" });
+      if (btn) { btn.disabled = false; btn.innerHTML = `${icon("link", 13)} Generar página`; }
     }
+  });
+  on(next, "click", "[data-action='pdf']", () => {
+    // Abre la vista de impresión interna en pestaña nueva.
+    const url = `${location.origin}${location.pathname}#/print/${detail.proforma.numero}`;
+    window.open(url, "_blank", "noopener");
   });
 };

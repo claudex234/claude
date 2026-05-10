@@ -513,7 +513,14 @@ export const render = (root, ctx) => {
       if (btn && original) btn.innerHTML = original;
     }
   });
-  on(node, "click", "[data-action='pdf']", () => toast("Export a PDF — próximamente", { type: "info" }));
+  on(node, "click", "[data-action='pdf']", () => {
+    if (!s.proformaId || !s.numero || s.numero === "PRF-…") {
+      toast("Guardá la proforma primero (Generar link o Enviar)", { type: "err" });
+      return;
+    }
+    const url = `${location.origin}${location.pathname}#/print/${s.numero}`;
+    window.open(url, "_blank", "noopener");
+  });
   // Copy con fallback: navigator.clipboard puede fallar fuera de https
   // o sin user gesture (después de un await).
   const copyToClipboard = async (text) => {

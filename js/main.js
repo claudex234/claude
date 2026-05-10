@@ -12,6 +12,7 @@ document.documentElement.setAttribute("data-theme", state.theme);
 const app = document.getElementById("app");
 
 const isPublicRoute = () => /^#\/?p\//.test(location.hash);
+const isPrintRoute = () => /^#\/?print\//.test(location.hash);
 
 const bootPublic = async () => {
   app.innerHTML = `<div style="display:grid;place-items:center;height:100vh;color:#8a8f9a;font:14px system-ui">Cargando proforma…</div>`;
@@ -31,8 +32,17 @@ const bootPublic = async () => {
   }
 };
 
+const bootPrint = async () => {
+  await waitForSession(app);
+  app.innerHTML = "";
+  const { render } = await import("./pages/print.js");
+  const params = location.hash.replace(/^#\/?/, "").split("/").slice(1);
+  await render(app, { params, navigate: () => {} });
+};
+
 const boot = async () => {
   if (isPublicRoute()) return bootPublic();
+  if (isPrintRoute()) return bootPrint();
 
   // 1) Gate de autenticación: bloquea hasta tener sesión.
   await waitForSession(app);
