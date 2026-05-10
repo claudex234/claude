@@ -19,7 +19,8 @@ const adaptProducto = (row) => ({
 });
 
 // Skin (planilla). Conserva tanto el uuid (id) como el codigo (clave que
-// usa el resto de la app). El html es el template cargado desde DB.
+// usa el resto de la app). html y css son los archivos del template
+// guardados en DB; pueden ser null y caer al fallback de archivos.
 const adaptSkin = (row) => ({
   id: row.id,
   codigo: row.codigo,
@@ -28,6 +29,7 @@ const adaptSkin = (row) => ({
   cover: row.cover || {},
   activa: !!row.activa,
   html: row.html || null,
+  css: row.css || null,
   uso: 0,
 });
 

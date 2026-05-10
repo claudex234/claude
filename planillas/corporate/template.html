@@ -1,0 +1,140 @@
+<!--
+  Planilla: corporate
+  Layout sólido, líneas marcadas. Apto para sector educativo / gobierno.
+  CSS en ./styles.css scopeada a `.pl-corporate`.
+
+  Tokens disponibles:
+    {{numero}}, {{fecha}}
+    {{emisor.razonSocial}}, {{emisor.ruc}}, {{emisor.firmante}},
+    {{!emisor.logoSvg}}, {{#each emisor.cuentas}}…{{/each}}
+    {{cliente.razon}}, {{cliente.ruc}}, {{cliente.contacto}},
+    {{cliente.email}}, {{cliente.telefono}}
+    {{terminos.tiempoEntrega}}, {{terminos.lugarEntrega}},
+    {{terminos.garantia}}, {{terminos.validez}}, {{terminos.condiciones}}
+    {{#each items}}{{nombre}}, {{qty}}, {{precio}}, {{total}},
+      {{codigo}}, {{!imagen}}, {{#each specsHighlight}}…{{/each}},
+      {{#each specs}}…{{/each}}, {{#each incluye}}…{{/each}}
+    {{/each}}
+    {{totales.subtotal}}, {{totales.igv}}, {{totales.total}}
+    {{#if showBloques}}…{{/if}}, {{#each bloques.servicios}}…{{/each}},
+    {{#each bloques.noIncluido}}…{{/each}}
+-->
+<article class="pl-corporate">
+  <header class="header">
+    <div class="emisor">
+      <div class="logo">{{!emisor.logoSvg}}</div>
+      <div>
+        <div class="emisor-name">{{emisor.razonSocial}}</div>
+        <div class="emisor-ruc">RUC {{emisor.ruc}}</div>
+      </div>
+    </div>
+    <div class="doc-meta">
+      <div class="eyebrow">Cotización</div>
+      <div class="doc-numero">{{numero}}</div>
+      <div class="doc-fecha">{{fecha}}</div>
+    </div>
+  </header>
+
+  <h2 class="title">Cotización</h2>
+
+  <div class="grid-2">
+    <section class="card">
+      <div class="card-label">Cliente</div>
+      <div class="card-strong">{{cliente.razon}}</div>
+      {{#if cliente.ruc}}<div class="card-row">RUC {{cliente.ruc}}</div>{{/if}}
+      {{#if cliente.contacto}}<div class="card-row">{{cliente.contacto}}</div>{{/if}}
+      {{#if cliente.email}}<div class="card-row">{{cliente.email}}</div>{{/if}}
+      {{#if cliente.telefono}}<div class="card-row">{{cliente.telefono}}</div>{{/if}}
+    </section>
+    <section class="card">
+      <div class="card-label">Términos</div>
+      <dl class="terms">
+        <dt>Tiempo entrega</dt><dd>{{terminos.tiempoEntrega}}</dd>
+        <dt>Lugar entrega</dt><dd>{{terminos.lugarEntrega}}</dd>
+        <dt>Garantía</dt><dd>{{terminos.garantia}}</dd>
+        <dt>Validez</dt><dd>{{terminos.validez}} días</dd>
+        <dt>Condiciones</dt><dd>{{terminos.condiciones}}</dd>
+      </dl>
+    </section>
+  </div>
+
+  <table class="items">
+    <colgroup>
+      <col style="width:53%"><col style="width:18%"><col style="width:8%"><col style="width:10%"><col style="width:11%">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Descripción</th>
+        <th class="center">Imagen</th>
+        <th class="center">Cant</th>
+        <th class="right">P.</th>
+        <th class="right">PT</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each items}}
+      <tr>
+        <td>
+          <div class="item-title">{{nombre}}</div>
+          {{#if specsHighlight}}
+          <div class="item-hi">
+            {{#each specsHighlight}}
+            <div><span data-hl>{{this}}</span></div>
+            {{/each}}
+          </div>
+          {{/if}}
+          {{#if specs}}
+          <div class="item-specs">
+            {{#each specs}}<div>{{this}}</div>{{/each}}
+          </div>
+          {{/if}}
+          {{#if incluye}}
+          <div class="incluye-title">Incluido en el paquete</div>
+          <div class="item-specs">
+            {{#each incluye}}<div>{{this}}</div>{{/each}}
+          </div>
+          {{/if}}
+        </td>
+        <td class="center">
+          {{#if imagen}}<img class="item-img" src="{{imagen}}" alt="{{codigo}}">{{/if}}
+          {{#if codigo}}<div class="item-codigo">{{codigo}}</div>{{/if}}
+        </td>
+        <td class="num center strong">{{qty}}</td>
+        <td class="num right">{{precio}}</td>
+        <td class="num right strong">{{total}}</td>
+      </tr>
+      {{/each}}
+    </tbody>
+  </table>
+
+  <div class="totales">
+    <div><span>Subtotal</span><b>S/ {{totales.subtotal}}</b></div>
+    <div><span>IGV (18%)</span><b>S/ {{totales.igv}}</b></div>
+    <div class="total-row"><span>Total</span><b>S/ {{totales.total}}</b></div>
+  </div>
+
+  {{#if showBloques}}
+  <div class="grid-2" style="margin-top:10px">
+    <section class="block block-ok">
+      <div class="block-title">Servicios incluidos</div>
+      {{#each bloques.servicios}}<div>· {{this}}</div>{{/each}}
+    </section>
+    <section class="block block-no">
+      <div class="block-title">No incluido</div>
+      {{#each bloques.noIncluido}}<div>· {{this}}</div>{{/each}}
+    </section>
+  </div>
+  {{/if}}
+
+  <section class="cuentas">
+    <div class="card-label">Cuentas bancarias</div>
+    {{#each emisor.cuentas}}
+    <div class="cuenta"><b>{{banco}} {{moneda}}:</b> {{numero}} · <b>CCI</b> {{cci}}</div>
+    {{/each}}
+  </section>
+
+  <div class="firma">
+    <div class="firma-label">Atentamente,</div>
+    <div class="firma-name">{{emisor.firmante}}</div>
+  </div>
+</article>

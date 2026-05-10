@@ -173,8 +173,14 @@ export const ensurePublicLink = async (proformaId) => {
 
 // === Skins / Planillas ================================================
 
-export const upsertSkin = async ({ id, codigo, nombre, descripcion, html, activa }) => {
-  const payload = { codigo, nombre, descripcion: descripcion || null, html: html || null, activa: !!activa };
+export const upsertSkin = async ({ id, codigo, nombre, descripcion, html, css, activa }) => {
+  const payload = {
+    codigo, nombre,
+    descripcion: descripcion || null,
+    html: html || null,
+    css: css || null,
+    activa: !!activa,
+  };
   if (id) {
     const { data, error } = await supabase.from("skins").update(payload).eq("id", id).select().single();
     if (error) throw error;

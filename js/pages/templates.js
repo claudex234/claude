@@ -1,17 +1,16 @@
 // Manager de planillas (skins). Lista skins, permite crearlas, editarlas
-// (HTML en textarea), marcarlas como default y eliminarlas.
+// (HTML + CSS en tabs), marcarlas como default y eliminarlas.
 
 import { html, raw, el, on, escapeHtml as e } from "../lib/utils.js";
 import { icon } from "../lib/icons.js";
 import { SKINS } from "../data/skins.js";
 import { upsertSkin, deleteSkin, setDefaultSkin, fetchSkins } from "../data/api.js";
-import { resolvePlanillaHtml, renderPlanillaWith } from "../lib/planillas.js";
+import { resolvePlanilla, renderPlanillaWith } from "../lib/planillas.js";
 import { toast } from "../lib/toast.js";
 
 const slugify = (s) => String(s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
   .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40);
 
-// Datos de ejemplo livianos para el preview en miniatura.
 const SAMPLE_DATA = {
   numero: "PRF-2026-0001",
   fecha: "08/05/2026",
@@ -56,14 +55,15 @@ const skinCard = (s) => `
 const editorMarkup = (skin) => {
   const isNew = !skin.id;
   return `
-    <div class="skin-editor-shell" data-skin-editor>
+    <div class="skin-editor-shell">
       <header class="skin-editor-bar">
         <div>
           <div class="skin-editor-title">${isNew ? "Nueva planilla" : "Editar planilla"}</div>
           <div class="skin-editor-sub">${e(skin.nombre || "(sin nombre)")} · <span class="mono">${e(skin.codigo || "?")}</span></div>
         </div>
         <div style="display:flex;gap:8px">
-          <button class="btn" data-action="upload">${raw(icon("download", 13))} Subir HTML</button>
+          <button class="btn" data-action="upload-html">${raw(icon("download", 13))} Subir HTML</button>
+          <button class="btn" data-action="upload-css">${raw(icon("download", 13))} Subir CSS</button>
           <button class="btn" data-action="cancel">Cancelar</button>
           <button class="btn btn-primary" data-action="save">${raw(icon("send", 13))} Guardar</button>
         </div>
@@ -77,7 +77,7 @@ const editorMarkup = (skin) => {
             <input type="checkbox" data-meta="activa" ${skin.activa ? "checked" : ""}>
             <span style="text-transform:none;letter-spacing:0">Marcar como default</span>
           </label>
-          <details style="margin-top:14px;font-size:11.5px;color:var(--text-3)">
+          <details style="margin-top:10px;font-size:11.5px;color:var(--text-3)">
             <summary style="cursor:pointer">Tokens disponibles</summary>
             <pre style="font-size:10.5px;line-height:1.5;background:var(--bg-soft);padding:8px;border-radius:4px;overflow:auto;white-space:pre-wrap">{{numero}}, {{fecha}}
 {{emisor.razonSocial}}, {{emisor.ruc}}
@@ -97,10 +97,16 @@ const editorMarkup = (skin) => {
 {{#each bloques.servicios}}…{{/each}}
 {{#each emisor.cuentas}}…{{/each}}</pre>
           </details>
-          <input type="file" data-file accept=".html,text/html" style="display:none">
+          <input type="file" data-file-html accept=".html,text/html" style="display:none">
+          <input type="file" data-file-css accept=".css,text/css" style="display:none">
         </aside>
         <div class="skin-editor-code">
-          <textarea class="skin-editor-textarea" data-html spellcheck="false">${e(skin.html || "")}</textarea>
+          <div class="skin-tabs">
+            <button class="skin-tab skin-tab-active" data-tab="html">template.html</button>
+            <button class="skin-tab" data-tab="css">styles.css</button>
+          </div>
+          <textarea class="skin-editor-textarea" data-pane="html" spellcheck="false">${e(skin.html || "")}</textarea>
+          <textarea class="skin-editor-textarea" data-pane="css" spellcheck="false" style="display:none">${e(skin.css || "")}</textarea>
         </div>
         <div class="skin-editor-preview" data-preview>
           <div style="padding:24px;color:var(--text-mute);font-size:12px">El preview aparece al editar.</div>
@@ -111,8 +117,8 @@ const editorMarkup = (skin) => {
 
 const renderMiniPreview = async (codigo, container) => {
   try {
-    const tpl = await resolvePlanillaHtml(codigo);
-    const inner = renderPlanillaWith(tpl, SAMPLE_DATA);
+    const pair = await resolvePlanilla(codigo);
+    const inner = renderPlanillaWith(pair, SAMPLE_DATA);
     container.innerHTML = `<div class="skin-mini-doc"><article class="skin-mini-page">${inner}</article></div>`;
     requestAnimationFrame(() => {
       const page = container.querySelector(".skin-mini-page");
@@ -134,7 +140,7 @@ export const render = (root) => {
       <div class="page-header">
         <div>
           <h1 class="page-title">Plantillas</h1>
-          <p class="page-sub">${SKINS.length} skins disponibles. Cada una es un HTML autocontenido con tokens.</p>
+          <p class="page-sub">${SKINS.length} skins disponibles. Cada una es <code>template.html</code> + <code>styles.css</code> con tokens.</p>
         </div>
         <div style="display:flex;gap:8px">
           <button class="btn btn-primary" data-action="new">${raw(icon("plus"))} Nueva planilla</button>
@@ -172,16 +178,21 @@ export const render = (root) => {
       SKINS.push({
         id: r.id, codigo: r.codigo, nombre: r.nombre,
         desc: r.descripcion || "", cover: r.cover || {},
-        activa: !!r.activa, html: r.html || null, uso: 0,
+        activa: !!r.activa,
+        html: r.html || null, css: r.css || null, uso: 0,
       });
     }
   };
 
   const openEditor = async (skin) => {
     editing = { ...skin };
-    if (!editing.html) {
-      try { editing.html = await resolvePlanillaHtml(editing.codigo || "corporate"); }
-      catch { editing.html = ""; }
+    // Si es nueva o le falta html/css, semilla con los archivos.
+    if (!editing.html || !editing.css) {
+      try {
+        const pair = await resolvePlanilla(editing.codigo || "corporate");
+        editing.html = editing.html || pair.html;
+        editing.css = editing.css || pair.css;
+      } catch {}
     }
     const next = el(editorMarkup(editing));
     node.replaceWith(next);
@@ -196,13 +207,12 @@ export const render = (root) => {
     const target = node.querySelector("[data-preview]");
     if (!target) return;
     try {
-      const inner = renderPlanillaWith(editing.html || "", SAMPLE_DATA);
+      const inner = renderPlanillaWith({ html: editing.html || "", css: editing.css || "" }, SAMPLE_DATA);
       target.innerHTML = `<div class="skin-mini-doc"><article class="skin-mini-page">${inner}</article></div>`;
       requestAnimationFrame(() => {
         const page = target.querySelector(".skin-mini-page");
         if (!page) return;
-        const cw = target.clientWidth;
-        const scale = Math.min(1, cw / 794);
+        const scale = Math.min(1, target.clientWidth / 794);
         page.style.transform = `scale(${scale})`;
         page.style.transformOrigin = "top left";
       });
@@ -213,7 +223,7 @@ export const render = (root) => {
 
   const wireList = () => {
     on(node, "click", "[data-action='new']", () => {
-      openEditor({ codigo: "", nombre: "", desc: "", html: "", activa: false });
+      openEditor({ codigo: "", nombre: "", desc: "", html: "", css: "", activa: false });
     });
     on(node, "click", "[data-action='edit']", (_, btn) => {
       const skin = SKINS.find((s) => s.id === btn.dataset.id);
@@ -222,8 +232,15 @@ export const render = (root) => {
     on(node, "click", "[data-action='duplicate']", async (_, btn) => {
       const skin = SKINS.find((s) => s.id === btn.dataset.id);
       if (!skin) return;
-      const html = skin.html || await resolvePlanillaHtml(skin.codigo).catch(() => "");
-      openEditor({ codigo: `${skin.codigo}-copy`, nombre: `${skin.nombre} (copia)`, desc: skin.desc, html, activa: false });
+      const pair = await resolvePlanilla(skin.codigo).catch(() => ({ html: skin.html || "", css: skin.css || "" }));
+      openEditor({
+        codigo: `${skin.codigo}-copy`,
+        nombre: `${skin.nombre} (copia)`,
+        desc: skin.desc,
+        html: skin.html || pair.html,
+        css: skin.css || pair.css,
+        activa: false,
+      });
     });
     on(node, "click", "[data-action='default']", async (_, btn) => {
       try {
@@ -254,19 +271,34 @@ export const render = (root) => {
       else if (k === "descripcion") editing.desc = ev.target.value;
       else editing[k] = ev.target.value;
     });
-    on(node, "input", "[data-html]", (ev) => {
-      editing.html = ev.target.value;
+    on(node, "input", "[data-pane]", (ev) => {
+      const pane = ev.target.dataset.pane;
+      editing[pane] = ev.target.value;
       clearTimeout(node._t);
       node._t = setTimeout(runPreview, 250);
     });
-    on(node, "click", "[data-action='upload']", () => node.querySelector("[data-file]").click());
-    on(node, "change", "[data-file]", async (ev) => {
-      const f = ev.target.files?.[0];
-      if (!f) return;
-      const text = await f.text();
-      editing.html = text;
-      const ta = node.querySelector("[data-html]");
-      if (ta) ta.value = text;
+    // Tabs HTML / CSS
+    on(node, "click", "[data-tab]", (_, btn) => {
+      const tab = btn.dataset.tab;
+      node.querySelectorAll("[data-tab]").forEach((t) => t.classList.toggle("skin-tab-active", t.dataset.tab === tab));
+      node.querySelectorAll("[data-pane]").forEach((p) => p.style.display = p.dataset.pane === tab ? "" : "none");
+    });
+    // Subida de archivos
+    on(node, "click", "[data-action='upload-html']", () => node.querySelector("[data-file-html]").click());
+    on(node, "click", "[data-action='upload-css']", () => node.querySelector("[data-file-css]").click());
+    on(node, "change", "[data-file-html]", async (ev) => {
+      const f = ev.target.files?.[0]; if (!f) return;
+      editing.html = await f.text();
+      const ta = node.querySelector("[data-pane='html']");
+      if (ta) ta.value = editing.html;
+      runPreview();
+      toast(`Cargado ${f.name}`, { type: "ok" });
+    });
+    on(node, "change", "[data-file-css]", async (ev) => {
+      const f = ev.target.files?.[0]; if (!f) return;
+      editing.css = await f.text();
+      const ta = node.querySelector("[data-pane='css']");
+      if (ta) ta.value = editing.css;
       runPreview();
       toast(`Cargado ${f.name}`, { type: "ok" });
     });
@@ -281,6 +313,7 @@ export const render = (root) => {
           nombre: editing.nombre.trim(),
           descripcion: editing.desc,
           html: editing.html,
+          css: editing.css,
           activa: editing.activa,
         });
         if (editing.activa) await setDefaultSkin(saved.id);

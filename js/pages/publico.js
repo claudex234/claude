@@ -83,8 +83,8 @@ const buildData = (payload) => {
 const renderViewer = async (payload, slug) => {
   const p = payload.proforma;
   const data = buildData(payload);
-  const inner = payload.skin_html
-    ? renderPlanillaWith(payload.skin_html, data)
+  const inner = (payload.skin_html || payload.skin_css)
+    ? renderPlanillaWith({ html: payload.skin_html, css: payload.skin_css }, data)
     : await renderPlanilla(payload.skin_codigo || "corporate", data);
   const ts = new Date().toISOString().slice(0, 16).replace("T", " ");
   const wm = `${slug.slice(0, 8)} · ${ts}`;
