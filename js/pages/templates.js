@@ -306,6 +306,11 @@ export const render = (root) => {
       if (!editing.codigo?.trim()) editing.codigo = slugify(editing.nombre);
       if (!editing.codigo) { toast("Falta el código", { type: "err" }); return; }
       if (!editing.nombre?.trim()) { toast("Falta el nombre", { type: "err" }); return; }
+      // Si el usuario desmarcó la default sin marcar otra, avisamos.
+      const wasDefault = !!editing.id && SKINS.find((s) => s.id === editing.id)?.activa;
+      if (wasDefault && !editing.activa) {
+        if (!confirm("Esta planilla era la default y la estás desmarcando. ¿Seguís? (las proformas nuevas caerán al primer skin disponible)")) return;
+      }
       try {
         const saved = await upsertSkin({
           id: editing.id,
@@ -314,7 +319,6 @@ export const render = (root) => {
           descripcion: editing.desc,
           html: editing.html,
           css: editing.css,
-          activa: editing.activa,
         });
         if (editing.activa) await setDefaultSkin(saved.id);
         await refreshSKINS();

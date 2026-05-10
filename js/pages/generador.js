@@ -377,6 +377,7 @@ export const render = (root) => {
         id: proforma.numero,
         proformaId: proforma.id,
         slug: slug || null,
+        skinCodigo: s.skinCodigo,
         cliente: s.cliente.razonSocial,
         contacto: s.cliente.contacto,
         ruc: s.cliente.ruc,
@@ -440,6 +441,7 @@ export const render = (root) => {
           cliente: s.cliente,
           asunto: s.asunto,
           items: s.productos,
+          skinCodigo: s.skinCodigo,
         });
         s.proformaId = proforma.id;
         s.numero = proforma.numero;
@@ -449,6 +451,7 @@ export const render = (root) => {
         if (m) m.textContent = s.numero;
         PROFORMAS.unshift({
           id: proforma.numero, proformaId: proforma.id, slug: null,
+          skinCodigo: s.skinCodigo,
           cliente: s.cliente.razonSocial, contacto: s.cliente.contacto,
           ruc: s.cliente.ruc, email: s.cliente.email, telefono: s.cliente.telefono,
           monto: t.total, moneda: "PEN", items: s.productos.length,

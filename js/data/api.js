@@ -173,13 +173,14 @@ export const ensurePublicLink = async (proformaId) => {
 
 // === Skins / Planillas ================================================
 
-export const upsertSkin = async ({ id, codigo, nombre, descripcion, html, css, activa }) => {
+// `activa` se gestiona aparte vía setDefaultSkin para evitar dos defaults
+// simultáneos. Acá solo guardamos contenido y metadata.
+export const upsertSkin = async ({ id, codigo, nombre, descripcion, html, css }) => {
   const payload = {
     codigo, nombre,
     descripcion: descripcion || null,
     html: html || null,
     css: css || null,
-    activa: !!activa,
   };
   if (id) {
     const { data, error } = await supabase.from("skins").update(payload).eq("id", id).select().single();
@@ -197,12 +198,13 @@ export const deleteSkin = async (id) => {
 };
 
 export const setDefaultSkin = async (id) => {
-  // Solo una activa a la vez. Hacemos dos updates secuenciales (RLS no
-  // permite multi-row update con CASE pero ambos updates están permitidos
-  // a usuarios autenticados).
-  await supabase.from("skins").update({ activa: false }).neq("id", id);
-  const { error } = await supabase.from("skins").update({ activa: true }).eq("id", id);
-  if (error) throw error;
+  // Solo una activa a la vez. Primero limpiamos las otras y recién después
+  // marcamos la nueva — el orden importa para no quedar con dos activas a
+  // la vez ni en una ventana breve.
+  const { error: e1 } = await supabase.from("skins").update({ activa: false }).neq("id", id);
+  if (e1) throw e1;
+  const { error: e2 } = await supabase.from("skins").update({ activa: true }).eq("id", id);
+  if (e2) throw e2;
 };
 
 export const fetchSkins = async () => {

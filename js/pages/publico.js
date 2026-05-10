@@ -101,7 +101,7 @@ const renderViewer = async (payload, slug) => {
           </div>
         </div>
         <div class="vp-bar-warn" title="No se permite capturar ni descargar este documento">
-          🔒 Vista protegida · ${e(slug)}
+          Vista protegida · ${e(slug)}
         </div>
       </header>
       <main class="vp-stage">
