@@ -1,23 +1,11 @@
 // Carga datos desde Supabase y los inyecta en los contenedores compartidos
 // (PRODUCTOS, SKINS, PROFORMAS). Se llama una vez tras el login.
 import { supabase } from "../lib/supabase.js";
-import { PRODUCTOS, PROFORMAS_PRODUCTOS, FALLBACK_IMAGE } from "./productos.js";
+import { PRODUCTOS, PROFORMAS_PRODUCTOS, adaptProducto } from "./productos.js";
 import { SKINS } from "./skins.js";
 import { PROFORMAS } from "./proformas.js";
 import { METRICS } from "./metrics.js";
 import { CLIENTES, PROFORMAS_POR_CLIENTE } from "./clientes.js";
-
-const adaptProducto = (row) => ({
-  codigo: row.codigo,
-  nombre: row.nombre,
-  tamano: row.tamano || "",
-  precioDefault: Number(row.precio_default) || 0,
-  tipo: row.tipo || "pantalla",
-  imagen: row.imagen_url || FALLBACK_IMAGE,
-  specsHighlight: row.specs_highlight || [],
-  specs: row.specs || [],
-  incluye: row.incluye || [],
-});
 
 // Skin (planilla). Conserva tanto el uuid (id) como el codigo (clave que
 // usa el resto de la app). html y css son los archivos del template

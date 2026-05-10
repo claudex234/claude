@@ -1,7 +1,5 @@
-// Contenedores mutables. Los rellena `js/data/loader.js` desde Supabase
-// antes del primer render. Las páginas siguen leyendo estas referencias.
-
-export const PROFORMAS_PRODUCTOS = {};
+// Catálogo de productos en memoria. Lo rellena `data/loader.js` desde
+// la tabla `productos`. Las páginas leen este objeto por código.
 
 const PANTALLA_SVG = "data:image/svg+xml;utf8," + encodeURIComponent(`
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 110">
@@ -21,3 +19,20 @@ const PANTALLA_SVG = "data:image/svg+xml;utf8," + encodeURIComponent(`
 export const FALLBACK_IMAGE = PANTALLA_SVG;
 
 export const PRODUCTOS = {};
+
+// TODO: pendiente de eliminar — nunca se popula y siempre devuelve {}.
+// Mantenerlo evita romper loader.js y listado.js mientras se confirma.
+export const PROFORMAS_PRODUCTOS = {};
+
+// Fila de la tabla `productos` → shape de memoria.
+export const adaptProducto = (row) => ({
+  codigo: row.codigo,
+  nombre: row.nombre,
+  tamano: row.tamano || "",
+  precioDefault: Number(row.precio_default) || 0,
+  tipo: row.tipo || "pantalla",
+  imagen: row.imagen_url || FALLBACK_IMAGE,
+  specsHighlight: row.specs_highlight || [],
+  specs: row.specs || [],
+  incluye: row.incluye || [],
+});
