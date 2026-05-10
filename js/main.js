@@ -65,6 +65,7 @@ const boot = async () => {
   registerRoute("proformas", () => import("./pages/listado.js"));
   registerRoute("generador", () => import("./pages/generador.js"));
   registerRoute("detalle", () => import("./pages/detalle.js"));
+  registerRoute("clientes", () => import("./pages/clientes.js"));
   registerRoute("productos", () => import("./pages/productos.js"));
   registerRoute("stock", () => import("./pages/stock.js"));
   registerRoute("adjuntos", () => import("./pages/adjuntos.js"));

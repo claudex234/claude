@@ -8,6 +8,7 @@ const titleFor = (name) => ({
   proformas: "Proformas",
   detalle: "Proformas",
   generador: "Nueva proforma",
+  clientes: "Clientes",
   productos: "Productos",
   stock: "Stock",
   adjuntos: "Adjuntos",

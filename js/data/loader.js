@@ -5,6 +5,7 @@ import { PRODUCTOS, PROFORMAS_PRODUCTOS, FALLBACK_IMAGE } from "./productos.js";
 import { SKINS } from "./skins.js";
 import { PROFORMAS } from "./proformas.js";
 import { METRICS } from "./metrics.js";
+import { CLIENTES, PROFORMAS_POR_CLIENTE } from "./clientes.js";
 
 const adaptProducto = (row) => ({
   codigo: row.codigo,
@@ -89,9 +90,15 @@ export const loadAll = async () => {
   SKINS.length = 0;
   for (const row of skinsRes.data || []) SKINS.push(adaptSkin(row));
 
-  // Clientes (para resolver razón social en proformas)
+  // Clientes — guardo en memoria para la página de clientes y armo un
+  // mapa por id para resolver razón social en proformas.
+  CLIENTES.length = 0;
   const clientesById = new Map();
-  for (const row of clientesRes.data || []) clientesById.set(row.id, row);
+  for (const row of clientesRes.data || []) {
+    CLIENTES.push(row);
+    clientesById.set(row.id, row);
+  }
+  CLIENTES.sort((a, b) => (a.razon_social || "").localeCompare(b.razon_social || ""));
 
   // Slugs públicos por proforma
   const slugByProformaId = new Map();
@@ -106,6 +113,13 @@ export const loadAll = async () => {
   for (const k of Object.keys(PROFORMAS_PRODUCTOS)) delete PROFORMAS_PRODUCTOS[k];
   for (const row of proformasRes.data || []) {
     PROFORMAS.push(adaptProforma(row, clientesById, slugByProformaId, skinCodigoById));
+  }
+
+  // Conteo de proformas por cliente (para la columna "proformas" en /clientes)
+  for (const k of Object.keys(PROFORMAS_POR_CLIENTE)) delete PROFORMAS_POR_CLIENTE[k];
+  for (const row of proformasRes.data || []) {
+    if (!row.cliente_id) continue;
+    PROFORMAS_POR_CLIENTE[row.cliente_id] = (PROFORMAS_POR_CLIENTE[row.cliente_id] || 0) + 1;
   }
 
   // Métricas mínimas calculadas del lado cliente
