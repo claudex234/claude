@@ -230,3 +230,42 @@ export const parsePaste = (raw, productos) => {
 };
 
 export { PRODUCT_CODES };
+
+// === Normalizador para texto dictado por voz ==========================
+// El Web Speech API en español devuelve palabras: 'arroba' por '@',
+// 'punto' por '.', dígitos separados por espacios ("dos cero seis…"),
+// y números chicos en palabras ('una', 'dos'). Esto los convierte
+// para que el parser después los reconozca como RUC/email/qty.
+
+const SPANISH_NUM = {
+  cero: "0", uno: "1", una: "1", un: "1",
+  dos: "2", tres: "3", cuatro: "4", cinco: "5",
+  seis: "6", siete: "7", ocho: "8", nueve: "9", diez: "10",
+  once: "11", doce: "12",
+};
+
+export const normalizeDictation = (raw) => {
+  if (!raw) return raw;
+  let t = raw;
+  // "manuel arroba gmail.com" → "manuel@gmail.com"
+  t = t.replace(/\s*\barroba\b\s*/gi, "@");
+  // "ingenieros punto pe" → "ingenieros.pe" (entre tokens alfanuméricos)
+  t = t.replace(/(\w)\s+punto\s+(\w)/gi, "$1.$2");
+  t = t.replace(/(\w)\s+punto\s+(\w)/gi, "$1.$2"); // segunda pasada por si hay 'a.b.c'
+  // "guion" / "guion bajo" en emails: "juan guion bajo perez arroba…"
+  t = t.replace(/(\w)\s+gui[óo]n\s+bajo\s+(\w)/gi, "$1_$2");
+  t = t.replace(/(\w)\s+gui[óo]n\s+(\w)/gi, "$1-$2");
+  // Palabras-número → dígitos (cero-doce). Útil para 'una pro' = '1 pro'.
+  t = t.replace(/\b(cero|uno|una|un|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)\b/gi, m => SPANISH_NUM[m.toLowerCase()] || m);
+  // Secuencias de dígitos separados por espacios/guiones — si el total
+  // es 9 (móvil) u 11 (RUC), los colapsamos a un solo número.
+  // Ej: "20 60 35 73 777" (11) → "20603573777"; "910 250 250" (9) → "910250250".
+  t = t.replace(/\b\d(?:[\s\-]+\d){4,14}\b/g, (m) => {
+    const digits = m.replace(/\D/g, "");
+    if (digits.length === 11) return digits;          // RUC
+    if (digits.length === 9 && digits[0] === "9") return digits; // móvil PE
+    if (digits.length === 8) return digits;           // fijo PE sin 0
+    return m;
+  });
+  return t;
+};

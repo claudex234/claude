@@ -7,7 +7,7 @@ import { createProforma, updateProforma, nextNumero, ensurePublicLink, fetchProf
 import { supabase } from "../lib/supabase.js";
 import { toast } from "../lib/toast.js";
 import { EMISOR, FORMAS_PAGO } from "../data/empresa.js";
-import { parsePaste, PRODUCT_CODES } from "../lib/parser.js";
+import { parsePaste, PRODUCT_CODES, normalizeDictation } from "../lib/parser.js";
 import { renderPlanilla } from "../lib/planillas.js";
 import { SKINS, defaultSkinCodigo } from "../data/skins.js";
 import { copyToClipboard } from "../lib/clipboard.js";
@@ -86,6 +86,7 @@ const renderEditor = (s) => `
             <span class="gen-section-title">✦ PEGÁ DATOS DEL CLIENTE + PRODUCTO</span>
             <div style="display:flex;gap:8px;align-items:center">
               <span class="gen-section-hint">la última línea = código del producto</span>
+              <div class="mic-wave" data-mic-wave aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
               <button type="button" class="btn btn-sm" data-action="mic" title="Dictar (Web Speech, en español)" style="padding:4px 8px;display:flex;align-items:center;gap:4px">
                 ${icon("mic", 13)}
               </button>
@@ -157,6 +158,33 @@ const renderEditor = (s) => `
       <main class="gen-preview" data-preview><div class="pv-fit"><div class="pv-doc"><article class="pv-page" style="padding:60px;color:#999">Cargando planilla…</article></div></div></main>
     </div>
   </div>`;
+
+// Inyecta una sola vez los keyframes de la línea que vibra cuando
+// está escuchando audio (5 barritas verticales que pulsan en cadena).
+const ensureMicStyles = () => {
+  if (document.getElementById("mic-wave-styles")) return;
+  const s = document.createElement("style");
+  s.id = "mic-wave-styles";
+  s.textContent = `
+    .mic-wave { display: none; gap: 3px; align-items: center; height: 14px; padding: 0 4px; }
+    .mic-wave.on { display: inline-flex; }
+    .mic-wave span {
+      width: 3px; height: 100%; background: var(--danger, #e11d48);
+      border-radius: 2px; transform-origin: center;
+      animation: mic-pulse 0.9s ease-in-out infinite;
+    }
+    .mic-wave span:nth-child(2) { animation-delay: .12s; }
+    .mic-wave span:nth-child(3) { animation-delay: .24s; }
+    .mic-wave span:nth-child(4) { animation-delay: .36s; }
+    .mic-wave span:nth-child(5) { animation-delay: .48s; }
+    .mic-wave.loud span { animation-duration: 0.4s; }
+    @keyframes mic-pulse {
+      0%, 100% { transform: scaleY(0.3); opacity: .55; }
+      50%      { transform: scaleY(1);   opacity: 1; }
+    }
+  `;
+  document.head.appendChild(s);
+};
 
 // ====== Mount ======
 export const render = (root, ctx) => {
@@ -333,16 +361,29 @@ export const render = (root, ctx) => {
   on(node, "change", "[data-f]", handleField);
 
   // === Dictado por voz (Web Speech API) ===
-  // Click toggle: arranca/para. Lo dictado se appendea al textarea y
-  // dispara el mismo handler de paste para que se re-parsee al toque.
+  // Click toggle: arranca/para. Lo dictado se pre-normaliza (arroba→@,
+  // dígitos sueltos colapsados, palabras-número → dígitos) y se appendea
+  // al textarea, disparando el mismo handler de paste para re-parsear.
+  ensureMicStyles();
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  let mic = null; // instancia de SpeechRecognition viva
+  let mic = null;
+  const setWaveOn = (on) => {
+    const w = node.querySelector("[data-mic-wave]");
+    if (w) w.classList.toggle("on", !!on);
+  };
+  const setWaveLoud = () => {
+    const w = node.querySelector("[data-mic-wave]");
+    if (!w) return;
+    w.classList.add("loud");
+    setTimeout(() => w.classList.remove("loud"), 220);
+  };
   const stopMic = () => {
     if (!mic) return;
     try { mic.stop(); } catch {}
     mic = null;
     const btn = node.querySelector("[data-action='mic']");
     if (btn) { btn.classList.remove("recording"); btn.style.background = ""; btn.style.color = ""; }
+    setWaveOn(false);
   };
   on(node, "click", "[data-action='mic']", (ev) => {
     const btn = ev.target.closest("[data-action='mic']");
@@ -354,19 +395,24 @@ export const render = (root, ctx) => {
     mic = new SR();
     mic.lang = "es-PE";
     mic.continuous = true;
-    mic.interimResults = false;
+    mic.interimResults = true; // para pulsear el wave aunque no haya frase final
     mic.onresult = (event) => {
+      // Pulso visual cada vez que llega algo, sea interim o final.
+      setWaveLoud();
       const ta = node.querySelector("[data-f='raw']");
       if (!ta) return;
-      const chunks = [];
+      const finals = [];
       for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) chunks.push(event.results[i][0].transcript.trim());
+        if (event.results[i].isFinal) finals.push(event.results[i][0].transcript.trim());
       }
-      if (!chunks.length) return;
+      if (!finals.length) return;
+      const text = normalizeDictation(finals.join("\n"));
       const sep = ta.value && !ta.value.endsWith("\n") ? "\n" : "";
-      ta.value = ta.value + sep + chunks.join("\n");
+      ta.value = ta.value + sep + text;
       ta.dispatchEvent(new Event("input", { bubbles: true }));
     };
+    mic.onspeechstart = () => setWaveLoud();
+    mic.onsoundstart = () => setWaveLoud();
     mic.onerror = (e) => {
       toast(`Mic: ${e.error || "error"}`, { type: "err" });
       stopMic();
@@ -377,7 +423,7 @@ export const render = (root, ctx) => {
       btn.classList.add("recording");
       btn.style.background = "var(--danger)";
       btn.style.color = "white";
-      toast("Dictando… (click en el mic para parar)", { type: "info", ms: 3000 });
+      setWaveOn(true);
     } catch (err) {
       console.error(err);
       stopMic();
