@@ -123,7 +123,6 @@ const renderEditor = (s) => `
         </div>
       </div>
       <div class="gen-actions">
-        <button class="btn btn-sm" data-action="duplicar">Duplicar</button>
         <button class="btn btn-sm" data-action="pdf">PDF</button>
         <button class="btn btn-sm btn-link" data-action="generar-link">${s.publicSlug ? "Copiar link" : "Generar link"}</button>
         <button class="btn btn-sm btn-wsp" data-action="wsp">WhatsApp</button>
@@ -402,7 +401,6 @@ export const render = (root) => {
     }
   });
   on(node, "click", "[data-action='pdf']", () => toast("Export a PDF — próximamente", { type: "info" }));
-  on(node, "click", "[data-action='duplicar']", () => toast("Duplicar — próximamente", { type: "info" }));
   // Copy con fallback: navigator.clipboard puede fallar fuera de https
   // o sin user gesture (después de un await).
   const copyToClipboard = async (text) => {

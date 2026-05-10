@@ -17,12 +17,13 @@ const titleFor = (name) => ({
 
 export const mountTopbar = (container) => {
   const build = () => {
-    const { name } = currentRoute();
+    const { name, params } = currentRoute();
+    const detalleId = name === "detalle" && params?.[0] ? params[0] : null;
     const node = el(html`
       <div class="topbar">
         <div class="crumb">
           <span style="text-transform:capitalize">${titleFor(name)}</span>
-          ${name === "detalle" ? raw(`${icon("chevron", 11)}<b>PRF-2026-0141</b>`) : ""}
+          ${detalleId ? raw(`${icon("chevron", 11)}<b>${detalleId}</b>`) : ""}
         </div>
         <div class="topbar-actions">
           <button class="btn btn-ghost btn-icon" title="Buscar" data-action="search">${raw(icon("search"))}</button>

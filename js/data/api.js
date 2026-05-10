@@ -171,6 +171,44 @@ export const ensurePublicLink = async (proformaId) => {
   return slug;
 };
 
+// === Detalle de proforma ==============================================
+
+// Trae todo lo necesario para la vista de detalle: la proforma, el cliente,
+// los items, el slug público (si existe) y el código de skin.
+// Acepta tanto el `numero` (PRF-2026-0001) como el uuid.
+export const fetchProformaDetail = async (idOrNumero) => {
+  if (!idOrNumero) throw new Error("Falta id");
+  const isUuid = /^[0-9a-f-]{30,}$/i.test(idOrNumero);
+  const col = isUuid ? "id" : "numero";
+  const { data: prof, error } = await supabase
+    .from("proformas")
+    .select("*")
+    .eq(col, idOrNumero)
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  if (!prof) return null;
+
+  const [clienteRes, itemsRes, linkRes, skinRes] = await Promise.all([
+    prof.cliente_id
+      ? supabase.from("clientes").select("*").eq("id", prof.cliente_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    supabase.from("proforma_items").select("*").eq("proforma_id", prof.id).order("posicion"),
+    supabase.from("proforma_links").select("slug").eq("proforma_id", prof.id).limit(1),
+    prof.skin_id
+      ? supabase.from("skins").select("codigo, nombre").eq("id", prof.skin_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+
+  return {
+    proforma: prof,
+    cliente: clienteRes.data || null,
+    items: itemsRes.data || [],
+    slug: linkRes.data?.[0]?.slug || null,
+    skin: skinRes.data || null,
+  };
+};
+
 // === Skins / Planillas ================================================
 
 // `activa` se gestiona aparte vía setDefaultSkin para evitar dos defaults
