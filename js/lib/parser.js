@@ -257,14 +257,18 @@ export const normalizeDictation = (raw) => {
   t = t.replace(/(\w)\s+gui[óo]n\s+(\w)/gi, "$1-$2");
   // Palabras-número → dígitos (cero-doce). Útil para 'una pro' = '1 pro'.
   t = t.replace(/\b(cero|uno|una|un|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)\b/gi, m => SPANISH_NUM[m.toLowerCase()] || m);
-  // Secuencias de dígitos separados por espacios/guiones — si el total
-  // es 9 (móvil) u 11 (RUC), los colapsamos a un solo número.
-  // Ej: "20 60 35 73 777" (11) → "20603573777"; "910 250 250" (9) → "910250250".
-  t = t.replace(/\b\d(?:[\s\-]+\d){4,14}\b/g, (m) => {
+  // Secuencias de grupos de dígitos separados por espacios/guiones — si
+  // el total de dígitos es 8/9/11 (fijo/móvil/RUC), colapsa todo a un
+  // solo número. Acepta grupos de cualquier tamaño:
+  //   "20 60 35 73 777" (11) → "20603573777"
+  //   "2060 36 73 736"  (11) → "20603673736"
+  //   "910 250 250"     (9)  → "910250250"
+  //   "01 234 5678"     (8)  → "012345678" (queda como fijo con 0)
+  t = t.replace(/\b\d+(?:[\s\-]+\d+){1,9}\b/g, (m) => {
     const digits = m.replace(/\D/g, "");
     if (digits.length === 11) return digits;          // RUC
     if (digits.length === 9 && digits[0] === "9") return digits; // móvil PE
-    if (digits.length === 8) return digits;           // fijo PE sin 0
+    if (digits.length === 8 || digits.length === 7) return digits; // fijo PE
     return m;
   });
   return t;
