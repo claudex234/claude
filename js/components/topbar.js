@@ -28,11 +28,6 @@ export const mountTopbar = (container) => {
           ${crumbId ? raw(`${icon("chevron", 11)}<b>${crumbId}</b>`) : ""}
         </div>
         <div class="topbar-actions">
-          <button class="btn btn-ghost btn-icon" title="Buscar" data-action="search">${raw(icon("search"))}</button>
-          <button class="btn btn-ghost btn-icon" title="Notificaciones" style="position:relative" data-action="bell">
-            ${raw(icon("bell"))}
-            <span style="position:absolute;top:4px;right:4px;width:7px;height:7px;border-radius:50%;background:var(--danger)"></span>
-          </button>
           <button class="btn btn-ghost btn-icon" title="Borrar caché y recargar" data-action="clear-cache">${raw(icon("refresh"))}</button>
           <span class="topbar-ver" title="Versión de la app">v${APP_VERSION}</span>
           <button class="btn btn-ghost btn-icon" title="Tweaks" data-action="tweaks">${raw(icon("settings"))}</button>

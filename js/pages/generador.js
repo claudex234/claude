@@ -19,7 +19,7 @@ const initialState = () => ({
   numero: "PRF-…",
   estado: "borrador",
   raw: "",
-  asunto: "Pantallas interactivas - 3 unidades",
+  asunto: "",
   cliente: { razonSocial: "", ruc: "", contacto: "", email: "", telefono: "" },
   rucSeguro: false,
   productos: [],
@@ -254,7 +254,7 @@ export const render = (root, ctx) => {
     if (draft) {
       const banner = el(`
         <div class="draft-banner" style="background:var(--accent-soft);border:1px solid var(--accent);border-radius:6px;padding:10px 14px;margin:0 0 12px;display:flex;justify-content:space-between;align-items:center;gap:12px">
-          <span style="font-size:13px">📝 Tenés un borrador sin guardar de ${ago(draft.savedAt)}. ¿Lo restauramos?</span>
+          <span style="font-size:13px">Tenés un borrador sin guardar de ${ago(draft.savedAt)}. ¿Lo restauramos?</span>
           <div style="display:flex;gap:6px">
             <button class="btn btn-sm btn-primary" data-action="draft-restore">Restaurar</button>
             <button class="btn btn-sm" data-action="draft-discard">Descartar</button>

@@ -17,12 +17,14 @@ export const render = (root) => {
       <div class="page-header">
         <div>
           <h1 class="page-title">Stock</h1>
-          <p class="page-sub">${ROWS.length} líneas en inventario · 2 almacenes</p>
+          <p class="page-sub">Información de inventario · solo lectura</p>
         </div>
-        <div style="display:flex;gap:8px">
-          <button class="btn">${raw(icon("download"))} Exportar</button>
-          <button class="btn btn-primary">${raw(icon("plus"))} Movimiento</button>
-        </div>
+      </div>
+
+      <div class="card" style="background:var(--bg-soft);border:1px dashed var(--border);padding:12px 14px;margin-bottom:14px;font-size:12.5px;color:var(--text-3)">
+        Esta página es informativa. No descuenta stock al generar proformas
+        (no hay módulo de facturación). Para gestionar inventario real, usá
+        tu sistema de facturación.
       </div>
 
       <div class="card">

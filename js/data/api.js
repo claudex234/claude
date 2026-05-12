@@ -30,3 +30,11 @@ export {
 export {
   fetchAperturas,
 } from "./api/aperturas.js";
+
+export {
+  upsertProducto,
+  archiveProducto,
+  restoreProducto,
+  fetchProductos,
+  uploadProductoImagen,
+} from "./api/productos.js";

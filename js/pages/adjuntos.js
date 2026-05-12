@@ -20,7 +20,12 @@ export const render = (root) => {
           <h1 class="page-title">Adjuntos</h1>
           <p class="page-sub">${FILES.length} archivos · fichas técnicas, certificados y material comercial</p>
         </div>
-        <button class="btn btn-primary">${raw(icon("plus"))} Subir archivo</button>
+      </div>
+
+      <div class="card" style="background:var(--bg-soft);border:1px dashed var(--border);padding:12px 14px;margin-bottom:14px;font-size:12.5px;color:var(--text-3)">
+        Vista preview. La funcionalidad real (subir desde productos,
+        adjuntar a proformas, trackear clicks en el visor) está en
+        desarrollo.
       </div>
 
       <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(280px, 1fr));gap:14px">

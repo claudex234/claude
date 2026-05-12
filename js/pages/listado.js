@@ -12,8 +12,10 @@ const FILTERS = [
   { id: "borrador", label: "Sin abrir" },
 ];
 
+const PAGE_SIZE = 50;
+
 export const render = (root) => {
-  let state = { search: "", filter: "todas", sort: "recientes" };
+  let state = { search: "", filter: "todas", sort: "recientes", page: 0 };
 
   const compute = () => {
     let arr = PROFORMAS.filter(p => {
@@ -71,6 +73,11 @@ export const render = (root) => {
 
   const build = () => {
     const filtered = compute();
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    if (state.page >= totalPages) state.page = totalPages - 1;
+    if (state.page < 0) state.page = 0;
+    const start = state.page * PAGE_SIZE;
+    const pageRows = filtered.slice(start, start + PAGE_SIZE);
     return el(html`
       <div class="page fade-in">
         <div class="page-header">
@@ -121,14 +128,20 @@ export const render = (root) => {
                 </tr>
               </thead>
               <tbody>
-                ${raw(filtered.map(renderRow).join(""))}
+                ${raw(pageRows.map(renderRow).join(""))}
               </tbody>
             </table>
           </div>
         </div>
 
-        <div style="margin-top:12px;font-size:12px;color:var(--text-3)">
-          Mostrando ${filtered.length} de ${PROFORMAS.length}
+        <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--text-3)">
+          <span>Mostrando ${start + 1}–${start + pageRows.length} de ${filtered.length}${filtered.length !== PROFORMAS.length ? ` (de ${PROFORMAS.length} en total)` : ""}</span>
+          ${totalPages > 1 ? raw(`
+            <div style="display:flex;gap:6px;align-items:center">
+              <button class="btn btn-sm" data-action="prev-page" ${state.page === 0 ? "disabled" : ""}>← Anterior</button>
+              <span style="font-family:var(--font-mono);font-size:11.5px">${state.page + 1} / ${totalPages}</span>
+              <button class="btn btn-sm" data-action="next-page" ${state.page >= totalPages - 1 ? "disabled" : ""}>Siguiente →</button>
+            </div>`) : ""}
         </div>
       </div>
     `);
@@ -171,9 +184,10 @@ export const render = (root) => {
         btn.innerHTML = original;
       }
     });
-    on(target, "click", "[data-filter]", (_, btn) => { state.filter = btn.dataset.filter; refresh(); });
+    on(target, "click", "[data-filter]", (_, btn) => { state.filter = btn.dataset.filter; state.page = 0; refresh(); });
     on(target, "input", "[data-search]", (e) => {
       state.search = e.target.value;
+      state.page = 0;
       const cursor = e.target.selectionStart;
       refresh();
       requestAnimationFrame(() => {
@@ -181,7 +195,9 @@ export const render = (root) => {
         if (inp) { inp.focus(); inp.setSelectionRange(cursor, cursor); }
       });
     });
-    on(target, "change", "[data-sort]", (e) => { state.sort = e.target.value; refresh(); });
+    on(target, "change", "[data-sort]", (e) => { state.sort = e.target.value; state.page = 0; refresh(); });
+    on(target, "click", "[data-action='prev-page']", () => { state.page = Math.max(0, state.page - 1); refresh(); });
+    on(target, "click", "[data-action='next-page']", () => { state.page = state.page + 1; refresh(); });
     on(target, "click", "tr.row", (e, tr) => {
       if (e.target.closest("[data-stop]")) return;
       navigate("detalle/" + tr.dataset.id);

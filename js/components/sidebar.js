@@ -3,6 +3,7 @@ import { icon } from "../lib/icons.js";
 import { state, set } from "../lib/store.js";
 import { navigate, currentRoute } from "../lib/router.js";
 import { PROFORMAS } from "../data/proformas.js";
+import { supabase } from "../lib/supabase.js";
 
 const MAIN = [
   { id: "proformas", icon: "list", label: "Proformas", badge: () => String(PROFORMAS.length || "") },
@@ -50,12 +51,12 @@ export const mountSidebar = (container) => {
         ${raw(CATALOGO.map(it => renderItem(it, name, collapsed)).join(""))}
         ${collapsed ? raw('<div style="height:8px"></div>') : raw('<div class="nav-section">Otros</div>')}
         ${raw(OTROS.map(it => renderItem(it, name, collapsed)).join(""))}
-        <div class="user-card">
-          <div class="avatar">DC</div>
+        <div class="user-card" data-user-card>
+          <div class="avatar" data-user-avatar>—</div>
           ${collapsed ? "" : raw(`
             <div style="min-width:0;flex:1">
-              <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Diego Cazorla</div>
-              <div style="font-size:11.5px;color:var(--text-mute)">Plan Pro</div>
+              <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" data-user-name>—</div>
+              <div style="font-size:11.5px;color:var(--text-mute)" data-user-email>—</div>
             </div>
           `)}
         </div>
@@ -70,10 +71,27 @@ export const mountSidebar = (container) => {
   let node = build();
   container.replaceChildren(node);
 
+  // Hidrata la user-card con datos del auth (email del usuario).
+  const hydrateUser = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const email = user?.email || "—";
+      const initials = (email[0] || "?").toUpperCase() + (email.split("@")[0]?.[1] || "").toUpperCase();
+      const avatar = node.querySelector("[data-user-avatar]");
+      const name = node.querySelector("[data-user-name]");
+      const mail = node.querySelector("[data-user-email]");
+      if (avatar) avatar.textContent = initials;
+      if (name) name.textContent = email.split("@")[0] || "—";
+      if (mail) mail.textContent = email;
+    } catch {}
+  };
+  hydrateUser();
+
   const rerender = () => {
     const next = build();
     node.replaceWith(next);
     node = next;
+    hydrateUser();
   };
 
   document.addEventListener("route:change", rerender);
