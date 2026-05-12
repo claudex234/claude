@@ -9,6 +9,7 @@ import { renderPlanilla, renderPlanillaWith } from "../lib/planillas.js";
 import { mountA4Fit } from "../lib/a4_fit.js";
 import { fromRpcPayload } from "../lib/planilla_data.js";
 import { startTracking } from "../lib/tracking.js";
+import { installProtections } from "../lib/visor_protection.js";
 
 const slugFromHash = () => {
   const m = location.hash.match(/^#\/?p\/([A-Za-z0-9_-]+)/);
@@ -67,54 +68,6 @@ const renderViewer = async (payload, slug) => {
         <div class="vp-blackout-text">Vista pausada — esta página oculta el contenido cuando no está en foco</div>
       </div>
     </div>`;
-};
-
-const installProtections = (root) => {
-  const stop = (e) => { e.preventDefault(); e.stopPropagation(); return false; };
-  // Right-click
-  root.addEventListener("contextmenu", stop);
-  // Drag (de imágenes/texto)
-  root.addEventListener("dragstart", stop);
-  // Selección
-  root.addEventListener("selectstart", stop);
-  root.addEventListener("copy", stop);
-  root.addEventListener("cut", stop);
-
-  // Atajos de descarga/impresión/copy
-  const onKey = (ev) => {
-    const k = (ev.key || "").toLowerCase();
-    if ((ev.ctrlKey || ev.metaKey) && ["s", "p", "c", "a", "u", "x"].includes(k)) {
-      ev.preventDefault();
-      ev.stopPropagation();
-    }
-    // PrintScreen — best effort: limpiar clipboard si existe
-    if (k === "printscreen" || ev.key === "PrintScreen") {
-      try { navigator.clipboard?.writeText(""); } catch {}
-    }
-    // F12 / Ctrl+Shift+I / Cmd+Opt+I (devtools)
-    if (k === "f12") ev.preventDefault();
-    if ((ev.ctrlKey || ev.metaKey) && ev.shiftKey && (k === "i" || k === "j" || k === "c")) {
-      ev.preventDefault();
-    }
-  };
-  document.addEventListener("keydown", onKey, true);
-
-  // Ocultar al perder foco / visibilidad / cambio de pestaña
-  const setHidden = (on) => document.body.classList.toggle("vp-hidden", on);
-  const onBlur = () => setHidden(true);
-  const onFocus = () => setHidden(false);
-  const onVis = () => setHidden(document.hidden);
-  window.addEventListener("blur", onBlur);
-  window.addEventListener("focus", onFocus);
-  document.addEventListener("visibilitychange", onVis);
-
-  return () => {
-    document.removeEventListener("keydown", onKey, true);
-    window.removeEventListener("blur", onBlur);
-    window.removeEventListener("focus", onFocus);
-    document.removeEventListener("visibilitychange", onVis);
-    document.body.classList.remove("vp-hidden", "vp-public");
-  };
 };
 
 const showError = (root, title, detail) => {

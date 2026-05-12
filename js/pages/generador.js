@@ -7,12 +7,13 @@ import { createProforma, updateProforma, nextNumero, ensurePublicLink, fetchProf
 import { supabase } from "../lib/supabase.js";
 import { toast } from "../lib/toast.js";
 import { EMISOR, FORMAS_PAGO } from "../data/empresa.js";
-import { parsePaste, PRODUCT_CODES, normalizeDictation } from "../lib/parser.js";
+import { parsePaste, PRODUCT_CODES } from "../lib/parser.js";
 import { renderPlanilla } from "../lib/planillas.js";
 import { SKINS, defaultSkinCodigo } from "../data/skins.js";
-import { copyToClipboard } from "../lib/clipboard.js";
 import { mountA4Fit } from "../lib/a4_fit.js";
 import { fromEditorState } from "../lib/planilla_data.js";
+import { createDictation } from "../lib/dictation.js";
+import { publicUrl, copyAndToast } from "../lib/share.js";
 
 const initialState = () => ({
   numero: "PRF-…",
@@ -158,33 +159,6 @@ const renderEditor = (s) => `
       <main class="gen-preview" data-preview><div class="pv-fit"><div class="pv-doc"><article class="pv-page" style="padding:60px;color:#999">Cargando planilla…</article></div></div></main>
     </div>
   </div>`;
-
-// Inyecta una sola vez los keyframes de la línea que vibra cuando
-// está escuchando audio (5 barritas verticales que pulsan en cadena).
-const ensureMicStyles = () => {
-  if (document.getElementById("mic-wave-styles")) return;
-  const s = document.createElement("style");
-  s.id = "mic-wave-styles";
-  s.textContent = `
-    .mic-wave { display: none; gap: 3px; align-items: center; height: 14px; padding: 0 4px; }
-    .mic-wave.on { display: inline-flex; }
-    .mic-wave span {
-      width: 3px; height: 100%; background: var(--danger, #e11d48);
-      border-radius: 2px; transform-origin: center;
-      animation: mic-pulse 0.9s ease-in-out infinite;
-    }
-    .mic-wave span:nth-child(2) { animation-delay: .12s; }
-    .mic-wave span:nth-child(3) { animation-delay: .24s; }
-    .mic-wave span:nth-child(4) { animation-delay: .36s; }
-    .mic-wave span:nth-child(5) { animation-delay: .48s; }
-    .mic-wave.loud span { animation-duration: 0.4s; }
-    @keyframes mic-pulse {
-      0%, 100% { transform: scaleY(0.3); opacity: .55; }
-      50%      { transform: scaleY(1);   opacity: 1; }
-    }
-  `;
-  document.head.appendChild(s);
-};
 
 // ====== Mount ======
 export const render = (root, ctx) => {
@@ -360,76 +334,15 @@ export const render = (root, ctx) => {
   on(node, "input", "[data-f]", handleField);
   on(node, "change", "[data-f]", handleField);
 
-  // === Dictado por voz (Web Speech API) ===
-  // Click toggle: arranca/para. Lo dictado se pre-normaliza (arroba→@,
-  // dígitos sueltos colapsados, palabras-número → dígitos) y se appendea
-  // al textarea, disparando el mismo handler de paste para re-parsear.
-  ensureMicStyles();
-  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-  let mic = null;
-  const setWaveOn = (on) => {
-    const w = node.querySelector("[data-mic-wave]");
-    if (w) w.classList.toggle("on", !!on);
-  };
-  const setWaveLoud = () => {
-    const w = node.querySelector("[data-mic-wave]");
-    if (!w) return;
-    w.classList.add("loud");
-    setTimeout(() => w.classList.remove("loud"), 220);
-  };
-  const stopMic = () => {
-    if (!mic) return;
-    try { mic.stop(); } catch {}
-    mic = null;
-    const btn = node.querySelector("[data-action='mic']");
-    if (btn) { btn.classList.remove("recording"); btn.style.background = ""; btn.style.color = ""; }
-    setWaveOn(false);
-  };
-  on(node, "click", "[data-action='mic']", (ev) => {
-    const btn = ev.target.closest("[data-action='mic']");
-    if (!SR) {
-      toast("Tu browser no soporta dictado (probá Chrome o Edge)", { type: "err" });
-      return;
-    }
-    if (mic) { stopMic(); return; }
-    mic = new SR();
-    mic.lang = "es-PE";
-    mic.continuous = true;
-    mic.interimResults = true; // para pulsear el wave aunque no haya frase final
-    mic.onresult = (event) => {
-      // Pulso visual cada vez que llega algo, sea interim o final.
-      setWaveLoud();
-      const ta = node.querySelector("[data-f='raw']");
-      if (!ta) return;
-      const finals = [];
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        if (event.results[i].isFinal) finals.push(event.results[i][0].transcript.trim());
-      }
-      if (!finals.length) return;
-      const text = normalizeDictation(finals.join("\n"));
-      const sep = ta.value && !ta.value.endsWith("\n") ? "\n" : "";
-      ta.value = ta.value + sep + text;
-      ta.dispatchEvent(new Event("input", { bubbles: true }));
-    };
-    mic.onspeechstart = () => setWaveLoud();
-    mic.onsoundstart = () => setWaveLoud();
-    mic.onerror = (e) => {
-      toast(`Mic: ${e.error || "error"}`, { type: "err" });
-      stopMic();
-    };
-    mic.onend = () => stopMic();
-    try {
-      mic.start();
-      btn.classList.add("recording");
-      btn.style.background = "var(--danger)";
-      btn.style.color = "white";
-      setWaveOn(true);
-    } catch (err) {
-      console.error(err);
-      stopMic();
-      toast("No pude arrancar el mic", { type: "err" });
-    }
+  // Dictado por voz — delegado a lib/dictation.js. Conecta el botón mic
+  // y el wave con el textarea de paste. El target se resuelve lazy
+  // porque el dictation toggle puede llamarse antes del primer click.
+  const dict = createDictation({
+    target: node.querySelector("[data-f='raw']"),
+    button: node.querySelector("[data-action='mic']"),
+    wave: node.querySelector("[data-mic-wave]"),
   });
+  on(node, "click", "[data-action='mic']", () => dict.toggle());
 
   // Productos
   on(node, "click", "[data-action='add-prod']", (ev) => {
@@ -507,8 +420,6 @@ export const render = (root, ctx) => {
     const url = `${location.origin}${location.pathname}#/print/${s.numero}`;
     window.open(url, "_blank", "noopener");
   });
-  const publicUrl = (slug) => `${location.origin}${location.pathname}#/p/${slug}`;
-
   // Genera (o reutiliza) el link público. Si la proforma todavía no se
   // guardó en Supabase, primero la guarda como borrador.
   on(node, "click", "[data-action='generar-link']", async (ev) => {
@@ -546,8 +457,7 @@ export const render = (root, ctx) => {
       if (rec) rec.slug = s.publicSlug;
 
       const url = publicUrl(s.publicSlug);
-      const copied = await copyToClipboard(url);
-      toast(copied ? `Link copiado · ${url}` : `Link listo · ${url}`, { type: "ok", ms: 7000 });
+      await copyAndToast(url, { ok: "Link copiado", info: "Link listo" });
       if (wasNew) window.open(url, "_blank", "noopener");
 
       if (btn) {
@@ -561,5 +471,5 @@ export const render = (root, ctx) => {
     }
   });
   // Cleanup al cambiar de ruta
-  return () => { a4.dispose(); stopMic(); };
+  return () => { a4.dispose(); dict.dispose(); };
 };

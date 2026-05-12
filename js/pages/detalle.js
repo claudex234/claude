@@ -1,201 +1,15 @@
-// Detalle de una proforma — datos reales desde Supabase, incluyendo
-// el tracking de aperturas del link público.
+// Detalle de una proforma — datos reales desde Supabase. El bloque de
+// tracking (stats + sparkline + heatmap + tabla) está en lib/tracking_view.js.
 
-import { html, raw, el, on, fmtMoney, fmtTime, fmtDate, escapeHtml as e } from "../lib/utils.js";
+import { html, raw, el, on, fmtMoney, fmtDate, escapeHtml as e } from "../lib/utils.js";
 import { icon } from "../lib/icons.js";
 import { navigate } from "../lib/router.js";
 import { fetchProformaDetail, ensurePublicLink, fetchAperturas } from "../data/api.js";
 import { toast } from "../lib/toast.js";
-import { copyToClipboard } from "../lib/clipboard.js";
-
-const fmtDateTime = (iso) => {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(+d)) return iso;
-  const dd = String(d.getDate()).padStart(2, "0");
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mi = String(d.getMinutes()).padStart(2, "0");
-  return `${dd}/${mm} ${hh}:${mi}`;
-};
-
-const ago = (iso) => {
-  if (!iso) return "—";
-  const d = new Date(iso);
-  if (Number.isNaN(+d)) return iso;
-  const sec = Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000));
-  if (sec < 60) return `hace ${sec}s`;
-  const min = Math.floor(sec / 60);
-  if (min < 60) return `hace ${min}m`;
-  const h = Math.floor(min / 60);
-  if (h < 24) return `hace ${h}h`;
-  const days = Math.floor(h / 24);
-  return `hace ${days}d`;
-};
+import { publicUrl, copyAndToast } from "../lib/share.js";
+import { renderTracking } from "../lib/tracking_view.js";
 
 // Sparkline 30 días: bars verticales con cantidad de aperturas por día.
-const sparkline = (aperturas) => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const days = Array.from({ length: 30 }, (_, i) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() - (29 - i));
-    return { date: d, count: 0 };
-  });
-  for (const a of aperturas) {
-    if (!a.abierta_at) continue;
-    const d = new Date(a.abierta_at);
-    d.setHours(0, 0, 0, 0);
-    const diff = Math.round((today - d) / 86400000);
-    const idx = 29 - diff;
-    if (idx >= 0 && idx < 30) days[idx].count++;
-  }
-  const max = Math.max(1, ...days.map((d) => d.count));
-  const bw = 7, gap = 3, w = 30 * (bw + gap) - gap, h = 40;
-  return `
-    <svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" preserveAspectRatio="none" style="display:block;max-width:${w}px">
-      ${days.map((d, i) => {
-        const bh = Math.max(1, Math.round((d.count / max) * (h - 2)));
-        const y = h - bh;
-        const x = i * (bw + gap);
-        const fill = d.count > 0 ? "var(--accent)" : "var(--border)";
-        return `<rect x="${x}" y="${y}" width="${bw}" height="${bh}" fill="${fill}" rx="1"><title>${d.date.toISOString().slice(0,10)} · ${d.count}</title></rect>`;
-      }).join("")}
-    </svg>`;
-};
-
-// Suma de segundos por zona a través de todas las aperturas.
-const aggregateZonas = (aperturas) => {
-  const acc = { encabezado: 0, items: 0, totales: 0, terminos: 0 };
-  for (const a of aperturas) {
-    const z = a.zonas_s || {};
-    for (const k of Object.keys(acc)) acc[k] += z[k] || 0;
-  }
-  return acc;
-};
-
-const heatmapZonas = (aperturas) => {
-  const z = aggregateZonas(aperturas);
-  const total = z.encabezado + z.items + z.totales + z.terminos;
-  if (total === 0) return "";
-  const labels = { encabezado: "Encabezado", items: "Ítems", totales: "Totales", terminos: "Términos" };
-  return `
-    <div class="card" style="margin-bottom:16px">
-      <div class="card-header"><div class="card-title">Tiempo por zona de la hoja</div></div>
-      <div class="card-body">
-        ${Object.entries(labels).map(([k, l]) => {
-          const pct = Math.round((z[k] / total) * 100);
-          return `
-            <div style="display:grid;grid-template-columns:90px 1fr 100px;align-items:center;gap:12px;padding:6px 0">
-              <div style="font-size:12.5px;color:var(--text-2)">${l}</div>
-              <div style="background:var(--bg-soft);height:14px;border-radius:7px;overflow:hidden">
-                <div style="width:${pct}%;height:100%;background:var(--accent);transition:width .3s"></div>
-              </div>
-              <div style="font-size:11.5px;color:var(--text-mute);font-family:var(--font-mono);text-align:right">${pct}% · ${fmtTime(z[k])}</div>
-            </div>`;
-        }).join("")}
-      </div>
-    </div>`;
-};
-
-const trackingStats = (aperturas) => {
-  const reales = aperturas.filter((a) => !a.meta?.bloqueado);
-  const ips = new Set(reales.map((a) => a.ip).filter(Boolean));
-  const total_s = reales.reduce((s, a) => s + (a.duracion_s || 0), 0);
-  const ultima = reales[0]?.abierta_at || null;
-  const impresiones = reales.filter((a) => a.impresion).length;
-  const descargas = reales.filter((a) => a.descarga).length;
-  const reenvios = reales.filter((a) => a.reenvio).length;
-  const bloqueadas = aperturas.filter((a) => a.meta?.bloqueado).length;
-  return { aperturas: reales.length, ips: ips.size, total_s, ultima, impresiones, descargas, reenvios, bloqueadas };
-};
-
-const trackingSection = (aperturas) => {
-  if (!aperturas || !aperturas.length) {
-    return raw(`<div class="card">
-      <div class="card-header"><div class="card-title">Tracking</div></div>
-      <div class="card-body" style="text-align:center;padding:32px 24px;color:var(--text-mute);font-size:13px">
-        Sin aperturas todavía. Cuando el cliente abra el link verás acá hora, dispositivo, ciudad y comportamiento.
-      </div>
-    </div>`);
-  }
-  const s = trackingStats(aperturas);
-  return raw(`
-    <div class="stat-grid" style="margin-bottom:16px">
-      <div class="stat">
-        <div class="stat-label">Aperturas</div>
-        <div class="stat-value">${s.aperturas}</div>
-        <div class="stat-delta">${s.ips} IP${s.ips === 1 ? "" : "s"} únicas</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Tiempo total leído</div>
-        <div class="stat-value">${fmtTime(s.total_s)}</div>
-        <div class="stat-delta">Última: ${ago(s.ultima)}</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Reenvíos</div>
-        <div class="stat-value">${s.reenvios}</div>
-        <div class="stat-delta">${s.bloqueadas} bloqueadas por país</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Impresiones</div>
-        <div class="stat-value">${s.impresiones}</div>
-        <div class="stat-delta">${s.descargas} descargas</div>
-      </div>
-    </div>
-
-    <div class="card" style="margin-bottom:16px">
-      <div class="card-header"><div class="card-title">Aperturas por día · últimos 30</div></div>
-      <div class="card-body" style="padding:14px 16px">${sparkline(aperturas)}</div>
-    </div>
-
-    ${heatmapZonas(aperturas)}
-
-    <div class="card">
-      <div class="card-header"><div class="card-title">Aperturas · ${aperturas.length}</div></div>
-      <div class="card-body" style="padding:0;max-height:520px;overflow-y:auto">
-        <table class="table" style="margin:0">
-          <thead>
-            <tr>
-              <th style="width:130px">Cuándo</th>
-              <th>Dispositivo / lugar</th>
-              <th style="width:80px;text-align:right">Tiempo</th>
-              <th style="width:80px;text-align:right">Scroll</th>
-              <th style="width:180px">Flags</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${aperturas.map((a) => {
-              const lugar = [a.ciudad, a.pais].filter(Boolean).join(", ") || "—";
-              const bloqueada = !!a.meta?.bloqueado;
-              return `
-                <tr class="row" style="${bloqueada ? "opacity:.55" : ""}">
-                  <td style="font-family:var(--font-mono);font-size:11.5px">${fmtDateTime(a.abierta_at)}</td>
-                  <td>
-                    <div style="font-size:12.5px">${e(a.dispositivo || "—")}</div>
-                    <div style="font-size:11px;color:var(--text-mute);margin-top:2px">${e(lugar)} · ${e(a.os || "")}</div>
-                  </td>
-                  <td style="text-align:right;font-family:var(--font-mono);font-size:12px">${fmtTime(a.duracion_s || 0)}</td>
-                  <td style="text-align:right;font-family:var(--font-mono);font-size:12px">${a.scroll_pct || 0}%</td>
-                  <td>
-                    <div style="display:flex;gap:4px;flex-wrap:wrap">
-                      ${bloqueada ? '<span class="badge" style="font-size:10px;color:var(--danger);border-color:var(--danger)">bloqueada</span>' : ""}
-                      ${a.reenvio ? '<span class="badge badge-warn" style="font-size:10px">reenvío</span>' : ""}
-                      ${a.impresion ? '<span class="badge" style="font-size:10px">impresión</span>' : ""}
-                      ${a.descarga ? '<span class="badge" style="font-size:10px">descarga</span>' : ""}
-                      ${a.print_screen_attempts > 0 ? `<span class="badge" style="font-size:10px;color:var(--danger)">prntscr ${a.print_screen_attempts}</span>` : ""}
-                      ${a.clicks > 0 ? `<span class="badge" style="font-size:10px">${a.clicks} clicks</span>` : ""}
-                    </div>
-                  </td>
-                </tr>`;
-            }).join("")}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  `);
-};
-
 const skeleton = () => html`
   <div class="page fade-in">
     <div class="page-header">
@@ -317,7 +131,7 @@ const view = (d, aperturas) => {
         </div>
       </div>
 
-      ${trackingSection(aperturas)}
+      ${raw(renderTracking(aperturas))}
     </div>`;
 };
 
@@ -360,15 +174,11 @@ export const render = async (root, ctx) => {
   const next = el(view(detail, aperturas));
   node.replaceWith(next);
 
-  const publicUrl = (slug) => `${location.origin}${location.pathname}#/p/${slug}`;
-
   on(next, "click", "[data-action='back']", () => navigate("proformas"));
   on(next, "click", "[data-action='edit']", () => navigate("generador/" + detail.proforma.numero));
   on(next, "click", "[data-action='copy-link']", async () => {
     if (!detail.slug) return;
-    const url = publicUrl(detail.slug);
-    const ok = await copyToClipboard(url);
-    toast(ok ? `Link copiado · ${url}` : `Link · ${url}`, { type: ok ? "ok" : "info", ms: 7000 });
+    await copyAndToast(publicUrl(detail.slug));
   });
   on(next, "click", "[data-action='gen-link']", async (ev) => {
     const btn = ev.target.closest("button");
@@ -377,8 +187,7 @@ export const render = async (root, ctx) => {
       const slug = await ensurePublicLink(detail.proforma.id);
       detail.slug = slug;
       const url = publicUrl(slug);
-      const ok = await copyToClipboard(url);
-      toast(ok ? `Link copiado · ${url}` : `Link generado · ${url}`, { type: "ok", ms: 7000 });
+      await copyAndToast(url, { ok: "Link copiado", info: "Link generado" });
       window.open(url, "_blank", "noopener");
       // Mutar el botón a 'Copiar link' (mismo handler de copy-link).
       if (btn) {

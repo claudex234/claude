@@ -4,9 +4,7 @@ import { PROFORMAS } from "../data/proformas.js";
 import { navigate } from "../lib/router.js";
 import { toast } from "../lib/toast.js";
 import { ensurePublicLink } from "../data/api.js";
-import { copyToClipboard } from "../lib/clipboard.js";
-
-const publicLinkFor = (slug) => `${location.origin}${location.pathname}#/p/${slug}`;
+import { publicUrl, copyAndToast } from "../lib/share.js";
 
 const FILTERS = [
   { id: "todas", label: "Todas" },
@@ -162,9 +160,8 @@ export const render = (root) => {
       try {
         const wasNew = !proforma.slug;
         if (wasNew) proforma.slug = await ensurePublicLink(proforma.proformaId);
-        const url = publicLinkFor(proforma.slug);
-        const copied = await copyToClipboard(url);
-        toast(copied ? `Link copiado · ${url}` : `Link listo · ${url}`, { type: "ok", ms: 7000 });
+        const url = publicUrl(proforma.slug);
+        await copyAndToast(url, { ok: "Link copiado", info: "Link listo" });
         if (wasNew) window.open(url, "_blank", "noopener");
         refresh();
       } catch (err) {
