@@ -1,4 +1,4 @@
-import { fmtMoney, on, escapeHtml as e, el, raw } from "../lib/utils.js";
+import { fmtMoney, on, escapeHtml as e, el, raw, ago } from "../lib/utils.js";
 import { icon } from "../lib/icons.js";
 import { PRODUCTOS } from "../data/productos.js";
 import { PROFORMAS, toMemoryProforma } from "../data/proformas.js";
@@ -39,6 +39,43 @@ const totals = (productos) => {
   const subtotal = productos.reduce((a, p) => a + p.qty * p.precio, 0);
   const igv = +(subtotal * 0.18).toFixed(2);
   return { subtotal, igv, total: +(subtotal + igv).toFixed(2) };
+};
+
+// === Borrador local (autosave en localStorage) ============================
+// Solo aplica a "nueva proforma". Para edición no autosaveamos local porque
+// la fila ya existe en Supabase y nos podríamos desincronizar.
+
+const DRAFT_KEY = "proforma:draft:new";
+const DRAFT_TTL_MS = 24 * 3600 * 1000; // 24h
+
+const isDraftEmpty = (s) =>
+  !s.raw && !s.cliente.razonSocial && !s.cliente.ruc &&
+  !s.cliente.contacto && !s.cliente.email && !s.cliente.telefono &&
+  !s.productos.length;
+
+const loadDraft = () => {
+  try {
+    const v = localStorage.getItem(DRAFT_KEY);
+    if (!v) return null;
+    const d = JSON.parse(v);
+    if (!d?.savedAt || Date.now() - d.savedAt > DRAFT_TTL_MS) {
+      localStorage.removeItem(DRAFT_KEY);
+      return null;
+    }
+    return d;
+  } catch { return null; }
+};
+
+const saveDraft = (s) => {
+  if (isDraftEmpty(s)) return clearDraft();
+  try {
+    const { dirty, isEdit, ...rest } = s;
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...rest, savedAt: Date.now() }));
+  } catch {}
+};
+
+const clearDraft = () => {
+  try { localStorage.removeItem(DRAFT_KEY); } catch {}
 };
 
 // Renderiza el preview vía la planilla seleccionada. Async porque la
@@ -189,6 +226,74 @@ export const render = (root, ctx) => {
   const node = el(renderEditor(s));
   root.appendChild(node);
 
+  // Autosave debounced + flag dirty para confirmar al salir.
+  let dirty = false;
+  const debouncedSave = (() => {
+    let t = null;
+    return () => { clearTimeout(t); t = setTimeout(() => saveDraft(s), 500); };
+  })();
+  const markDirty = () => {
+    dirty = true;
+    if (!s.isEdit) debouncedSave();
+  };
+  const markClean = () => {
+    dirty = false;
+    clearDraft();
+  };
+  // Confirmar antes de cerrar/recargar la pestaña si hay cambios.
+  const onBeforeUnload = (ev) => {
+    if (!dirty) return;
+    ev.preventDefault();
+    ev.returnValue = ""; // texto custom no se respeta en browsers modernos
+  };
+  window.addEventListener("beforeunload", onBeforeUnload);
+
+  // Banner de restauración: solo en modo nuevo y si hay borrador < 24h.
+  if (!s.isEdit) {
+    const draft = loadDraft();
+    if (draft) {
+      const banner = el(`
+        <div class="draft-banner" style="background:var(--accent-soft);border:1px solid var(--accent);border-radius:6px;padding:10px 14px;margin:0 0 12px;display:flex;justify-content:space-between;align-items:center;gap:12px">
+          <span style="font-size:13px">📝 Tenés un borrador sin guardar de ${ago(draft.savedAt)}. ¿Lo restauramos?</span>
+          <div style="display:flex;gap:6px">
+            <button class="btn btn-sm btn-primary" data-action="draft-restore">Restaurar</button>
+            <button class="btn btn-sm" data-action="draft-discard">Descartar</button>
+          </div>
+        </div>
+      `);
+      root.insertBefore(banner, node);
+
+      on(banner, "click", "[data-action='draft-restore']", () => {
+        // Aplicar campos del borrador al state existente (no perder defaults).
+        Object.assign(s.cliente, draft.cliente || {});
+        s.raw = draft.raw || "";
+        s.asunto = draft.asunto || s.asunto;
+        s.productos = Array.isArray(draft.productos) ? draft.productos : [];
+        s.terminos = { ...s.terminos, ...(draft.terminos || {}) };
+        s.skinCodigo = draft.skinCodigo || s.skinCodigo;
+        s.rucSeguro = !!draft.rucSeguro;
+        // Rehidratar inputs visibles
+        ["razonSocial", "ruc", "contacto", "email", "telefono"].forEach((k) => {
+          const i = node.querySelector(`[data-f='${k}']`);
+          if (i) i.value = s.cliente[k] || "";
+        });
+        const inRaw = node.querySelector("[data-f='raw']");
+        if (inRaw) inRaw.value = s.raw;
+        const inAsunto = node.querySelector("[data-f='asunto']");
+        if (inAsunto) inAsunto.value = s.asunto;
+        const inSkin = node.querySelector("[data-f='skinCodigo']");
+        if (inSkin) inSkin.value = s.skinCodigo;
+        refreshAll();
+        banner.remove();
+        toast("Borrador restaurado", { type: "ok" });
+      });
+      on(banner, "click", "[data-action='draft-discard']", () => {
+        clearDraft();
+        banner.remove();
+      });
+    }
+  }
+
   // En modo edición: traer la proforma y rellenar el form.
   if (s.isEdit) {
     (async () => {
@@ -317,6 +422,7 @@ export const render = (root, ctx) => {
         if (i) i.value = s.cliente[k];
       });
       refreshAll();
+      markDirty();
       return;
     }
     if (f === "asunto") s.asunto = v;
@@ -330,6 +436,7 @@ export const render = (root, ctx) => {
     else if (f === "skinCodigo") s.skinCodigo = v;
     refreshChips();
     refreshPreview();
+    markDirty();
   };
   on(node, "input", "[data-f]", handleField);
   on(node, "change", "[data-f]", handleField);
@@ -351,10 +458,12 @@ export const render = (root, ctx) => {
     if (!ref) return toast(`Falta producto ${code}`, { type: "err" });
     s.productos.push({ modelo: code, qty: 1, precio: ref.precioDefault, nombre: ref.nombre });
     refreshAll();
+    markDirty();
   });
   on(node, "click", "[data-action='rm-prod']", (ev) => {
     s.productos.splice(parseInt(ev.target.dataset.i, 10), 1);
     refreshAll();
+    markDirty();
   });
   on(node, "input", "[data-fp]", (ev) => {
     const i = parseInt(ev.target.dataset.i, 10);
@@ -365,6 +474,7 @@ export const render = (root, ctx) => {
     const row = node.querySelector(`[data-prod-row='${i}']`);
     if (row) row.querySelector(".prod-total").textContent = fmtMoney(s.productos[i].qty * s.productos[i].precio);
     refreshPreview();
+    markDirty();
   });
 
   // Acciones
@@ -404,6 +514,7 @@ export const render = (root, ctx) => {
         rec.estado = proforma.estado;
       }
       toast(`${proforma.numero} actualizada`, { type: "ok" });
+      markClean();
       navigate("detalle/" + proforma.numero);
     } catch (err) {
       console.error(err);
@@ -458,6 +569,7 @@ export const render = (root, ctx) => {
 
       const url = publicUrl(s.publicSlug);
       await copyAndToast(url, { ok: "Link copiado", info: "Link listo" });
+      markClean();
       if (wasNew) window.open(url, "_blank", "noopener");
 
       if (btn) {
@@ -471,5 +583,9 @@ export const render = (root, ctx) => {
     }
   });
   // Cleanup al cambiar de ruta
-  return () => { a4.dispose(); dict.dispose(); };
+  return () => {
+    a4.dispose();
+    dict.dispose();
+    window.removeEventListener("beforeunload", onBeforeUnload);
+  };
 };
