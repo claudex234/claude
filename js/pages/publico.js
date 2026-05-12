@@ -8,6 +8,7 @@ import { EMISOR } from "../data/empresa.js";
 import { renderPlanilla, renderPlanillaWith } from "../lib/planillas.js";
 import { mountA4Fit } from "../lib/a4_fit.js";
 import { fromRpcPayload } from "../lib/planilla_data.js";
+import { startTracking } from "../lib/tracking.js";
 
 const slugFromHash = () => {
   const m = location.hash.match(/^#\/?p\/([A-Za-z0-9_-]+)/);
@@ -20,12 +21,14 @@ const fetchProforma = async (slug) => {
   return data;
 };
 
-const logApertura = async (slug) => {
-  try {
-    await supabase.rpc("log_public_apertura", { p_slug: slug, p_user_agent: navigator.userAgent });
-  } catch (err) {
-    console.warn("[publico] log_public_apertura falló:", err);
-  }
+const showBlocked = (root) => {
+  root.innerHTML = `
+    <div class="vp-error">
+      <div style="max-width:520px;text-align:center">
+        <div style="font-size:18px;font-weight:600;color:#e2e8f0;margin-bottom:10px">Esta vista no está disponible en tu región</div>
+        <div style="font-size:13px;color:#8a8f9a">El emisor de este documento restringió el acceso a Perú.</div>
+      </div>
+    </div>`;
 };
 
 const renderViewer = async (payload, slug) => {
@@ -149,9 +152,6 @@ export const render = async (root) => {
     return () => document.body.classList.remove("vp-public");
   }
 
-  // Registrar la apertura — fire-and-forget; errores van a la consola.
-  logApertura(slug);
-
   // Renderizar — si tira excepción, la mostramos en pantalla en vez de
   // dejar la página colgada en "Cargando…".
   let html;
@@ -169,8 +169,25 @@ export const render = async (root) => {
   const stage = root.querySelector(".vp-stage");
   const a4 = stage ? mountA4Fit(stage, { paddingX: 64, maxScale: 1.4, fitSelector: ".vp-fit" }) : { dispose: () => {} };
 
+  // Tracking real (geo + open_apertura + heartbeat). Si el owner exige
+  // PE y no estamos en PE, mostramos pantalla de bloqueo y desmontamos.
+  let blocked = false;
+  const track = await startTracking({
+    slug,
+    root,
+    onBlocked: () => { blocked = true; },
+  });
+  if (blocked) {
+    a4.dispose();
+    cleanupProt();
+    track.dispose();
+    showBlocked(root);
+    return () => document.body.classList.remove("vp-public");
+  }
+
   return () => {
     a4.dispose();
     cleanupProt();
+    track.dispose();
   };
 };

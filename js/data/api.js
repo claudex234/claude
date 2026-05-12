@@ -21,3 +21,12 @@ export {
   setDefaultSkin,
   fetchSkins,
 } from "./api/skins.js";
+
+export {
+  fetchUserSettings,
+  saveUserSettings,
+} from "./api/settings.js";
+
+export {
+  fetchAperturas,
+} from "./api/aperturas.js";

@@ -1,13 +1,128 @@
-// Detalle de una proforma — datos reales desde Supabase.
-// La sección de tracking queda con placeholders hasta que cableemos
-// proforma_aperturas (último item del roadmap).
+// Detalle de una proforma — datos reales desde Supabase, incluyendo
+// el tracking de aperturas del link público.
 
-import { html, raw, el, on, fmtMoney, fmtDate, escapeHtml as e } from "../lib/utils.js";
+import { html, raw, el, on, fmtMoney, fmtTime, fmtDate, escapeHtml as e } from "../lib/utils.js";
 import { icon } from "../lib/icons.js";
 import { navigate } from "../lib/router.js";
-import { fetchProformaDetail, ensurePublicLink } from "../data/api.js";
+import { fetchProformaDetail, ensurePublicLink, fetchAperturas } from "../data/api.js";
 import { toast } from "../lib/toast.js";
 import { copyToClipboard } from "../lib/clipboard.js";
+
+const fmtDateTime = (iso) => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(+d)) return iso;
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  return `${dd}/${mm} ${hh}:${mi}`;
+};
+
+const ago = (iso) => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(+d)) return iso;
+  const sec = Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000));
+  if (sec < 60) return `hace ${sec}s`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `hace ${min}m`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `hace ${h}h`;
+  const days = Math.floor(h / 24);
+  return `hace ${days}d`;
+};
+
+const trackingStats = (aperturas) => {
+  const reales = aperturas.filter((a) => !a.meta?.bloqueado);
+  const ips = new Set(reales.map((a) => a.ip).filter(Boolean));
+  const total_s = reales.reduce((s, a) => s + (a.duracion_s || 0), 0);
+  const ultima = reales[0]?.abierta_at || null;
+  const impresiones = reales.filter((a) => a.impresion).length;
+  const descargas = reales.filter((a) => a.descarga).length;
+  const reenvios = reales.filter((a) => a.reenvio).length;
+  const bloqueadas = aperturas.filter((a) => a.meta?.bloqueado).length;
+  return { aperturas: reales.length, ips: ips.size, total_s, ultima, impresiones, descargas, reenvios, bloqueadas };
+};
+
+const trackingSection = (aperturas) => {
+  if (!aperturas || !aperturas.length) {
+    return raw(`<div class="card">
+      <div class="card-header"><div class="card-title">Tracking</div></div>
+      <div class="card-body" style="text-align:center;padding:32px 24px;color:var(--text-mute);font-size:13px">
+        Sin aperturas todavía. Cuando el cliente abra el link verás acá hora, dispositivo, ciudad y comportamiento.
+      </div>
+    </div>`);
+  }
+  const s = trackingStats(aperturas);
+  return raw(`
+    <div class="stat-grid" style="margin-bottom:16px">
+      <div class="stat">
+        <div class="stat-label">Aperturas</div>
+        <div class="stat-value">${s.aperturas}</div>
+        <div class="stat-delta">${s.ips} IP${s.ips === 1 ? "" : "s"} únicas</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Tiempo total leído</div>
+        <div class="stat-value">${fmtTime(s.total_s)}</div>
+        <div class="stat-delta">Última: ${ago(s.ultima)}</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Reenvíos</div>
+        <div class="stat-value">${s.reenvios}</div>
+        <div class="stat-delta">${s.bloqueadas} bloqueadas por país</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Impresiones</div>
+        <div class="stat-value">${s.impresiones}</div>
+        <div class="stat-delta">${s.descargas} descargas</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="card-title">Aperturas · ${aperturas.length}</div></div>
+      <div class="card-body" style="padding:0;max-height:520px;overflow-y:auto">
+        <table class="table" style="margin:0">
+          <thead>
+            <tr>
+              <th style="width:130px">Cuándo</th>
+              <th>Dispositivo / lugar</th>
+              <th style="width:80px;text-align:right">Tiempo</th>
+              <th style="width:80px;text-align:right">Scroll</th>
+              <th style="width:180px">Flags</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${aperturas.map((a) => {
+              const lugar = [a.ciudad, a.pais].filter(Boolean).join(", ") || "—";
+              const bloqueada = !!a.meta?.bloqueado;
+              return `
+                <tr class="row" style="${bloqueada ? "opacity:.55" : ""}">
+                  <td style="font-family:var(--font-mono);font-size:11.5px">${fmtDateTime(a.abierta_at)}</td>
+                  <td>
+                    <div style="font-size:12.5px">${e(a.dispositivo || "—")}</div>
+                    <div style="font-size:11px;color:var(--text-mute);margin-top:2px">${e(lugar)} · ${e(a.os || "")}</div>
+                  </td>
+                  <td style="text-align:right;font-family:var(--font-mono);font-size:12px">${fmtTime(a.duracion_s || 0)}</td>
+                  <td style="text-align:right;font-family:var(--font-mono);font-size:12px">${a.scroll_pct || 0}%</td>
+                  <td>
+                    <div style="display:flex;gap:4px;flex-wrap:wrap">
+                      ${bloqueada ? '<span class="badge" style="font-size:10px;color:var(--danger);border-color:var(--danger)">bloqueada</span>' : ""}
+                      ${a.reenvio ? '<span class="badge badge-warn" style="font-size:10px">reenvío</span>' : ""}
+                      ${a.impresion ? '<span class="badge" style="font-size:10px">impresión</span>' : ""}
+                      ${a.descarga ? '<span class="badge" style="font-size:10px">descarga</span>' : ""}
+                      ${a.print_screen_attempts > 0 ? `<span class="badge" style="font-size:10px;color:var(--danger)">prntscr ${a.print_screen_attempts}</span>` : ""}
+                      ${a.clicks > 0 ? `<span class="badge" style="font-size:10px">${a.clicks} clicks</span>` : ""}
+                    </div>
+                  </td>
+                </tr>`;
+            }).join("")}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `);
+};
 
 const skeleton = () => html`
   <div class="page fade-in">
@@ -30,7 +145,7 @@ const errorView = (msg) => html`
     </div>
   </div>`;
 
-const view = (d) => {
+const view = (d, aperturas) => {
   const p = d.proforma;
   const c = d.cliente || {};
   const items = d.items || [];
@@ -130,16 +245,7 @@ const view = (d) => {
         </div>
       </div>
 
-      <div class="card">
-        <div class="card-header">
-          <div class="card-title">Tracking</div>
-          <div style="font-size:12px;color:var(--text-mute)">pendiente de cablear</div>
-        </div>
-        <div class="card-body" style="text-align:center;padding:32px 24px;color:var(--text-mute);font-size:13px">
-          La tabla <code>proforma_aperturas</code> todavía no recibe datos.<br>
-          Cuando se active, acá vas a ver IPs, dispositivos, tiempo por página y reenvíos.
-        </div>
-      </div>
+      ${trackingSection(aperturas)}
     </div>`;
 };
 
@@ -174,7 +280,12 @@ export const render = async (root, ctx) => {
     return;
   }
 
-  const next = el(view(detail));
+  // Aperturas — paralelizadas, no bloquean el primer render del detalle.
+  let aperturas = [];
+  try { aperturas = await fetchAperturas(detail.proforma.id); }
+  catch (err) { console.warn("[detalle] fetchAperturas:", err); }
+
+  const next = el(view(detail, aperturas));
   node.replaceWith(next);
 
   const publicUrl = (slug) => `${location.origin}${location.pathname}#/p/${slug}`;
