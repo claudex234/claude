@@ -38,3 +38,11 @@ export {
   fetchProductos,
   uploadProductoImagen,
 } from "./api/productos.js";
+
+export {
+  fetchTrackingPages,
+  fetchTrackingPage,
+  fetchHitsByPage,
+  upsertTrackingPage,
+  deleteTrackingPage,
+} from "./api/tracking.js";

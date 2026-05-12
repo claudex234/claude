@@ -15,6 +15,7 @@ const PAGES = [
   { id: "generador", l: "Generador" },
   { id: "clientes", l: "Clientes" },
   { id: "templates", l: "Plantillas" },
+  { id: "competidores", l: "Competidores" },
   { id: "productos", l: "Productos" },
   { id: "stock", l: "Stock" },
   { id: "adjuntos", l: "Adjuntos" },

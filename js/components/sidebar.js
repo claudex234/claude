@@ -16,6 +16,9 @@ const CATALOGO = [
   { id: "adjuntos", icon: "paperclip", label: "Adjuntos" },
   { id: "templates", icon: "template", label: "Plantillas" },
 ];
+const SEGUIMIENTO = [
+  { id: "competidores", icon: "eye", label: "Competidores" },
+];
 const OTROS = [
   { id: "config", icon: "settings", label: "Configuración" },
 ];
@@ -49,6 +52,8 @@ export const mountSidebar = (container) => {
         ${raw(MAIN.map(it => renderItem(it, name, collapsed, it.id === "proformas" && detalleActive)).join(""))}
         ${collapsed ? raw('<div style="height:8px"></div>') : raw('<div class="nav-section">Catálogo</div>')}
         ${raw(CATALOGO.map(it => renderItem(it, name, collapsed)).join(""))}
+        ${collapsed ? raw('<div style="height:8px"></div>') : raw('<div class="nav-section">Seguimiento</div>')}
+        ${raw(SEGUIMIENTO.map(it => renderItem(it, name, collapsed)).join(""))}
         ${collapsed ? raw('<div style="height:8px"></div>') : raw('<div class="nav-section">Otros</div>')}
         ${raw(OTROS.map(it => renderItem(it, name, collapsed)).join(""))}
         <div class="user-card" data-user-card>

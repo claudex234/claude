@@ -13,6 +13,7 @@ const titleFor = (name) => ({
   stock: "Stock",
   adjuntos: "Adjuntos",
   templates: "Plantillas",
+  competidores: "Competidores",
   config: "Configuración",
 }[name] || "Proformas");
 

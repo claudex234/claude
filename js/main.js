@@ -13,6 +13,7 @@ const app = document.getElementById("app");
 
 const isPublicRoute = () => /^#\/?p\//.test(location.hash);
 const isPrintRoute = () => /^#\/?print\//.test(location.hash);
+const isTrackerRoute = () => /^#\/?t\//.test(location.hash);
 
 const bootPublic = async () => {
   app.innerHTML = `<div style="display:grid;place-items:center;height:100vh;color:#8a8f9a;font:14px system-ui">Cargando proforma…</div>`;
@@ -32,6 +33,25 @@ const bootPublic = async () => {
   }
 };
 
+// Renderer público de páginas rastreadas: auth-free, sin layout.
+const bootTracker = async () => {
+  app.innerHTML = `<div style="display:grid;place-items:center;height:100vh;color:#666;font:14px system-ui">Cargando…</div>`;
+  try {
+    const { render } = await import("./pages/tracker.js");
+    app.innerHTML = "";
+    let cleanup = await render(app);
+    window.addEventListener("hashchange", async () => {
+      if (!isTrackerRoute()) { location.reload(); return; }
+      if (typeof cleanup === "function") cleanup();
+      app.innerHTML = "";
+      cleanup = await render(app);
+    });
+  } catch (err) {
+    console.error("[bootTracker]", err);
+    app.innerHTML = `<div style="padding:24px;font:13px system-ui;color:#a30">Error: ${err?.message || err}</div>`;
+  }
+};
+
 const bootPrint = async () => {
   await waitForSession(app);
   app.innerHTML = "";
@@ -43,6 +63,7 @@ const bootPrint = async () => {
 const boot = async () => {
   if (isPublicRoute()) return bootPublic();
   if (isPrintRoute()) return bootPrint();
+  if (isTrackerRoute()) return bootTracker();
 
   // 1) Gate de autenticación: bloquea hasta tener sesión.
   await waitForSession(app);
@@ -80,6 +101,7 @@ const boot = async () => {
   registerRoute("stock", () => import("./pages/stock.js"));
   registerRoute("adjuntos", () => import("./pages/adjuntos.js"));
   registerRoute("templates", () => import("./pages/templates.js"));
+  registerRoute("competidores", () => import("./pages/competidores.js"));
 
   if (!location.hash) location.hash = "#/proformas";
   renderRoute();
