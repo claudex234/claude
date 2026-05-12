@@ -33,6 +33,71 @@ const ago = (iso) => {
   return `hace ${days}d`;
 };
 
+// Sparkline 30 días: bars verticales con cantidad de aperturas por día.
+const sparkline = (aperturas) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const days = Array.from({ length: 30 }, (_, i) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() - (29 - i));
+    return { date: d, count: 0 };
+  });
+  for (const a of aperturas) {
+    if (!a.abierta_at) continue;
+    const d = new Date(a.abierta_at);
+    d.setHours(0, 0, 0, 0);
+    const diff = Math.round((today - d) / 86400000);
+    const idx = 29 - diff;
+    if (idx >= 0 && idx < 30) days[idx].count++;
+  }
+  const max = Math.max(1, ...days.map((d) => d.count));
+  const bw = 7, gap = 3, w = 30 * (bw + gap) - gap, h = 40;
+  return `
+    <svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" preserveAspectRatio="none" style="display:block;max-width:${w}px">
+      ${days.map((d, i) => {
+        const bh = Math.max(1, Math.round((d.count / max) * (h - 2)));
+        const y = h - bh;
+        const x = i * (bw + gap);
+        const fill = d.count > 0 ? "var(--accent)" : "var(--border)";
+        return `<rect x="${x}" y="${y}" width="${bw}" height="${bh}" fill="${fill}" rx="1"><title>${d.date.toISOString().slice(0,10)} · ${d.count}</title></rect>`;
+      }).join("")}
+    </svg>`;
+};
+
+// Suma de segundos por zona a través de todas las aperturas.
+const aggregateZonas = (aperturas) => {
+  const acc = { encabezado: 0, items: 0, totales: 0, terminos: 0 };
+  for (const a of aperturas) {
+    const z = a.zonas_s || {};
+    for (const k of Object.keys(acc)) acc[k] += z[k] || 0;
+  }
+  return acc;
+};
+
+const heatmapZonas = (aperturas) => {
+  const z = aggregateZonas(aperturas);
+  const total = z.encabezado + z.items + z.totales + z.terminos;
+  if (total === 0) return "";
+  const labels = { encabezado: "Encabezado", items: "Ítems", totales: "Totales", terminos: "Términos" };
+  return `
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-title">Tiempo por zona de la hoja</div></div>
+      <div class="card-body">
+        ${Object.entries(labels).map(([k, l]) => {
+          const pct = Math.round((z[k] / total) * 100);
+          return `
+            <div style="display:grid;grid-template-columns:90px 1fr 100px;align-items:center;gap:12px;padding:6px 0">
+              <div style="font-size:12.5px;color:var(--text-2)">${l}</div>
+              <div style="background:var(--bg-soft);height:14px;border-radius:7px;overflow:hidden">
+                <div style="width:${pct}%;height:100%;background:var(--accent);transition:width .3s"></div>
+              </div>
+              <div style="font-size:11.5px;color:var(--text-mute);font-family:var(--font-mono);text-align:right">${pct}% · ${fmtTime(z[k])}</div>
+            </div>`;
+        }).join("")}
+      </div>
+    </div>`;
+};
+
 const trackingStats = (aperturas) => {
   const reales = aperturas.filter((a) => !a.meta?.bloqueado);
   const ips = new Set(reales.map((a) => a.ip).filter(Boolean));
@@ -78,6 +143,13 @@ const trackingSection = (aperturas) => {
         <div class="stat-delta">${s.descargas} descargas</div>
       </div>
     </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header"><div class="card-title">Aperturas por día · últimos 30</div></div>
+      <div class="card-body" style="padding:14px 16px">${sparkline(aperturas)}</div>
+    </div>
+
+    ${heatmapZonas(aperturas)}
 
     <div class="card">
       <div class="card-header"><div class="card-title">Aperturas · ${aperturas.length}</div></div>

@@ -5,6 +5,43 @@
 import { supabase, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from "./supabase.js";
 import { parseUA } from "./ua_parser.js";
 
+// Zonas geométricas de la hoja A4 (4 franjas horizontales del 25%).
+// La asignación semántica depende de la planilla, pero geométricamente
+// estos nombres cubren los casos típicos del layout PRF.
+const ZONA_NAMES = ["encabezado", "items", "totales", "terminos"];
+
+// Overlay 4 divs invisibles sobre la hoja y observa con IntersectionObserver
+// cuáles están visibles (>30%). Devuelve un Set vivo y un dispose().
+const installZones = (viewerRoot) => {
+  const page = viewerRoot?.querySelector(".pv-page");
+  const stage = viewerRoot?.querySelector(".vp-stage");
+  const visible = new Set();
+  if (!page) return { visible, dispose: () => {} };
+
+  if (getComputedStyle(page).position === "static") {
+    page.style.position = "relative";
+  }
+  const overlays = ZONA_NAMES.map((name, i) => {
+    const d = document.createElement("div");
+    d.dataset.zona = name;
+    d.style.cssText = `position:absolute;left:0;right:0;top:${i * 25}%;height:25%;pointer-events:none;z-index:0;`;
+    page.appendChild(d);
+    return d;
+  });
+  const io = new IntersectionObserver((entries) => {
+    for (const ent of entries) {
+      const name = ent.target.dataset.zona;
+      if (ent.isIntersecting && ent.intersectionRatio > 0.3) visible.add(name);
+      else visible.delete(name);
+    }
+  }, { root: stage || null, threshold: [0, 0.3, 0.6, 1] });
+  overlays.forEach((d) => io.observe(d));
+  return {
+    visible,
+    dispose: () => { io.disconnect(); overlays.forEach((d) => d.remove()); },
+  };
+};
+
 // Endpoint público de geo IP (sin key, sin auth). Si falla devuelve null
 // y la app sigue. La geo va al RPC como param p_pais.
 const fetchGeo = async () => {
@@ -95,12 +132,23 @@ export const startTracking = async ({ slug, root, onBlocked }) => {
     print_screen_attempts: 0,
     descarga: false,
     impresion: false,
+    zonas: {},
   };
 
-  // Timer: cuenta solo cuando la pestaña está visible y la ventana tiene foco.
+  // Overlays de zonas — solo cuando hay tracking real.
+  const zones = installZones(root);
+
+  // Timer: cuenta cuando la pestaña está visible y la ventana tiene foco.
+  // El mismo tick incrementa la duración total y cada zona visible.
   let active = !document.hidden && document.hasFocus();
   let timerId = null;
-  const tickTimer = () => { if (active) state.duracion_s++; };
+  const tickTimer = () => {
+    if (!active) return;
+    state.duracion_s++;
+    zones.visible.forEach((name) => {
+      state.zonas[name] = (state.zonas[name] || 0) + 1;
+    });
+  };
   const startTimer = () => { if (!timerId) timerId = setInterval(tickTimer, 1000); };
   const stopTimer = () => { if (timerId) { clearInterval(timerId); timerId = null; } };
   startTimer();
@@ -162,6 +210,7 @@ export const startTracking = async ({ slug, root, onBlocked }) => {
       p_print_screen_attempts: state.print_screen_attempts,
       p_descarga: state.descarga,
       p_impresion: state.impresion,
+      p_zonas: Object.keys(state.zonas).length ? state.zonas : null,
     };
     if (useBeacon) {
       // Al cerrar la pestaña: fetch con keepalive (más fiable que
@@ -200,6 +249,7 @@ export const startTracking = async ({ slug, root, onBlocked }) => {
       window.removeEventListener("pagehide", onUnload);
       window.removeEventListener("beforeunload", onUnload);
       disposeGyro();
+      zones.dispose();
       flush(true);
     },
   };

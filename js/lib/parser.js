@@ -168,7 +168,12 @@ export const parsePaste = (raw, productos) => {
       if (m) {
         out.ruc = m[0];
         out.rucSeguro = RX_RUC_SAFE.test(m[0]);
-        const rest = t.replace(m[0], "").trim().replace(/^[\s.,\-:]+|[\s.,\-:]+$/g, "");
+        // Limpiamos el resto: removemos el número, la etiqueta "RUC"
+        // si quedó suelta, y separadores en los bordes.
+        const rest = t.replace(m[0], "")
+          .replace(/\bR\.?U\.?C\.?\b\s*:?/i, "")
+          .trim()
+          .replace(/^[\s.,\-:]+|[\s.,\-:]+$/g, "");
         if (rest && (looksLikeEmpresa(rest) || looksLikeDomain(rest))) {
           setRazon(out, rest, looksLikeDomain(rest));
         }
@@ -264,7 +269,9 @@ export const normalizeDictation = (raw) => {
   //   "2060 36 73 736"  (11) → "20603673736"
   //   "910 250 250"     (9)  → "910250250"
   //   "01 234 5678"     (8)  → "012345678" (queda como fijo con 0)
-  t = t.replace(/\b\d+(?:[\s\-]+\d+){1,9}\b/g, (m) => {
+  // Importante: usamos [ \t-] (NO \s) para NO cruzar líneas — si no,
+  // un RUC en una línea más un móvil en la siguiente se fusionaban.
+  t = t.replace(/\b\d+(?:[ \t\-]+\d+){1,9}\b/g, (m) => {
     const digits = m.replace(/\D/g, "");
     if (digits.length === 11) return digits;          // RUC
     if (digits.length === 9 && digits[0] === "9") return digits; // móvil PE
