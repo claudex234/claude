@@ -12,10 +12,13 @@ import {
 
 const trackerUrl = (slug) => `${location.origin}${location.pathname}#/t/${slug}`;
 
+// Base del deploy sin el archivo final (devuelve siempre con / al final).
+const deployBase = () => `${location.origin}${location.pathname.replace(/[^/]*$/, "")}`;
+
 // Snippet a copiar para el tipo pixel — un <script> que pega el cliente
 // en cualquier página externa.
 const pixelSnippet = (slug) =>
-  `<script src="${location.origin}${location.pathname}track.js?s=${slug}" async><\/script>`;
+  `<script src="${deployBase()}track.js?s=${slug}" async><\/script>`;
 
 const TIPO_LABEL = { pixel: "Pixel", link: "Link", html: "HTML" };
 
