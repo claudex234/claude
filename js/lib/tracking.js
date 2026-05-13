@@ -198,8 +198,8 @@ export const startTracking = async ({ slug, root, onBlocked }) => {
   if (ua.isMobile) requestGyroPermission();
   const disposeGyro = installGyro(state);
 
-  // Heartbeat: cada 8s mando el snapshot actual.
-  const HEARTBEAT_MS = 8000;
+  // Heartbeat: cada 5s mando el snapshot actual.
+  const HEARTBEAT_MS = 5000;
   const flush = async (useBeacon = false) => {
     const body = {
       p_id: aperturaId,
@@ -228,6 +228,10 @@ export const startTracking = async ({ slug, root, onBlocked }) => {
     }
     try { await supabase.rpc("tick_apertura", body); } catch {}
   };
+  // Primer tick a 1s (registra que la sesión existe rápido) y luego
+  // cada HEARTBEAT_MS. Esto permite al admin ver "abierta ahora" casi
+  // de inmediato.
+  setTimeout(() => flush(false), 1000);
   const heartbeat = setInterval(() => flush(false), HEARTBEAT_MS);
 
   // Cierre de pestaña / navegación

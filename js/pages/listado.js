@@ -3,7 +3,7 @@ import { icon } from "../lib/icons.js";
 import { PROFORMAS } from "../data/proformas.js";
 import { navigate } from "../lib/router.js";
 import { toast } from "../lib/toast.js";
-import { ensurePublicLink, fetchProformaDetail, fetchAperturas } from "../data/api.js";
+import { ensurePublicLink, fetchProformaDetail, fetchAperturas, fetchLiveProformaIds } from "../data/api.js";
 import { publicUrl, copyAndToast } from "../lib/share.js";
 import { renderTracking } from "../lib/tracking_view.js";
 
@@ -30,6 +30,7 @@ export const render = (root) => {
     aperturas: null,         // resultado de fetchAperturas
     detailLoading: false,
     detailError: null,
+    liveProformaIds: new Set(), // proforma_ids con actividad < 30s
   };
 
   const compute = () => {
@@ -51,10 +52,15 @@ export const render = (root) => {
     borrador: PROFORMAS.filter(p => p.estado === "borrador").length,
   });
 
-  const renderRow = (p) => html`
+  const renderRow = (p) => {
+    const live = p.proformaId && state.liveProformaIds.has(p.proformaId);
+    return html`
     <tr class="row ${state.selectedId === p.id ? "row-selected" : ""}" data-id="${p.id}" style="cursor:pointer">
       <td>
-        <div class="cell-strong">${p.cliente}</div>
+        <div style="display:flex;align-items:center;gap:6px">
+          ${live ? raw('<span class="live-dot live-dot-sm" title="Abierta ahora"></span>') : ""}
+          <span class="cell-strong">${p.cliente}</span>
+        </div>
         ${p.telefono ? raw(`<div style="font-size:11.5px;color:var(--text-mute);font-family:var(--font-mono);margin-top:2px">${p.telefono}</div>`) : ""}
       </td>
       <td>
@@ -85,6 +91,7 @@ export const render = (root) => {
       </td>
     </tr>
   `;
+  };
 
   // -----------------------------------------------------------------
   // Panel lateral (tracking inline)
@@ -376,4 +383,72 @@ export const render = (root) => {
   };
 
   wire(node);
+
+  // -----------------------------------------------------------------
+  // Polls de vida
+  // -----------------------------------------------------------------
+  // 1) Apertures de la proforma seleccionada (cada 5s) — actualiza el
+  //    aside con duración / scroll / "abierta ahora" en vivo.
+  // 2) Set de proformas con actividad reciente (cada 6s) — pinta el dot
+  //    verde junto al nombre de cliente en cada fila.
+  // Ambos se pausan cuando el tab no está visible.
+
+  let pollSelected = null;
+  let pollLive = null;
+
+  const tickSelected = async () => {
+    if (document.hidden || !state.selectedId || !state.detail) return;
+    try {
+      const aperturas = await fetchAperturas(state.detail.proforma.id);
+      if (!state.selectedId) return;
+      state.aperturas = aperturas;
+      refreshAside();
+    } catch {}
+  };
+  const tickLive = async () => {
+    if (document.hidden) return;
+    try {
+      const ids = await fetchLiveProformaIds();
+      // Solo actualizar si cambió, para no tocar el DOM cada vez.
+      const prev = state.liveProformaIds;
+      const same = prev.size === ids.size && [...ids].every((x) => prev.has(x));
+      if (same) return;
+      state.liveProformaIds = ids;
+      // Refrescar solo los dots, sin remontar la tabla entera.
+      node.querySelectorAll("tr.row").forEach((tr) => {
+        const id = tr.dataset.id;
+        const proforma = PROFORMAS.find((p) => p.id === id);
+        const pid = proforma?.proformaId;
+        const cell = tr.querySelector("td:first-child > div");
+        if (!cell) return;
+        const existing = cell.querySelector(".live-dot");
+        const shouldBeLive = pid && ids.has(pid);
+        if (shouldBeLive && !existing) {
+          const dot = document.createElement("span");
+          dot.className = "live-dot live-dot-sm";
+          dot.title = "Abierta ahora";
+          cell.insertBefore(dot, cell.firstChild);
+        } else if (!shouldBeLive && existing) {
+          existing.remove();
+        }
+      });
+    } catch {}
+  };
+
+  pollSelected = setInterval(tickSelected, 5000);
+  pollLive = setInterval(tickLive, 6000);
+  // Primer tick inmediato del live pulse para no esperar 6s.
+  tickLive();
+
+  // Pausa cuando la pestaña no está visible.
+  const onVis = () => {
+    if (!document.hidden) { tickLive(); tickSelected(); }
+  };
+  document.addEventListener("visibilitychange", onVis);
+
+  return () => {
+    clearInterval(pollSelected);
+    clearInterval(pollLive);
+    document.removeEventListener("visibilitychange", onVis);
+  };
 };

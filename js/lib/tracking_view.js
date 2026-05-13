@@ -1,8 +1,9 @@
 // Render del bloque de tracking en el detalle de la proforma:
-// stats, sparkline 30 días y heatmap por zona. Lee `proforma_aperturas`
-// ya fetcheado y devuelve un string HTML listo para inyectar.
+// sesión actual (si está abierta ahora), stats, sparkline 30 días,
+// heatmap por zona y tabla de aperturas.
 
 import { fmtTime, escapeHtml as e, ago } from "./utils.js";
+import { isLiveApertura } from "../data/api/aperturas.js";
 
 // === Agregados ============================================================
 
@@ -164,6 +165,42 @@ const aperturasTable = (aperturas) => `
 
 import { fmtDateTime } from "./utils.js";
 
+// Card "Sesión actual" — datos del último visitante (dispositivo, OS,
+// IP, ubicación, idioma, timezone, pantalla, CPU cores, referrer).
+// Si la apertura es reciente (<30s), muestra el badge verde pulsante
+// "Abierta ahora".
+const sessionCard = (a) => {
+  if (!a) return "";
+  const live = isLiveApertura(a);
+  const meta = a.meta || {};
+  const lugar = [a.ciudad, a.pais].filter(Boolean).join(", ");
+  return `
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
+        <div class="card-title">Sesión actual · dispositivo</div>
+        ${live
+          ? '<span class="live-pill"><span class="live-dot"></span>Abierta ahora</span>'
+          : `<span style="font-size:11px;color:var(--text-mute)">${ago(a.ultima_actividad_at || a.abierta_at)}</span>`}
+      </div>
+      <div class="card-body" style="padding:0">
+        <table class="table" style="margin:0;font-size:12px">
+          <tbody>
+            <tr><td style="color:var(--text-3);width:130px">Dispositivo</td><td>${e(a.dispositivo || "—")}</td></tr>
+            <tr><td style="color:var(--text-3)">Sistema</td><td>${e(a.os || "—")}</td></tr>
+            ${meta.screen ? `<tr><td style="color:var(--text-3)">Pantalla</td><td style="font-family:var(--font-mono);font-size:11.5px">${e(meta.screen)}</td></tr>` : ""}
+            ${meta.hwc ? `<tr><td style="color:var(--text-3)">CPU cores</td><td>${meta.hwc}</td></tr>` : ""}
+            <tr><td style="color:var(--text-3)">IP pública</td><td style="font-family:var(--font-mono);font-size:11.5px">${e(a.ip || "—")}</td></tr>
+            <tr><td style="color:var(--text-3)">Ubicación</td><td>${e(lugar || "—")}</td></tr>
+            <tr><td style="color:var(--text-3)">Idioma</td><td>${e(a.idioma || "—")}</td></tr>
+            <tr><td style="color:var(--text-3)">Zona horaria</td><td style="font-family:var(--font-mono);font-size:11px">${e(a.timezone || "—")}</td></tr>
+            ${live ? `<tr><td style="color:var(--text-3)">Mirando hace</td><td>${fmtTime(a.duracion_s || 0)}</td></tr>` : ""}
+            ${a.referrer ? `<tr><td style="color:var(--text-3)">Referrer</td><td style="font-size:11px;color:var(--text-2);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${e(a.referrer)}">${e(a.referrer)}</td></tr>` : ""}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+};
+
 export const renderTracking = (aperturas) => {
   if (!aperturas || !aperturas.length) {
     return `<div class="card">
@@ -175,7 +212,10 @@ export const renderTracking = (aperturas) => {
   }
   // Pre-cómputo de etiqueta de fecha por fila (evita map dentro del template).
   const withLabels = aperturas.map((a) => ({ ...a, _whenLabel: fmtDateTime(a.abierta_at) }));
+  // La sesión actual = la apertura no bloqueada más reciente.
+  const ultima = withLabels.find((a) => !a.meta?.bloqueado);
   return [
+    sessionCard(ultima),
     statsGrid(trackingStats(withLabels)),
     sparkline(withLabels),
     heatmapZonas(withLabels),
