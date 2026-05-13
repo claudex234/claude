@@ -2,13 +2,17 @@
 import { supabase } from "../../lib/supabase.js";
 import { requireUser } from "./helpers.js";
 
-const DEFAULTS = { publico_solo_pe: false };
+const DEFAULTS = {
+  publico_solo_pe: false,
+  empresa: {},
+  defaults: {},
+};
 
 export const fetchUserSettings = async () => {
   const user = await requireUser();
   const { data, error } = await supabase
     .from("user_settings")
-    .select("publico_solo_pe")
+    .select("publico_solo_pe, empresa, defaults")
     .eq("user_id", user.id)
     .maybeSingle();
   if (error) throw error;

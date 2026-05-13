@@ -14,6 +14,7 @@ import { mountA4Fit } from "../lib/a4_fit.js";
 import { fromEditorState } from "../lib/planilla_data.js";
 import { createDictation } from "../lib/dictation.js";
 import { publicUrl, copyAndToast } from "../lib/share.js";
+import { CONFIG } from "../data/config.js";
 
 const initialState = () => ({
   numero: "PRF-…",
@@ -24,9 +25,9 @@ const initialState = () => ({
   rucSeguro: false,
   productos: [],
   terminos: {
-    validez: EMISOR.defaults.validezDias,
-    formaPago: EMISOR.defaults.formaPago,
-    tiempoEntrega: EMISOR.defaults.tiempoEntrega,
+    validez: CONFIG.defaults.validez_dias ?? EMISOR.defaults.validezDias,
+    formaPago: CONFIG.defaults.forma_pago || EMISOR.defaults.formaPago,
+    tiempoEntrega: CONFIG.defaults.tiempo_entrega || EMISOR.defaults.tiempoEntrega,
   },
   publicSlug: null,
   proformaId: null, // uuid devuelto por createProforma; null hasta primer guardado

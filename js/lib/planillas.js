@@ -35,28 +35,41 @@ const fetchSkinFiles = async (codigo) => {
 
 // Devuelve { html, css, empty }. empty=true cuando la skin no tiene ni
 // contenido en DB ni archivo asociado — el caller muestra placeholder.
+//
+// IMPORTANTE: este resolver lo usa también el visor público (bootPublic
+// no llama loadAll, por lo que SKINS está vacío). Por eso intentamos
+// el archivo si el código está en FILE_BACKED ANTES de fallar por
+// 'skin no encontrado en catálogo'.
 export const resolvePlanilla = async (codigo) => {
   const skin = findSkinByCodigo(codigo);
-  if (!skin) {
-    // Fallback duro a corporate si el código no existe en SKINS.
-    if (codigo !== "corporate") return resolvePlanilla("corporate");
-    return { html: "", css: "", empty: true };
-  }
-  const fromDb = { html: skin.html || null, css: skin.css || null };
-  if (fromDb.html && fromDb.css) return { ...fromDb, empty: false };
 
-  // Falta algo en DB. Solo buscamos en disco si está whitelisteada.
-  if (!FILE_BACKED.has(skin.codigo)) {
+  // Contenido completo en DB: listo.
+  if (skin?.html && skin?.css) {
+    return { html: skin.html, css: skin.css, empty: false };
+  }
+  const fromDb = { html: skin?.html || null, css: skin?.css || null };
+
+  // Si el código es file-backed, completamos con el archivo. Sirve
+  // tanto para el admin (SKINS lleno) como para el visor (SKINS vacío).
+  if (FILE_BACKED.has(codigo)) {
+    const fromFile = await fetchSkinFiles(codigo).catch(() => ({ html: "", css: "" }));
+    const html = fromDb.html || fromFile.html;
+    const css = fromDb.css || fromFile.css;
+    if (html || css) return { html, css, empty: false };
+  }
+
+  // Skin existe en DB pero sin contenido todavía (creada vía UI).
+  if (skin) {
     return {
       html: fromDb.html || "",
       css: fromDb.css || "",
       empty: !(fromDb.html || fromDb.css),
     };
   }
-  const fromFile = await fetchSkinFiles(skin.codigo).catch(() => ({ html: "", css: "" }));
-  const html = fromDb.html ?? fromFile.html;
-  const css = fromDb.css ?? fromFile.css;
-  return { html, css, empty: !html && !css };
+
+  // Skin desconocida. Último recurso: corporate.
+  if (codigo !== "corporate") return resolvePlanilla("corporate");
+  return { html: "", css: "", empty: true };
 };
 
 // Combina CSS + HTML rendereado en un bloque listo para innerHTML.

@@ -4,9 +4,10 @@ import { supabase } from "../lib/supabase.js";
 import { PRODUCTOS, adaptProducto } from "./productos.js";
 import { SKINS, adaptSkin } from "./skins.js";
 import { PROFORMAS, adaptProforma } from "./proformas.js";
+import { CONFIG } from "./config.js";
 
 export const loadAll = async () => {
-  const [productosRes, skinsRes, clientesRes, proformasRes, linksRes, itemsRes] = await Promise.all([
+  const [productosRes, skinsRes, clientesRes, proformasRes, linksRes, itemsRes, settingsRes] = await Promise.all([
     supabase.from("productos").select("*").eq("activo", true).order("precio_default"),
     supabase.from("skins").select("*").order("created_at"),
     // Clientes: solo para resolver razón social en proformas. La app no
@@ -16,11 +17,18 @@ export const loadAll = async () => {
     supabase.from("proformas").select("*").order("created_at", { ascending: false }),
     supabase.from("proforma_links").select("proforma_id, slug"),
     supabase.from("proforma_items").select("proforma_id"),
+    supabase.from("user_settings").select("publico_solo_pe, empresa, defaults").maybeSingle(),
   ]);
 
-  for (const [k, r] of Object.entries({ productos: productosRes, skins: skinsRes, clientes: clientesRes, proformas: proformasRes, links: linksRes, items: itemsRes })) {
+  for (const [k, r] of Object.entries({ productos: productosRes, skins: skinsRes, clientes: clientesRes, proformas: proformasRes, links: linksRes, items: itemsRes, settings: settingsRes })) {
     if (r.error) console.error(`${k}:`, r.error);
   }
+
+  // CONFIG global
+  const s = settingsRes.data || {};
+  CONFIG.publico_solo_pe = !!s.publico_solo_pe;
+  CONFIG.empresa = s.empresa || {};
+  CONFIG.defaults = s.defaults || {};
 
   // Productos (mapa por código)
   for (const k of Object.keys(PRODUCTOS)) delete PRODUCTOS[k];
