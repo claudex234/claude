@@ -45,7 +45,9 @@ export const render = async (root) => {
       </div>
     </div>
   `);
-  root.appendChild(node);
+  // replaceChildren en vez de appendChild — defensa contra cualquier
+  // doble render que pudiera haber filtrado.
+  root.replaceChildren(node);
 
   on(node, "click", "[data-toggle]", async (_, btn) => {
     const newVal = !btn.classList.contains("on");

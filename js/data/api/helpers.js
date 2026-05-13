@@ -1,5 +1,5 @@
 // Helpers compartidos por las APIs de Supabase. No exportar directo a
-// las páginas — pasan por los módulos especializados (proformas/clientes/skins).
+// las páginas — pasan por los módulos especializados.
 import { supabase } from "../../lib/supabase.js";
 
 export const requireUser = async () => {

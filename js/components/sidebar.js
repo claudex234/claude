@@ -10,7 +10,6 @@ const MAIN = [
   { id: "generador", icon: "plus", label: "Nueva proforma" },
 ];
 const CATALOGO = [
-  { id: "clientes", icon: "user", label: "Clientes" },
   { id: "productos", icon: "box", label: "Productos" },
   { id: "stock", icon: "package", label: "Stock" },
   { id: "adjuntos", icon: "paperclip", label: "Adjuntos" },

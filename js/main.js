@@ -96,14 +96,14 @@ const boot = async () => {
   registerRoute("proformas", () => import("./pages/listado.js"));
   registerRoute("generador", () => import("./pages/generador.js"));
   registerRoute("detalle", () => import("./pages/detalle.js"));
-  registerRoute("clientes", () => import("./pages/clientes.js"));
   registerRoute("productos", () => import("./pages/productos.js"));
   registerRoute("stock", () => import("./pages/stock.js"));
   registerRoute("adjuntos", () => import("./pages/adjuntos.js"));
   registerRoute("templates", () => import("./pages/templates.js"));
   registerRoute("competidores", () => import("./pages/competidores.js"));
 
-  if (!location.hash) location.hash = "#/proformas";
+  // replaceState (no hashchange) para evitar doble renderRoute en arranque.
+  if (!location.hash) history.replaceState(null, "", "#/proformas");
   renderRoute();
 };
 
