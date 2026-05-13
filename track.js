@@ -28,7 +28,7 @@
     // Mini UA parser (subset de lib/ua_parser.js).
     function detectOS(s) {
       if (/Windows NT 11/.test(s)) return "Windows 11";
-      if (/Windows NT 10/.test(s)) return "Windows 10";
+      if (/Windows NT 10/.test(s)) return "Windows 10/11";
       if (/Windows NT/.test(s))    return "Windows";
       if (/iPhone|iPad|iPod/.test(s)) {
         var k = s.match(/OS (\d+)[._](\d+)/);
@@ -118,6 +118,20 @@
           via: "pixel",
         },
       });
+    }
+
+    // Enriquece os con User-Agent Client Hints (Chrome/Edge) para
+    // distinguir Win10 vs Win11. Best-effort; si no soporta, no hace nada.
+    var uad = navigator.userAgentData;
+    if (uad && uad.getHighEntropyValues) {
+      try {
+        uad.getHighEntropyValues(["platformVersion"]).then(function (h) {
+          if (uad.platform === "Windows" && h.platformVersion) {
+            var major = parseInt(h.platformVersion.split(".")[0], 10);
+            if (isFinite(major)) os = major >= 13 ? "Windows 11" : "Windows 10";
+          }
+        }).catch(function(){});
+      } catch (e) {}
     }
 
     // Geo best-effort con timeout corto. Si falla / tarda, mandamos sin geo.

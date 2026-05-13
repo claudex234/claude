@@ -3,7 +3,7 @@
 // visor sigue funcionando.
 
 import { supabase, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from "./supabase.js";
-import { parseUA } from "./ua_parser.js";
+import { parseUA, enrichUA } from "./ua_parser.js";
 
 // Zonas geométricas de la hoja A4 (4 franjas horizontales del 25%).
 // La asignación semántica depende de la planilla, pero geométricamente
@@ -84,7 +84,7 @@ const requestGyroPermission = async () => {
 // Devuelve { dispose } para cleanup al cambiar de hash/destruir el visor.
 // Si la apertura está bloqueada por país (publico_solo_pe), llama onBlocked.
 export const startTracking = async ({ slug, root, onBlocked }) => {
-  const ua = parseUA();
+  const ua = await enrichUA(parseUA());
   const geo = await fetchGeo();
 
   const payload = {

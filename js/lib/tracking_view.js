@@ -173,14 +173,17 @@ const sessionCard = (a) => {
   if (!a) return "";
   const live = isLiveApertura(a);
   const meta = a.meta || {};
+  const bloqueada = !!meta.bloqueado;
   const lugar = [a.ciudad, a.pais].filter(Boolean).join(", ");
   return `
     <div class="card" style="margin-bottom:16px">
       <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
         <div class="card-title">Sesión actual · dispositivo</div>
-        ${live
-          ? '<span class="live-pill"><span class="live-dot"></span>Abierta ahora</span>'
-          : `<span style="font-size:11px;color:var(--text-mute)">${ago(a.ultima_actividad_at || a.abierta_at)}</span>`}
+        ${bloqueada
+          ? '<span class="badge" style="font-size:10.5px;color:var(--danger);border-color:var(--danger)">Bloqueada por país</span>'
+          : live
+            ? '<span class="live-pill"><span class="live-dot"></span>Abierta ahora</span>'
+            : `<span style="font-size:11px;color:var(--text-mute)">${ago(a.ultima_actividad_at || a.abierta_at)}</span>`}
       </div>
       <div class="card-body" style="padding:0">
         <table class="table" style="margin:0;font-size:12px">
@@ -212,8 +215,10 @@ export const renderTracking = (aperturas) => {
   }
   // Pre-cómputo de etiqueta de fecha por fila (evita map dentro del template).
   const withLabels = aperturas.map((a) => ({ ...a, _whenLabel: fmtDateTime(a.abierta_at) }));
-  // La sesión actual = la apertura no bloqueada más reciente.
-  const ultima = withLabels.find((a) => !a.meta?.bloqueado);
+  // La sesión actual = la apertura MÁS reciente (aunque sea bloqueada).
+  // Útil para detectar intentos con VPN: si vemos una bloqueada nueva,
+  // sabemos que alguien fuera de PE acaba de intentar entrar.
+  const ultima = withLabels[0];
   return [
     sessionCard(ultima),
     statsGrid(trackingStats(withLabels)),

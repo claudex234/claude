@@ -6,7 +6,7 @@
 //           del pixel es via /track.js inyectado en sitios externos).
 
 import { supabase, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from "../lib/supabase.js";
-import { parseUA } from "../lib/ua_parser.js";
+import { parseUA, enrichUA } from "../lib/ua_parser.js";
 
 const slugFromHash = () => {
   const m = location.hash.match(/^#\/?t\/([A-Za-z0-9_-]+)/);
@@ -64,7 +64,7 @@ export const render = async (root) => {
   }
 
   // 2) Registrar el hit en paralelo (no bloqueante)
-  const ua = parseUA();
+  const ua = await enrichUA(parseUA());
   const geo = await fetchGeo();
   let hitId = null;
   try {
