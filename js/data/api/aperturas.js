@@ -3,9 +3,9 @@
 import { supabase } from "../../lib/supabase.js";
 
 // Ventana en segundos para considerar una apertura "abierta ahora".
-// Como el visor envía heartbeat cada 5s + tick inicial al primer
-// segundo, 30s de tolerancia cubre cualquier hiccup de red.
-export const LIVE_WINDOW_S = 30;
+// El visor manda heartbeat cada 5s + tick al cerrar con flag closing
+// (que pone ultima_actividad_at en el pasado). 15s = 2 heartbeats + grace.
+export const LIVE_WINDOW_S = 15;
 
 const isLiveTs = (iso) => {
   if (!iso) return false;

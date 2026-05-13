@@ -201,6 +201,9 @@ export const startTracking = async ({ slug, root, onBlocked }) => {
   // Heartbeat: cada 5s mando el snapshot actual.
   const HEARTBEAT_MS = 5000;
   const flush = async (useBeacon = false) => {
+    // useBeacon = true ⇒ es el tick final al cerrar la pestaña. Marcamos
+    // p_closing=true para que el server ponga ultima_actividad_at en el
+    // pasado y el admin vea "no live" instantáneo.
     const body = {
       p_id: aperturaId,
       p_duracion_s: state.duracion_s,
@@ -211,6 +214,13 @@ export const startTracking = async ({ slug, root, onBlocked }) => {
       p_descarga: state.descarga,
       p_impresion: state.impresion,
       p_zonas: Object.keys(state.zonas).length ? state.zonas : null,
+      // Refrescamos device/os/UA en cada tick: si el visor se cargó
+      // antes de un deploy con detección mejorada (UA-CH), una sesión
+      // existente se corrige sola al próximo heartbeat.
+      p_user_agent: navigator.userAgent || null,
+      p_dispositivo: ua.dispositivo,
+      p_os: ua.os,
+      p_closing: !!useBeacon,
     };
     if (useBeacon) {
       // Al cerrar la pestaña: fetch con keepalive (más fiable que

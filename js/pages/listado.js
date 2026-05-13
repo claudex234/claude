@@ -435,8 +435,8 @@ export const render = (root) => {
     } catch {}
   };
 
-  pollSelected = setInterval(tickSelected, 5000);
-  pollLive = setInterval(tickLive, 6000);
+  pollSelected = setInterval(tickSelected, 3000);
+  pollLive = setInterval(tickLive, 3000);
   // Primer tick inmediato del live pulse para no esperar 6s.
   tickLive();
 
