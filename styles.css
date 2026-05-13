@@ -883,3 +883,28 @@ body.vp-public { background: #1a1d23; color: #e6e8ec; overflow: hidden; }
   position: relative;
 }
 .skin-editor-preview .skin-mini-doc { width: 380px; }
+
+/* === Listado split: lista a la izquierda + panel de tracking a la derecha === */
+.proforma-split { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 18px; align-items: start; }
+.proforma-split-list { min-width: 0; }
+.proforma-split-aside {
+  position: sticky; top: 16px;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+.proforma-split-empty {
+  display: grid; place-items: center; height: 320px; padding: 24px;
+  text-align: center; color: var(--text-mute); font-size: 13px;
+}
+.proforma-split-aside::-webkit-scrollbar { width: 8px; }
+.proforma-split-aside::-webkit-scrollbar-track { background: transparent; }
+.proforma-split-aside::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+tr.row-selected { background: var(--accent-soft) !important; }
+tr.row-selected td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+@media (max-width: 1180px) {
+  .proforma-split { grid-template-columns: 1fr; }
+  .proforma-split-aside { display: none; }
+}
