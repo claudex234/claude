@@ -110,15 +110,69 @@
         p_ciudad: null,
         p_region: null,
         p_query: queryObj,
-        p_meta: {
-          // Página previa del visitante (de dónde vino al host).
-          upstream_referrer: document.referrer || null,
-          screen: (screen.width || 0) + "x" + (screen.height || 0),
-          hwc: navigator.hardwareConcurrency || null,
-          via: "pixel",
-        },
+        p_meta: meta,
       });
     }
+
+    // Reúne todo el fingerprint pasivo (sin permisos).
+    function gpuInfo() {
+      try {
+        var c = document.createElement("canvas");
+        var gl = c.getContext("webgl") || c.getContext("experimental-webgl");
+        if (!gl) return {};
+        var ext = gl.getExtension("WEBGL_debug_renderer_info");
+        if (!ext) return {};
+        return {
+          gpu_vendor: gl.getParameter(ext.UNMASKED_VENDOR_WEBGL) || null,
+          gpu_renderer: gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || null,
+        };
+      } catch (e) { return {}; }
+    }
+    function browserVer() {
+      var u = ua, tests = [
+        [/Edg\/([\d.]+)/, "Edge"],
+        [/OPR\/([\d.]+)/, "Opera"],
+        [/SamsungBrowser\/([\d.]+)/, "Samsung Internet"],
+        [/Chrome\/([\d.]+)/, "Chrome", /Edg|OPR|SamsungBrowser/],
+        [/Firefox\/([\d.]+)/, "Firefox"],
+        [/Version\/([\d.]+).*Safari\//, "Safari", /Chrome|Edg|OPR/],
+      ];
+      for (var i = 0; i < tests.length; i++) {
+        var t = tests[i];
+        if (t[2] && t[2].test(u)) continue;
+        var m = u.match(t[0]);
+        if (m) return { browser_name: t[1], browser_version: m[1] };
+      }
+      return {};
+    }
+    var conn = navigator.connection || {};
+    var meta = {
+      upstream_referrer: document.referrer || null,
+      screen: (screen.width || 0) + "x" + (screen.height || 0),
+      viewport: (window.innerWidth || 0) + "x" + (window.innerHeight || 0),
+      pixel_ratio: window.devicePixelRatio || 1,
+      color_depth: screen.colorDepth || null,
+      orientation: (screen.orientation && screen.orientation.type) || null,
+      hwc: navigator.hardwareConcurrency || null,
+      ram_gb: navigator.deviceMemory || null,
+      touch_points: navigator.maxTouchPoints || 0,
+      net_type: conn.effectiveType || conn.type || null,
+      net_downlink_mbps: conn.downlink || null,
+      net_rtt_ms: conn.rtt || null,
+      net_save_data: conn.saveData || false,
+      online: navigator.onLine,
+      languages: (navigator.languages || []).slice(0, 4),
+      do_not_track: navigator.doNotTrack || null,
+      cookies_enabled: navigator.cookieEnabled,
+      pdf_viewer: !!navigator.pdfViewerEnabled,
+      webdriver: !!navigator.webdriver,
+      vendor: navigator.vendor || null,
+      via: "pixel",
+    };
+    var bv = browserVer();
+    for (var k in bv) meta[k] = bv[k];
+    var gi = gpuInfo();
+    for (var k2 in gi) meta[k2] = gi[k2];
 
     // Enriquece os con User-Agent Client Hints (Chrome/Edge) para
     // distinguir Win10 vs Win11. Best-effort; si no soporta, no hace nada.

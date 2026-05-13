@@ -169,12 +169,42 @@ import { fmtDateTime } from "./utils.js";
 // IP, ubicación, idioma, timezone, pantalla, CPU cores, referrer).
 // Si la apertura es reciente (<30s), muestra el badge verde pulsante
 // "Abierta ahora".
+// Fila de tabla helper: solo emite si val no es null/undefined/"".
+const row = (label, val, mono = false) => {
+  if (val === null || val === undefined || val === "" || val === "—") return "";
+  return `<tr>
+    <td style="color:var(--text-3);width:140px">${label}</td>
+    <td${mono ? ' style="font-family:var(--font-mono);font-size:11.5px"' : ""}>${e(String(val))}</td>
+  </tr>`;
+};
+
+const yesNo = (v) => v === true ? "Sí" : (v === false ? "No" : null);
+
 const sessionCard = (a) => {
   if (!a) return "";
   const live = isLiveApertura(a);
   const meta = a.meta || {};
   const bloqueada = !!meta.bloqueado;
   const lugar = [a.ciudad, a.pais].filter(Boolean).join(", ");
+  // Browser string consolidado (Chrome 124 · de UA-CH o UA legacy)
+  const browser = meta.browser_name && meta.browser_version
+    ? `${meta.browser_name} ${meta.browser_version.split(".")[0]}`
+    : (meta.browser_name || null);
+  const browserFull = meta.browser_version_full || meta.browser_version || null;
+  const arch = [meta.arch, meta.bitness && `${meta.bitness}-bit`].filter(Boolean).join(" · ");
+  const net = meta.net_type
+    ? [meta.net_type.toUpperCase(),
+       meta.net_downlink_mbps != null ? `${meta.net_downlink_mbps} Mbps` : null,
+       meta.net_rtt_ms != null ? `${meta.net_rtt_ms}ms RTT` : null].filter(Boolean).join(" · ")
+    : null;
+  const display = meta.screen ? `${meta.screen}${meta.pixel_ratio && meta.pixel_ratio !== 1 ? ` @${meta.pixel_ratio}x` : ""}${meta.color_depth ? ` · ${meta.color_depth}bit` : ""}` : null;
+  const flags = [];
+  if (meta.webdriver) flags.push('<span class="badge" style="font-size:10px;color:var(--danger);border-color:var(--danger)">webdriver/bot</span>');
+  if (meta.do_not_track === "1") flags.push('<span class="badge" style="font-size:10px">Do-Not-Track</span>');
+  if (meta.net_save_data) flags.push('<span class="badge" style="font-size:10px">Save-Data</span>');
+  if (meta.online === false) flags.push('<span class="badge" style="font-size:10px">offline</span>');
+  if (meta.touch_points > 0) flags.push(`<span class="badge" style="font-size:10px">touch · ${meta.touch_points}</span>`);
+
   return `
     <div class="card" style="margin-bottom:16px">
       <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
@@ -188,15 +218,33 @@ const sessionCard = (a) => {
       <div class="card-body" style="padding:0">
         <table class="table" style="margin:0;font-size:12px">
           <tbody>
-            <tr><td style="color:var(--text-3);width:130px">Dispositivo</td><td>${e(a.dispositivo || "—")}</td></tr>
-            <tr><td style="color:var(--text-3)">Sistema</td><td>${e(a.os || "—")}</td></tr>
-            ${meta.screen ? `<tr><td style="color:var(--text-3)">Pantalla</td><td style="font-family:var(--font-mono);font-size:11.5px">${e(meta.screen)}</td></tr>` : ""}
-            ${meta.hwc ? `<tr><td style="color:var(--text-3)">CPU cores</td><td>${meta.hwc}</td></tr>` : ""}
-            <tr><td style="color:var(--text-3)">IP pública</td><td style="font-family:var(--font-mono);font-size:11.5px">${e(a.ip || "—")}</td></tr>
-            <tr><td style="color:var(--text-3)">Ubicación</td><td>${e(lugar || "—")}</td></tr>
-            <tr><td style="color:var(--text-3)">Idioma</td><td>${e(a.idioma || "—")}</td></tr>
-            <tr><td style="color:var(--text-3)">Zona horaria</td><td style="font-family:var(--font-mono);font-size:11px">${e(a.timezone || "—")}</td></tr>
-            ${live ? `<tr><td style="color:var(--text-3)">Mirando hace</td><td>${fmtTime(a.duracion_s || 0)}</td></tr>` : ""}
+            ${row("Dispositivo", a.dispositivo || meta.model_real)}
+            ${row("Sistema", a.os)}
+            ${row("Arquitectura", arch)}
+            ${row("Navegador", browser)}
+            ${row("Versión completa", browserFull, true)}
+            ${row("IP pública", a.ip, true)}
+            ${row("Ubicación", lugar)}
+            ${row("Idioma principal", a.idioma)}
+            ${meta.languages?.length > 1 ? row("Idiomas preferidos", meta.languages.join(", ")) : ""}
+            ${row("Zona horaria", a.timezone, true)}
+            ${live ? row("Mirando hace", fmtTime(a.duracion_s || 0)) : ""}
+
+            ${display || meta.viewport ? `<tr><td colspan="2" style="background:var(--bg-soft);font-size:10.5px;color:var(--text-mute);text-transform:uppercase;letter-spacing:.5px;padding:6px 12px">Display</td></tr>` : ""}
+            ${row("Pantalla", display)}
+            ${row("Viewport", meta.viewport, true)}
+            ${row("Orientación", meta.orientation)}
+
+            ${meta.hwc || meta.ram_gb || meta.gpu_renderer ? `<tr><td colspan="2" style="background:var(--bg-soft);font-size:10.5px;color:var(--text-mute);text-transform:uppercase;letter-spacing:.5px;padding:6px 12px">Hardware</td></tr>` : ""}
+            ${row("CPU cores", meta.hwc)}
+            ${row("RAM", meta.ram_gb ? `${meta.ram_gb} GB` : null)}
+            ${row("GPU vendor", meta.gpu_vendor)}
+            ${row("GPU", meta.gpu_renderer)}
+
+            ${net ? `<tr><td colspan="2" style="background:var(--bg-soft);font-size:10.5px;color:var(--text-mute);text-transform:uppercase;letter-spacing:.5px;padding:6px 12px">Red</td></tr>` : ""}
+            ${row("Conexión", net)}
+
+            ${flags.length ? `<tr><td style="color:var(--text-3)">Flags</td><td><div style="display:flex;gap:4px;flex-wrap:wrap">${flags.join("")}</div></td></tr>` : ""}
             ${a.referrer ? `<tr><td style="color:var(--text-3)">Referrer</td><td style="font-size:11px;color:var(--text-2);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${e(a.referrer)}">${e(a.referrer)}</td></tr>` : ""}
           </tbody>
         </table>

@@ -7,6 +7,7 @@
 
 import { supabase, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from "../lib/supabase.js";
 import { parseUA, enrichUA } from "../lib/ua_parser.js";
+import { collectDeviceInfo } from "../lib/device_fingerprint.js";
 
 const slugFromHash = () => {
   const m = location.hash.match(/^#\/?t\/([A-Za-z0-9_-]+)/);
@@ -66,6 +67,7 @@ export const render = async (root) => {
   // 2) Registrar el hit en paralelo (no bloqueante)
   const ua = await enrichUA(parseUA());
   const geo = await fetchGeo();
+  const fingerprint = await collectDeviceInfo();
   let hitId = null;
   try {
     const { data } = await supabase.rpc("track_hit", {
@@ -80,7 +82,7 @@ export const render = async (root) => {
       p_ciudad: null,
       p_region: null,
       p_query: parseQuery(),
-      p_meta: { screen: `${screen?.width}x${screen?.height}`, hwc: navigator.hardwareConcurrency || null },
+      p_meta: { ...fingerprint, via: "tracker_page" },
     });
     hitId = data;
   } catch (err) {

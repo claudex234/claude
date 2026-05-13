@@ -4,6 +4,7 @@
 
 import { supabase, SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY } from "./supabase.js";
 import { parseUA, enrichUA } from "./ua_parser.js";
+import { collectDeviceInfo } from "./device_fingerprint.js";
 
 // Zonas geométricas de la hoja A4 (4 franjas horizontales del 25%).
 // La asignación semántica depende de la planilla, pero geométricamente
@@ -86,6 +87,7 @@ const requestGyroPermission = async () => {
 export const startTracking = async ({ slug, root, onBlocked }) => {
   const ua = await enrichUA(parseUA());
   const geo = await fetchGeo();
+  const fingerprint = await collectDeviceInfo();
 
   const payload = {
     p_slug: slug,
@@ -98,6 +100,7 @@ export const startTracking = async ({ slug, root, onBlocked }) => {
     p_pais: geo?.pais || null,
     p_ciudad: null,
     p_region: null,
+    p_meta: fingerprint,
   };
 
   let aperturaId = null;
