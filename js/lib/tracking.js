@@ -43,16 +43,37 @@ const installZones = (viewerRoot) => {
   };
 };
 
-// Endpoint público de geo IP (sin key, sin auth). Si falla devuelve null
-// y la app sigue. La geo va al RPC como param p_pais.
-const fetchGeo = async () => {
+// Abre la apertura vía la edge function open-apertura. La geo (país) se
+// resuelve server-side desde la IP real del request — no falsificable —
+// así que el cliente ya NO manda país. La función devuelve el id de la
+// apertura, o blocked=true si el owner exige solo-PE y el visitante no
+// está en Perú. Si falla la red, devuelve error=true y el visor sigue
+// funcionando sin tracking.
+const openApertura = async ({ slug, ua, fingerprint }) => {
   try {
-    const r = await fetch("https://api.country.is/", { cache: "no-store" });
-    if (!r.ok) return null;
+    const r = await fetch(`${SUPABASE_URL}/functions/v1/open-apertura`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+      },
+      body: JSON.stringify({
+        slug,
+        user_agent: navigator.userAgent,
+        dispositivo: ua.dispositivo,
+        os: ua.os,
+        referrer: document.referrer || null,
+        idioma: navigator.language || null,
+        timezone: (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return null; } })(),
+        meta: fingerprint,
+      }),
+    });
+    if (!r.ok) return { id: null, blocked: false, error: true };
     const j = await r.json();
-    return { pais: j.country || null, ip: j.ip || null };
+    return { id: j.id ?? null, blocked: !!j.blocked, error: false };
   } catch {
-    return null;
+    return { id: null, blocked: false, error: true };
   }
 };
 
@@ -86,45 +107,18 @@ const requestGyroPermission = async () => {
 // Si la apertura está bloqueada por país (publico_solo_pe), llama onBlocked.
 export const startTracking = async ({ slug, root, onBlocked }) => {
   const ua = await enrichUA(parseUA());
-  const geo = await fetchGeo();
   const fingerprint = await collectDeviceInfo();
 
-  const payload = {
-    p_slug: slug,
-    p_user_agent: navigator.userAgent,
-    p_dispositivo: ua.dispositivo,
-    p_os: ua.os,
-    p_referrer: document.referrer || null,
-    p_idioma: navigator.language || null,
-    p_timezone: (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return null; } })(),
-    p_pais: geo?.pais || null,
-    p_ciudad: null,
-    p_region: null,
-    p_meta: fingerprint,
-  };
+  const { id: aperturaId, blocked } = await openApertura({ slug, ua, fingerprint });
 
-  let aperturaId = null;
-  let openOk = false;
-  try {
-    const { data, error } = await supabase.rpc("open_apertura", payload);
-    if (error) {
-      console.warn("[tracking] open_apertura error:", error);
-    } else {
-      aperturaId = data;
-      openOk = true;
-    }
-  } catch (err) {
-    console.warn("[tracking] open_apertura crash:", err);
-  }
-
-  // Si la RPC devolvió null sin error → owner exige PE y no estamos en PE.
+  // blocked=true → owner exige PE y la geo server-side dio país != PE.
   // La fila ya quedó en DB con meta.bloqueado=true para auditoría.
-  if (openOk && aperturaId === null) {
+  if (blocked) {
     if (typeof onBlocked === "function") onBlocked();
     return { dispose: () => {} };
   }
 
-  // Si no tenemos id (RPC falló), el visor sigue funcionando sin tracking.
+  // Sin id (edge function falló) → el visor sigue funcionando sin tracking.
   if (!aperturaId) return { dispose: () => {} };
 
   const state = {

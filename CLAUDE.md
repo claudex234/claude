@@ -6,10 +6,11 @@ sistema de inventario/facturación.
 
 ## Branches
 
-- **Trabajo**: `claude/continue-proforma-skins-znIeO` (ahí van todos los commits)
-- **Deploy** (GitHub Pages): `claude/design-clade-website-HrBA4`
+- **Única**: `claude/design-clade-website-HrBA4` — es la branch que sirve
+  GitHub Pages y donde van todos los commits directamente.
 
-Flujo: commit en working → push → merge ff-only a deploy → push deploy → vuelvo a working.
+Flujo: commit → push. Sin branch de trabajo separada (el viejo
+`claude/continue-proforma-skins-znIeO` era un workaround, ya descartado).
 
 URL deploy: `https://duecaz.github.io/test/`
 
@@ -23,7 +24,7 @@ URL deploy: `https://duecaz.github.io/test/`
 
 ## Estado actual
 
-Versión: **0.13.1**
+Versión: **0.14.0**
 
 ### Hecho
 
@@ -47,6 +48,7 @@ Versión: **0.13.1**
 | ✅ | Device fingerprint pasivo: GPU vía WebGL, deviceMemory, pixel_ratio, network (4G/Mbps/RTT), languages, do_not_track, **webdriver=true** (bot detection), arch+bitness vía UA-CH |
 | ✅ | Competidores: páginas rastreadas tipo `link`/`html`/`pixel`. Renderer público `#/t/<slug>` + `track.js` standalone ES5 para embeber snippet en sitios externos |
 | ✅ | Configuración con datos de empresa + defaults del generador + toggle solo-PE |
+| ✅ | **Geo server-side**: edge function `open-apertura` lee la IP real del request, geolocaliza vía ip-api.com (país/ciudad/región + flags proxy/hosting/mobile) y llama a la RPC. El cliente ya no manda país (no falsificable). Gate solo-PE bloquea solo cuando identifica país != PE positivamente |
 | ✅ | Tests del parser (29 casos, `npm test`) |
 
 ### Pendiente
@@ -56,7 +58,6 @@ Versión: **0.13.1**
 | Alta | **Empresa data consumida por planillas** — hoy se guarda en `user_settings.empresa` pero las planillas siguen leyendo `EMISOR` hardcoded de `data/empresa.js`. Extender `get_public_proforma` RPC para devolver empresa del owner; merge en `planilla_data.js` |
 | Alta | **Adjuntos reales** (plan listo): cada producto tiene PDF/video. Al generar proforma, sus adjuntos se incluyen. Visor muestra adjuntos clickeables. Tracking registra clicks. Implementar: SQL + API + UI productos + visor + detalle |
 | Media | **Más planillas** (minimal/bold/editorial/tech). Hoy solo corporate + warm. Las 4 placeholder de DB se borraron — hay que crear nuevas desde la UI |
-| Media | **Geo server-side** (hoy client-side, falsificable). Edge function de Supabase o `pg_net` extension |
 | Media | **Mobile responsive del admin** (visor sí está optimizado). El listado/generador no testeado en mobile |
 | Baja | **Heatmap por coordenadas X/Y** de clicks (hoy solo por zona) — requiere guardar coords en cada click |
 | Baja | **Movimientos del dispositivo segmentados** (vertical/horizontal/rotación/quieto/agitado) con timeline — requiere samplear gyro con timestamps |
@@ -84,6 +85,9 @@ Versión: **0.13.1**
 ├── planillas/
 │   ├── corporate/{template.html, styles.css}
 │   └── warm/{template.html, styles.css}
+├── supabase/
+│   └── functions/
+│       └── open-apertura/index.ts   edge function: geo server-side (Deno)
 ├── js/
 │   ├── main.js          (boot: público / print / tracker / admin)
 │   ├── lib/
@@ -104,7 +108,7 @@ Versión: **0.13.1**
 │   │   ├── supabase.js            cliente + SUPABASE_URL + KEY exportados
 │   │   ├── template_engine.js     Mustache mini, parser balanceado
 │   │   ├── toast.js               notifs
-│   │   ├── tracking.js            startTracking del visor (geo + open + heartbeat + zones)
+│   │   ├── tracking.js            startTracking del visor (open vía edge function + heartbeat + zones)
 │   │   ├── tracking_view.js       renderTracking: hero + tag + engagement + details
 │   │   ├── ua_parser.js           parseUA + enrichUA (Client Hints)
 │   │   ├── utils.js               html``, raw, el, on, fmtMoney, fmtDate, ago...
@@ -189,15 +193,21 @@ Versión: **0.13.1**
 | RPC | Quién la llama | Descripción |
 |---|---|---|
 | `get_public_proforma(slug)` | anon (visor) | Devuelve proforma + cliente + items + skin |
-| `open_apertura(slug, ua, dispositivo, os, referrer, idioma, timezone, pais, ciudad, region, meta)` | anon | Crea apertura, gate por solo_pe |
+| `open_apertura(slug, ua, dispositivo, os, referrer, idioma, timezone, pais, ciudad, region, meta, ip)` | edge function `open-apertura` | Crea apertura, gate por solo_pe. `ip`/`pais` los pasa la edge function (geo server-side). Si viene `ip` lo usa; si no, cae al header `x-forwarded-for` |
 | `tick_apertura(id, duracion_s, scroll_pct, clicks, gyro_events, prntscr, descarga, impresion, zonas, ua, dispositivo, os, closing)` | anon | Heartbeat. Idempotente y monótono. `closing=true` expira la sesión |
 | `get_tracking_page(slug)` | anon | Datos mínimos para renderer de Competidores |
 | `track_hit(slug, ua, dispositivo, os, referrer, idioma, timezone, pais, ciudad, region, query, meta)` | anon | Crea hit en tracking_hits |
 | `tick_tracking_hit(id, duracion_s)` | anon | Heartbeat para tipo html |
 
-Todas son `SECURITY DEFINER` y leen `x-forwarded-for` del request para IP.
+Todas son `SECURITY DEFINER`. Las que leen IP usan el header `x-forwarded-for` del request, salvo `open_apertura` que prioriza el param `ip` (resuelto por la edge function).
 
 Trigger `detect_reenvio` antes de insertar en `proforma_aperturas`: si hay otra con IP o UA distinto del mismo link, marca `reenvio=true`.
+
+### Supabase — Edge functions
+
+| Función | verify_jwt | Quién la llama | Descripción |
+|---|---|---|---|
+| `open-apertura` | no | visor público (anon) | Lee la IP real del request, geolocaliza vía ip-api.com (país/ciudad/región + flags `proxy`/`hosting`/`mobile` en `meta.geo`) y llama a la RPC `open_apertura` con `p_ip`/`p_pais`. Devuelve `{id, blocked}`. Fuente: `supabase/functions/open-apertura/index.ts`. Deploy vía MCP o `supabase functions deploy open-apertura --no-verify-jwt` |
 
 ## Convenciones
 
@@ -238,13 +248,9 @@ done
 # Workflow de commit
 git add -A
 git commit -m "Mensaje en español"
-git push -u origin claude/continue-proforma-skins-znIeO
-git checkout claude/design-clade-website-HrBA4
-git merge --ff-only claude/continue-proforma-skins-znIeO
-git push origin claude/design-clade-website-HrBA4
-git checkout claude/continue-proforma-skins-znIeO
+git push -u origin claude/design-clade-website-HrBA4
 ```
 
 ## Acceso MCP a Supabase
 
-Disponible: `mcp__b1cc245e-b430-40b0-91a1-98bfd7109d2a__*` con project_id `epyzxfchztyplrckxgku`. Tools usados: `apply_migration`, `execute_sql`, `list_tables`, `get_advisors`.
+Disponible: `mcp__b1cc245e-b430-40b0-91a1-98bfd7109d2a__*` con project_id `epyzxfchztyplrckxgku`. Tools usados: `apply_migration`, `execute_sql`, `list_tables`, `get_advisors`, `deploy_edge_function`, `list_edge_functions`.
