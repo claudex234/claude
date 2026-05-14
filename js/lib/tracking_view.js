@@ -1,9 +1,60 @@
 // Render del bloque de tracking en el detalle de la proforma:
-// sesión actual (si está abierta ahora), stats, sparkline 30 días,
-// heatmap por zona y tabla de aperturas.
+// hero del visitante actual + score de engagement + tag de tipo +
+// stats, sparkline 30 días, heatmap por zona y tabla de aperturas.
 
 import { fmtTime, escapeHtml as e, ago } from "./utils.js";
 import { isLiveApertura } from "../data/api/aperturas.js";
+import { icon } from "./icons.js";
+
+// === Helpers de presentación ============================================
+
+// Decide qué icono mostrar para el dispositivo (laptop/smartphone/tablet).
+const deviceTypeIcon = (a) => {
+  const d = (a.dispositivo || "") + " " + (a.os || "");
+  if (/iPhone|iPod/.test(d)) return "smartphone";
+  if (/iPad/.test(d)) return "tablet";
+  if (/Mobile|Android/.test(d) && !/Tablet/.test(d)) return "smartphone";
+  if (/Tablet/.test(d)) return "tablet";
+  return "laptop";
+};
+
+// Score 0-100 combinando duración (40), scroll (40), clicks (20).
+const engagementScore = (a) => {
+  const duracion = a.duracion_s || 0;
+  const scroll = a.scroll_pct || 0;
+  const clicks = a.clicks || 0;
+  return Math.round(
+    Math.min(duracion / 120, 1) * 40 +
+    (scroll / 100) * 40 +
+    Math.min(clicks / 10, 1) * 20
+  );
+};
+
+const engagementClass = (s) => s >= 60 ? "high" : (s >= 30 ? "medium" : "low");
+
+// Clasifica al visitante con un tag prominente.
+const classifyVisitor = (a) => {
+  const meta = a.meta || {};
+  if (meta.bloqueado) return { label: "Bloqueada", cls: "tag-blocked" };
+  if (meta.webdriver) return { label: "Bot / automation", cls: "tag-bot" };
+  if (a.reenvio) return { label: "Reenvío", cls: "tag-resend" };
+  if (a.pais && a.pais !== "PE") return { label: "Visita extranjera", cls: "tag-foreigner" };
+  const duracion = a.duracion_s || 0;
+  const clicks = a.clicks || 0;
+  if (duracion >= 30 && clicks >= 2) return { label: "Cliente activo", cls: "tag-active" };
+  if (duracion >= 10) return { label: "Cliente", cls: "tag-client" };
+  if (duracion < 5) return { label: "Rebote", cls: "tag-bounce" };
+  return { label: "Visitante", cls: "tag-client" };
+};
+
+// Combina downlink + RTT en una etiqueta legible.
+const formatNetwork = (meta) => {
+  if (!meta.net_type) return null;
+  const parts = [meta.net_type.toUpperCase()];
+  if (meta.net_downlink_mbps != null) parts.push(`${meta.net_downlink_mbps} Mbps`);
+  if (meta.net_rtt_ms != null) parts.push(`${meta.net_rtt_ms}ms`);
+  return parts.join(" · ");
+};
 
 // === Agregados ============================================================
 
@@ -186,18 +237,64 @@ const sessionCard = (a) => {
   const meta = a.meta || {};
   const bloqueada = !!meta.bloqueado;
   const lugar = [a.ciudad, a.pais].filter(Boolean).join(", ");
-  // Browser string consolidado (Chrome 124 · de UA-CH o UA legacy)
   const browser = meta.browser_name && meta.browser_version
     ? `${meta.browser_name} ${meta.browser_version.split(".")[0]}`
     : (meta.browser_name || null);
   const browserFull = meta.browser_version_full || meta.browser_version || null;
   const arch = [meta.arch, meta.bitness && `${meta.bitness}-bit`].filter(Boolean).join(" · ");
-  const net = meta.net_type
-    ? [meta.net_type.toUpperCase(),
-       meta.net_downlink_mbps != null ? `${meta.net_downlink_mbps} Mbps` : null,
-       meta.net_rtt_ms != null ? `${meta.net_rtt_ms}ms RTT` : null].filter(Boolean).join(" · ")
+  const net = formatNetwork(meta);
+  const display = meta.screen
+    ? `${meta.screen}${meta.pixel_ratio && meta.pixel_ratio !== 1 ? ` @${meta.pixel_ratio}x` : ""}${meta.color_depth ? ` · ${meta.color_depth}bit` : ""}`
     : null;
-  const display = meta.screen ? `${meta.screen}${meta.pixel_ratio && meta.pixel_ratio !== 1 ? ` @${meta.pixel_ratio}x` : ""}${meta.color_depth ? ` · ${meta.color_depth}bit` : ""}` : null;
+
+  // --- HERO: icono device + título grande + subline + chip país + red ---
+  const deviceLabel = (a.dispositivo || "Desconocido").split("·")[0].trim();
+  const heroTitle = `${e(deviceLabel)}${browser ? ` · ${e(browser)}` : ""}`;
+  const heroSub = [a.os, arch].filter(Boolean).join(" · ");
+  const countryCls = a.pais === "PE" ? "is-pe" : "is-other";
+  const hero = `
+    <div class="session-hero">
+      <div class="session-hero-icon">${icon(deviceTypeIcon(a), 24)}</div>
+      <div class="session-hero-main">
+        <div class="session-hero-title">
+          ${heroTitle}
+          ${bloqueada
+            ? '<span class="badge" style="font-size:10px;color:var(--danger);border-color:var(--danger)">Bloqueada</span>'
+            : live
+              ? '<span class="live-pill"><span class="live-dot"></span>Abierta ahora</span>'
+              : ""}
+        </div>
+        ${heroSub ? `<div class="session-hero-sub">${e(heroSub)}</div>` : ""}
+        ${lugar || a.ip ? `
+          <div class="session-hero-meta">
+            ${a.pais ? `<span class="country-chip ${countryCls}">${e(a.pais)}</span>` : ""}
+            ${a.ciudad ? `<span>${e(a.ciudad)}</span>` : ""}
+            ${a.ip ? `<span style="color:var(--text-mute);font-family:var(--font-mono);font-size:11px">${e(a.ip)}</span>` : ""}
+          </div>` : ""}
+        ${net ? `<div class="session-hero-meta">${icon("wifi", 12)}<span>${e(net)}</span></div>` : ""}
+        ${live ? `<div class="session-hero-meta" style="color:var(--accent-strong);font-weight:600">${icon("eye", 12)}<span>Mirando hace ${fmtTime(a.duracion_s || 0)}</span></div>` : ""}
+      </div>
+    </div>`;
+
+  // --- TAG visitante + ENGAGEMENT score ---
+  const tag = classifyVisitor(a);
+  const score = engagementScore(a);
+  const scoreCls = engagementClass(score);
+  const tagRow = `
+    <div style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid var(--border)">
+      <span class="visitor-tag ${tag.cls}">${tag.label}</span>
+      <span style="font-size:11px;color:var(--text-mute)">
+        ${fmtTime(a.duracion_s || 0)} · ${a.scroll_pct || 0}% scroll · ${a.clicks || 0} clicks
+      </span>
+    </div>`;
+  const engagement = `
+    <div class="engagement">
+      <div class="engagement-label">Engagement</div>
+      <div class="engagement-bar"><div class="engagement-fill ${scoreCls}" style="width:${score}%"></div></div>
+      <div class="engagement-score">${score}</div>
+    </div>`;
+
+  // --- DETALLES técnicos colapsables ---
   const flags = [];
   if (meta.webdriver) flags.push('<span class="badge" style="font-size:10px;color:var(--danger);border-color:var(--danger)">webdriver/bot</span>');
   if (meta.do_not_track === "1") flags.push('<span class="badge" style="font-size:10px">Do-Not-Track</span>');
@@ -205,50 +302,35 @@ const sessionCard = (a) => {
   if (meta.online === false) flags.push('<span class="badge" style="font-size:10px">offline</span>');
   if (meta.touch_points > 0) flags.push(`<span class="badge" style="font-size:10px">touch · ${meta.touch_points}</span>`);
 
+  const details = `
+    <details class="session-details">
+      <summary>Detalles técnicos</summary>
+      <table class="table" style="margin:0;font-size:12px">
+        <tbody>
+          ${row("Versión completa", browserFull, true)}
+          ${row("Idiomas preferidos", meta.languages?.join(", "))}
+          ${row("Zona horaria", a.timezone, true)}
+          ${meta.screen ? `<tr><td colspan="2" style="background:var(--bg-soft);font-size:10.5px;color:var(--text-mute);text-transform:uppercase;letter-spacing:.5px;padding:6px 12px">Display</td></tr>` : ""}
+          ${row("Pantalla", display)}
+          ${row("Viewport", meta.viewport, true)}
+          ${row("Orientación", meta.orientation)}
+          ${meta.hwc || meta.ram_gb || meta.gpu_renderer ? `<tr><td colspan="2" style="background:var(--bg-soft);font-size:10.5px;color:var(--text-mute);text-transform:uppercase;letter-spacing:.5px;padding:6px 12px">Hardware</td></tr>` : ""}
+          ${row("CPU cores", meta.hwc)}
+          ${row("RAM", meta.ram_gb ? `${meta.ram_gb} GB` : null)}
+          ${row("GPU vendor", meta.gpu_vendor)}
+          ${row("GPU", meta.gpu_renderer)}
+          ${flags.length ? `<tr><td style="color:var(--text-3);width:140px">Flags</td><td><div style="display:flex;gap:4px;flex-wrap:wrap">${flags.join("")}</div></td></tr>` : ""}
+          ${a.referrer ? `<tr><td style="color:var(--text-3);width:140px">Referrer</td><td style="font-size:11px;color:var(--text-2);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${e(a.referrer)}">${e(a.referrer)}</td></tr>` : ""}
+        </tbody>
+      </table>
+    </details>`;
+
   return `
-    <div class="card" style="margin-bottom:16px">
-      <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
-        <div class="card-title">Sesión actual · dispositivo</div>
-        ${bloqueada
-          ? '<span class="badge" style="font-size:10.5px;color:var(--danger);border-color:var(--danger)">Bloqueada por país</span>'
-          : live
-            ? '<span class="live-pill"><span class="live-dot"></span>Abierta ahora</span>'
-            : `<span style="font-size:11px;color:var(--text-mute)">${ago(a.ultima_actividad_at || a.abierta_at)}</span>`}
-      </div>
-      <div class="card-body" style="padding:0">
-        <table class="table" style="margin:0;font-size:12px">
-          <tbody>
-            ${row("Dispositivo", a.dispositivo || meta.model_real)}
-            ${row("Sistema", a.os)}
-            ${row("Arquitectura", arch)}
-            ${row("Navegador", browser)}
-            ${row("Versión completa", browserFull, true)}
-            ${row("IP pública", a.ip, true)}
-            ${row("Ubicación", lugar)}
-            ${row("Idioma principal", a.idioma)}
-            ${meta.languages?.length > 1 ? row("Idiomas preferidos", meta.languages.join(", ")) : ""}
-            ${row("Zona horaria", a.timezone, true)}
-            ${live ? row("Mirando hace", fmtTime(a.duracion_s || 0)) : ""}
-
-            ${display || meta.viewport ? `<tr><td colspan="2" style="background:var(--bg-soft);font-size:10.5px;color:var(--text-mute);text-transform:uppercase;letter-spacing:.5px;padding:6px 12px">Display</td></tr>` : ""}
-            ${row("Pantalla", display)}
-            ${row("Viewport", meta.viewport, true)}
-            ${row("Orientación", meta.orientation)}
-
-            ${meta.hwc || meta.ram_gb || meta.gpu_renderer ? `<tr><td colspan="2" style="background:var(--bg-soft);font-size:10.5px;color:var(--text-mute);text-transform:uppercase;letter-spacing:.5px;padding:6px 12px">Hardware</td></tr>` : ""}
-            ${row("CPU cores", meta.hwc)}
-            ${row("RAM", meta.ram_gb ? `${meta.ram_gb} GB` : null)}
-            ${row("GPU vendor", meta.gpu_vendor)}
-            ${row("GPU", meta.gpu_renderer)}
-
-            ${net ? `<tr><td colspan="2" style="background:var(--bg-soft);font-size:10.5px;color:var(--text-mute);text-transform:uppercase;letter-spacing:.5px;padding:6px 12px">Red</td></tr>` : ""}
-            ${row("Conexión", net)}
-
-            ${flags.length ? `<tr><td style="color:var(--text-3)">Flags</td><td><div style="display:flex;gap:4px;flex-wrap:wrap">${flags.join("")}</div></td></tr>` : ""}
-            ${a.referrer ? `<tr><td style="color:var(--text-3)">Referrer</td><td style="font-size:11px;color:var(--text-2);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${e(a.referrer)}">${e(a.referrer)}</td></tr>` : ""}
-          </tbody>
-        </table>
-      </div>
+    <div class="card" style="margin-bottom:16px;padding:0;overflow:hidden">
+      ${hero}
+      ${tagRow}
+      ${engagement}
+      ${details}
     </div>`;
 };
 
