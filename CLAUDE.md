@@ -57,7 +57,6 @@ Versión: **0.13.1**
 | Alta | **Adjuntos reales** (plan listo): cada producto tiene PDF/video. Al generar proforma, sus adjuntos se incluyen. Visor muestra adjuntos clickeables. Tracking registra clicks. Implementar: SQL + API + UI productos + visor + detalle |
 | Media | **Más planillas** (minimal/bold/editorial/tech). Hoy solo corporate + warm. Las 4 placeholder de DB se borraron — hay que crear nuevas desde la UI |
 | Media | **Geo server-side** (hoy client-side, falsificable). Edge function de Supabase o `pg_net` extension |
-| Media | **Notificación email** al primer `open_apertura` de una proforma. Trigger SQL → edge function → email |
 | Media | **Mobile responsive del admin** (visor sí está optimizado). El listado/generador no testeado en mobile |
 | Baja | **Heatmap por coordenadas X/Y** de clicks (hoy solo por zona) — requiere guardar coords en cada click |
 | Baja | **Movimientos del dispositivo segmentados** (vertical/horizontal/rotación/quieto/agitado) con timeline — requiere samplear gyro con timestamps |
