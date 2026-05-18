@@ -4,6 +4,8 @@
 
 export const installProtections = (root) => {
   const stop = (e) => { e.preventDefault(); e.stopPropagation(); return false; };
+  // Listeners del root: tienen que limpiarse en dispose porque el visor
+  // se desmonta al cambiar de hash y root pasa a ser otro nodo.
   root.addEventListener("contextmenu", stop);
   root.addEventListener("dragstart", stop);
   root.addEventListener("selectstart", stop);
@@ -39,10 +41,15 @@ export const installProtections = (root) => {
   document.addEventListener("visibilitychange", onVis);
 
   return () => {
+    root.removeEventListener("contextmenu", stop);
+    root.removeEventListener("dragstart", stop);
+    root.removeEventListener("selectstart", stop);
+    root.removeEventListener("copy", stop);
+    root.removeEventListener("cut", stop);
     document.removeEventListener("keydown", onKey, true);
     window.removeEventListener("blur", onBlur);
     window.removeEventListener("focus", onFocus);
     document.removeEventListener("visibilitychange", onVis);
-    document.body.classList.remove("vp-hidden", "vp-public");
+    document.body.classList.remove("vp-hidden");
   };
 };

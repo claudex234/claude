@@ -197,7 +197,12 @@ export const startTracking = async ({ slug, root, onBlocked }) => {
 
   // Heartbeat: cada 5s mando el snapshot actual.
   const HEARTBEAT_MS = 5000;
+  // Flag para abortar flushes en vuelo o programados tras dispose.
+  // Sin esto: el setTimeout inicial o un flush async pendiente podía
+  // mandar un tick post-dispose y re-abrir la sesión "live" en el admin.
+  let disposed = false;
   const flush = async (useBeacon = false) => {
+    if (disposed && !useBeacon) return;
     // useBeacon = true ⇒ es el tick final al cerrar la pestaña. Marcamos
     // p_closing=true para que el server ponga ultima_actividad_at en el
     // pasado y el admin vea "no live" instantáneo.
@@ -238,7 +243,7 @@ export const startTracking = async ({ slug, root, onBlocked }) => {
   // Primer tick a 1s (registra que la sesión existe rápido) y luego
   // cada HEARTBEAT_MS. Esto permite al admin ver "abierta ahora" casi
   // de inmediato.
-  setTimeout(() => flush(false), 1000);
+  const firstTick = setTimeout(() => flush(false), 1000);
   const heartbeat = setInterval(() => flush(false), HEARTBEAT_MS);
 
   // Cierre de pestaña / navegación
@@ -248,6 +253,8 @@ export const startTracking = async ({ slug, root, onBlocked }) => {
 
   return {
     dispose: () => {
+      disposed = true;
+      clearTimeout(firstTick);
       stopTimer();
       clearInterval(heartbeat);
       document.removeEventListener("visibilitychange", onVis);
