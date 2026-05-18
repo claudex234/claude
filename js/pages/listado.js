@@ -144,7 +144,8 @@ export const render = (root) => {
           <div style="margin-top:10px;display:flex;gap:6px;align-items:center;background:var(--bg-soft);padding:6px 8px;border-radius:6px;font-family:var(--font-mono);font-size:11px">
             <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-2)">${e(publicUrl(d.slug))}</span>
             <button class="btn-icon btn-ghost" data-action="aside-copy-link" title="Copiar">${icon("copy", 11)}</button>
-            <a class="btn-icon btn-ghost" href="${e(publicUrl(d.slug))}" target="_blank" rel="noopener" title="Abrir">${icon("link", 11)}</a>
+            <a class="btn-icon btn-ghost" href="${e(publicUrl(d.slug))}" target="_blank" rel="noopener" title="Abrir (cuenta como visita)">${icon("link", 11)}</a>
+            <a class="btn-icon btn-ghost" href="${e(publicUrl(d.slug))}?notrack=1" target="_blank" rel="noopener" title="Ver sin registrar visita (preview interno)">${icon("eye", 11)}</a>
           </div>` : ""}
       </div>
       <div style="padding:14px 16px">

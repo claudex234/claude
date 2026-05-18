@@ -122,14 +122,19 @@ export const render = async (root) => {
   const stage = root.querySelector(".vp-stage");
   const a4 = stage ? mountA4Fit(stage, { paddingX: 64, maxScale: 1.4, fitSelector: ".vp-fit" }) : { dispose: () => {} };
 
+  // ?notrack=1 → preview interno del owner, no se monta tracking.
+  const noTrack = /[?&]notrack=1\b/.test(location.hash) || /[?&]notrack=1\b/.test(location.search);
+
   // Tracking real (geo + open_apertura + heartbeat). Si el owner exige
   // PE y no estamos en PE, mostramos pantalla de bloqueo y desmontamos.
   let blocked = false;
-  const track = await startTracking({
-    slug,
-    root,
-    onBlocked: () => { blocked = true; },
-  });
+  const track = noTrack
+    ? { dispose: () => {} }
+    : await startTracking({
+        slug,
+        root,
+        onBlocked: () => { blocked = true; },
+      });
   if (blocked) {
     a4.dispose();
     cleanupProt();

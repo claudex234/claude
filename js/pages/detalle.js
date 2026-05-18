@@ -51,7 +51,8 @@ const view = (d, aperturas) => {
         </div>
         <div style="display:flex;gap:8px">
           ${d.slug
-            ? raw(`<button class="btn" data-action="copy-link">${icon("link", 13)} Copiar link</button>`)
+            ? raw(`<button class="btn" data-action="copy-link">${icon("link", 13)} Copiar link</button>
+                   <button class="btn" data-action="preview" title="Abre el visor sin registrar visita">${icon("eye", 13)} Ver sin track</button>`)
             : raw(`<button class="btn" data-action="gen-link">${icon("link", 13)} Generar página</button>`)}
           <button class="btn" data-action="pdf">${raw(icon("download"))} PDF</button>
           <button class="btn btn-primary" data-action="edit">${raw(icon("edit"))} Editar</button>
@@ -180,6 +181,10 @@ export const render = async (root, ctx) => {
   on(next, "click", "[data-action='copy-link']", async () => {
     if (!detail.slug) return;
     await copyAndToast(publicUrl(detail.slug));
+  });
+  on(next, "click", "[data-action='preview']", () => {
+    if (!detail.slug) return;
+    window.open(publicUrl(detail.slug) + "?notrack=1", "_blank", "noopener");
   });
   on(next, "click", "[data-action='gen-link']", async (ev) => {
     const btn = ev.target.closest("button");

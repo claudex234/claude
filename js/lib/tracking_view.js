@@ -103,8 +103,8 @@ const classifyVisitor = (a) => {
 // distingue cable/wifi/celular — '4g' significa simplemente "rápida"
 // y se devuelve para Ethernet también. Por eso anteponemos "≈" y el
 // title aclara la limitación de la API.
-const NET_LABELS = { "slow-2g": "lenta", "2g": "2G", "3g": "3G", "4g": "≈4G" };
-const NET_TOOLTIP = "Etiqueta de la Network Information API del browser: ≈4G se usa para cualquier red rápida (Ethernet, Wi-Fi o 4G/5G real).";
+const NET_LABELS = { "slow-2g": "lenta", "2g": "2G", "3g": "3G", "4g": "rápida" };
+const NET_TOOLTIP = "Velocidad estimada por la Network Information API del browser. NO distingue Wi-Fi, Ethernet, 4G ni 5G — solo el rango aproximado de velocidad. JS no puede saber qué tipo de red usa el visitante.";
 const formatNetwork = (meta) => {
   if (!meta.net_type) return null;
   const label = NET_LABELS[meta.net_type] || meta.net_type.toUpperCase();
@@ -276,7 +276,7 @@ const sessionCard = (a) => {
             ${a.ciudad ? `<span>${e(a.ciudad)}</span>` : ""}
             ${a.ip ? `<span style="color:var(--text-mute);font-family:var(--font-mono);font-size:11px">${e(a.ip)}</span>` : ""}
           </div>` : ""}
-        ${net ? `<div class="session-hero-meta" title="${e(NET_TOOLTIP)}">${icon("wifi", 12)}<span>${e(net)}</span></div>` : ""}
+        ${net ? `<div class="session-hero-meta" title="${e(NET_TOOLTIP)}">${icon("zap", 12)}<span>${e(net)}</span></div>` : ""}
         ${hw ? `<div class="session-hero-meta">${icon("cpu", 12)}<span>${e(hw)}</span></div>` : ""}
         ${live ? `<div class="session-hero-meta" style="color:var(--accent-strong);font-weight:600">${icon("eye", 12)}<span>Mirando hace ${fmtTime(a.duracion_s || 0)}</span></div>` : ""}
       </div>

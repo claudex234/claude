@@ -68,6 +68,12 @@ const boot = async () => {
   // 1) Gate de autenticación: bloquea hasta tener sesión.
   await waitForSession(app);
 
+  // Registrar la IP del admin para que el visor público sepa "esto somos
+  // nosotros mismos" y no trackee la apertura. Fire-and-forget.
+  import("./lib/supabase.js").then(({ supabase }) =>
+    supabase.functions.invoke("record-my-ip").catch(() => {})
+  );
+
   // 2) Carga inicial de datos desde Supabase.
   try {
     await loadAll();

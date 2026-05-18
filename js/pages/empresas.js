@@ -77,7 +77,7 @@ const logoPreview = (form) => {
 const cuentasEditor = (cuentas) => `
   <div data-cuentas>
     ${cuentas.map((c, i) => `
-      <div class="card" style="padding:10px;margin-bottom:8px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:6px;align-items:end">
+      <div class="card" style="padding:10px;margin-bottom:8px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1.2fr auto;gap:6px;align-items:end">
         <label class="gen-field"><span>Banco</span>
           <input class="input" data-c-idx="${i}" data-c-key="banco" value="${e(c.banco || "")}"></label>
         <label class="gen-field"><span>Moneda</span>
@@ -86,6 +86,8 @@ const cuentasEditor = (cuentas) => `
           <input class="input" data-c-idx="${i}" data-c-key="numero" value="${e(c.numero || "")}"></label>
         <label class="gen-field"><span>CCI</span>
           <input class="input" data-c-idx="${i}" data-c-key="cci" value="${e(c.cci || "")}"></label>
+        <label class="gen-field"><span>A nombre de</span>
+          <input class="input" data-c-idx="${i}" data-c-key="titular" value="${e(c.titular || "")}" placeholder="Razón social"></label>
         <button class="btn btn-sm" data-action="del-cuenta" data-idx="${i}" title="Quitar" style="color:var(--danger)">${icon("trash", 12)}</button>
       </div>
     `).join("")}
@@ -187,9 +189,9 @@ export const render = async (root) => {
       <div data-list>
         ${rows.length
           ? raw(rows.map((r) => listCard(adaptEmpresa(r))).join(""))
-          : `<div class="card" style="padding:24px;text-align:center;color:var(--text-3)">
+          : raw(`<div class="card" style="padding:24px;text-align:center;color:var(--text-3)">
               No tenés empresas todavía. Creá la primera — se prellena con los datos hardcoded.
-            </div>`}
+            </div>`)}
       </div>
 
       <div data-editor-slot></div>
@@ -274,7 +276,7 @@ export const render = async (root) => {
 
   on(node, "click", "[data-action='add-cuenta']", () => {
     if (!editing) return;
-    editing.cuentas.push({ banco: "", moneda: "Soles", numero: "", cci: "" });
+    editing.cuentas.push({ banco: "", moneda: "Soles", numero: "", cci: "", titular: editing.razon_social || "" });
     renderEditor();
   });
 

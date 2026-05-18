@@ -113,7 +113,7 @@
   <section class="cuentas">
     <div class="card-label">Cuentas bancarias</div>
     {{#each emisor.cuentas}}
-    <div class="cuenta"><b>{{banco}} {{moneda}}:</b> {{numero}} · <b>CCI</b> {{cci}}</div>
+    <div class="cuenta"><b>{{banco}} {{moneda}}:</b> {{numero}} · <b>CCI</b> {{cci}}{{#if titular}} · a nombre de <b>{{titular}}</b>{{/if}}</div>
     {{/each}}
   </section>
 
