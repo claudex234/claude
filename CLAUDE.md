@@ -47,7 +47,7 @@ Versión: **0.14.1**
 | ✅ | Heatmap por zona de la hoja A4 (4 franjas) + sparkline 30 días |
 | ✅ | Device fingerprint pasivo: GPU vía WebGL, deviceMemory, pixel_ratio, network (4G/Mbps/RTT), languages, do_not_track, **webdriver=true** (bot detection), arch+bitness vía UA-CH |
 | ✅ | Competidores: páginas rastreadas tipo `link`/`html`/`pixel`. Renderer público `#/t/<slug>` + `track.js` standalone ES5 para embeber snippet en sitios externos |
-| ✅ | Configuración con datos de empresa + defaults del generador + toggle solo-PE |
+| ✅ | Configuración con datos de empresa + defaults del generador + toggle solo-PE — consumidos por las planillas via RPC (visor) y `CONFIG` global (editor/print) con fallback a `EMISOR` hardcoded para campos no configurables (logo, cuentas, tagline) |
 | ✅ | **Geo server-side**: edge function `open-apertura` lee la IP real del request, geolocaliza vía ip-api.com (país/ciudad/región + flags proxy/hosting/mobile) y llama a la RPC. El cliente ya no manda país (no falsificable). Gate solo-PE bloquea solo cuando identifica país != PE positivamente |
 | ✅ | Tests del parser (29 casos, `npm test`) |
 
@@ -55,7 +55,6 @@ Versión: **0.14.1**
 
 | Prioridad | Tarea |
 |---|---|
-| Alta | **Empresa data consumida por planillas** — hoy se guarda en `user_settings.empresa` pero las planillas siguen leyendo `EMISOR` hardcoded de `data/empresa.js`. Extender `get_public_proforma` RPC para devolver empresa del owner; merge en `planilla_data.js` |
 | Alta | **Adjuntos reales** (plan listo): cada producto tiene PDF/video. Al generar proforma, sus adjuntos se incluyen. Visor muestra adjuntos clickeables. Tracking registra clicks. Implementar: SQL + API + UI productos + visor + detalle |
 | Media | **Más planillas** (minimal/bold/editorial/tech). Hoy solo corporate + warm. Las 4 placeholder de DB se borraron — hay que crear nuevas desde la UI |
 | Media | **Mobile responsive del admin** (visor sí está optimizado). El listado/generador no testeado en mobile |
@@ -193,7 +192,7 @@ Versión: **0.14.1**
 
 | RPC | Quién la llama | Descripción |
 |---|---|---|
-| `get_public_proforma(slug)` | anon (visor) | Devuelve proforma + cliente + items + skin |
+| `get_public_proforma(slug)` | anon (visor) | Devuelve proforma + cliente + items + skin + empresa + defaults del owner (de `user_settings`) |
 | `open_apertura(slug, ua, dispositivo, os, referrer, idioma, timezone, pais, ciudad, region, meta, ip)` | edge function `open-apertura` | Crea apertura, gate por solo_pe. `ip`/`pais` los pasa la edge function (geo server-side). Si viene `ip` lo usa; si no, cae al header `x-forwarded-for` |
 | `tick_apertura(id, duracion_s, scroll_pct, clicks, gyro_events, prntscr, descarga, impresion, zonas, ua, dispositivo, os, closing)` | anon | Heartbeat. Idempotente y monótono. `closing=true` expira la sesión |
 | `get_tracking_page(slug)` | anon | Datos mínimos para renderer de Competidores |

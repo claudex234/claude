@@ -7,6 +7,7 @@ import { escapeHtml as e } from "../lib/utils.js";
 import { fetchProformaDetail } from "../data/api.js";
 import { renderPlanilla } from "../lib/planillas.js";
 import { fromDetail } from "../lib/planilla_data.js";
+import { CONFIG } from "../data/config.js";
 
 const showError = (root, msg) => {
   root.innerHTML = `
@@ -87,7 +88,7 @@ export const render = async (root, ctx) => {
   }
 
   try {
-    const inner = await renderPlanilla(detail.skin?.codigo || "corporate", fromDetail(detail));
+    const inner = await renderPlanilla(detail.skin?.codigo || "corporate", fromDetail(detail, CONFIG));
     const page = root.querySelector("[data-page]");
     if (page) page.innerHTML = inner;
   } catch (err) {

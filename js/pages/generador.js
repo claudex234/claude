@@ -82,7 +82,7 @@ const clearDraft = () => {
 // Renderiza el preview vía la planilla seleccionada. Async porque la
 // primera vez se hace fetch del HTML (después la lib lo cachea).
 const renderPreview = async (s) => {
-  const inner = await renderPlanilla(s.skinCodigo, fromEditorState(s, PRODUCTOS, totals(s.productos)));
+  const inner = await renderPlanilla(s.skinCodigo, fromEditorState(s, PRODUCTOS, totals(s.productos), CONFIG));
   return `<div class="pv-doc"><article class="pv-page">${inner}</article></div>`;
 };
 
