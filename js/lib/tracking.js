@@ -266,7 +266,9 @@ export const startTracking = async ({ slug, root, onBlocked }) => {
   const onWheel = (ev) => {
     if (!ev.ctrlKey) return;
     const dir = ev.deltaY < 0 ? 1.1 : 0.9;
-    lastScale = lastScale * dir;
+    // Clamp: sin esto, N ctrl+wheel acumulan a 0.001 o 1000 y todos los
+    // recordZoom siguientes mandan ratios absurdos al admin.
+    lastScale = Math.max(0.2, Math.min(8, lastScale * dir));
     recordZoom(lastScale, ev.clientX, ev.clientY);
   };
   window.addEventListener("wheel", onWheel, { passive: true });

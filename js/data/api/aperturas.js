@@ -38,17 +38,13 @@ export const fetchAperturas = async (proformaId) => {
 // Devuelve un Set con los proforma_id que tienen al menos una apertura
 // con actividad reciente (LIVE_WINDOW_S). El listado polletea esto cada
 // pocos segundos para mostrar el indicador verde.
+//
+// Usa RPC server-side para que el filtro se evalúe con el reloj del
+// server, no del browser: clock skew del admin >15s rompía la detección.
 export const fetchLiveProformaIds = async () => {
-  const since = new Date(Date.now() - LIVE_WINDOW_S * 1000).toISOString();
-  const { data, error } = await supabase
-    .from("proforma_aperturas")
-    .select("link_id, ultima_actividad_at, proforma_links(proforma_id)")
-    .gt("ultima_actividad_at", since);
+  const { data, error } = await supabase.rpc("live_proforma_ids", {
+    p_window_s: LIVE_WINDOW_S,
+  });
   if (error) throw error;
-  const set = new Set();
-  for (const r of data || []) {
-    const pid = r.proforma_links?.proforma_id;
-    if (pid) set.add(pid);
-  }
-  return set;
+  return new Set(data || []);
 };

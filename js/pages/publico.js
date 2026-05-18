@@ -46,9 +46,16 @@ const renderAdjuntos = (adjuntos) => {
   if (!adjuntos || !adjuntos.length) return "";
   const card = (a) => {
     const isPdf = a.tipo === "pdf";
+    // hostname puede crashear si url está malformada o es relativa.
+    // Un solo adjunto inválido tirando renderViewer dejaba el visor
+    // en pantalla de error completa.
+    let host = "";
+    if (!isPdf && a.url) {
+      try { host = new URL(a.url).hostname.replace(/^www\./, ""); } catch {}
+    }
     const sub = isPdf
       ? `PDF${a.tamano_bytes ? ` · ${formatBytes(a.tamano_bytes)}` : ""}`
-      : `Link externo${a.url ? ` · ${e(new URL(a.url).hostname.replace(/^www\./, ""))}` : ""}`;
+      : `Link externo${host ? ` · ${e(host)}` : ""}`;
     return `
       <a class="vp-adj-card" href="${e(a.url)}" target="_blank" rel="noopener"
          data-adjunto-id="${e(a.id)}" data-adjunto-nombre="${e(a.nombre)}" data-adjunto-tipo="${e(a.tipo)}">
