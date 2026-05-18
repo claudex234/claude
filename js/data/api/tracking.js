@@ -61,6 +61,7 @@ export const upsertTrackingPage = async ({
       .from("tracking_pages")
       .update(payload)
       .eq("id", id)
+      .eq("owner_id", user.id)
       .select()
       .single();
     if (error) throw error;
@@ -76,6 +77,8 @@ export const upsertTrackingPage = async ({
 };
 
 export const deleteTrackingPage = async (id) => {
-  const { error } = await supabase.from("tracking_pages").delete().eq("id", id);
+  const user = await requireUser();
+  const { error } = await supabase.from("tracking_pages")
+    .delete().eq("id", id).eq("owner_id", user.id);
   if (error) throw error;
 };

@@ -16,7 +16,11 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+// Usamos SERVICE_ROLE para que la RPC reconozca al caller como trusted
+// y acepte p_ip/p_pais resueltos server-side. Si llamáramos con anon,
+// la RPC ignora esos params y el gate solo_pe queda inerte (cualquiera
+// podría llamar directo a la RPC con p_pais='PE' bypaseando el bloqueo).
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -55,7 +59,10 @@ const geolocate = async (ip: string) => {
     const j = await r.json();
     if (j.status !== "success") return null;
     return {
-      pais: j.countryCode || null,
+      // Uppercase defensivo: ip-api devuelve ISO-3166-alpha2 en mayúscula,
+      // pero si algún día cambian el case el gate solo_pe se rompería en
+      // silencio (compara contra 'PE' literal).
+      pais: (j.countryCode || "").toUpperCase() || null,
       pais_nombre: j.country || null,
       ciudad: j.city || null,
       region: j.regionName || null,
@@ -101,7 +108,7 @@ Deno.serve(async (req: Request) => {
     isp: geo?.isp ?? null,
   };
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
   const { data, error } = await supabase.rpc("open_apertura", {
     p_slug: slug,
     p_user_agent: body.user_agent ?? null,

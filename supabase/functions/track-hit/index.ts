@@ -9,7 +9,9 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+// Service role: la RPC track_hit solo acepta p_ip/p_pais si el caller
+// es trusted (ver nota en open-apertura/index.ts).
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -43,7 +45,8 @@ const geolocate = async (ip: string) => {
     const j = await r.json();
     if (j.status !== "success") return null;
     return {
-      pais: j.countryCode || null,
+      // Uppercase defensivo (ver nota en open-apertura).
+      pais: (j.countryCode || "").toUpperCase() || null,
       ciudad: j.city || null,
       region: j.regionName || null,
       proxy: !!j.proxy,
@@ -83,7 +86,7 @@ Deno.serve(async (req: Request) => {
     isp: geo?.isp ?? null,
   };
 
-  const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
   const { data, error } = await supabase.rpc("track_hit", {
     p_slug: slug,
     p_user_agent: body.user_agent ?? null,

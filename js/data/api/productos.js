@@ -38,14 +38,16 @@ export const upsertProducto = async ({
 // Soft delete: marca activo=false. No borramos para no romper proformas
 // que referencien al producto via proforma_items.producto_id.
 export const archiveProducto = async (id) => {
+  const user = await requireUser();
   const { error } = await supabase.from("productos")
-    .update({ activo: false }).eq("id", id);
+    .update({ activo: false }).eq("id", id).eq("owner_id", user.id);
   if (error) throw error;
 };
 
 export const restoreProducto = async (id) => {
+  const user = await requireUser();
   const { error } = await supabase.from("productos")
-    .update({ activo: true }).eq("id", id);
+    .update({ activo: true }).eq("id", id).eq("owner_id", user.id);
   if (error) throw error;
 };
 

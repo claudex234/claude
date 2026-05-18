@@ -37,8 +37,11 @@ export const upsertEmpresa = async (patch) => {
     cuentas: Array.isArray(patch.cuentas) ? patch.cuentas : [],
   };
   if (patch.id) {
+    // Defense-in-depth: ademas de RLS, filtramos por owner_id en la
+    // query. Evita que un usuario actualice empresas ajenas si las RLS
+    // policies fallan o estan mal configuradas.
     const { data, error } = await supabase.from("empresas")
-      .update(row).eq("id", patch.id).select().single();
+      .update(row).eq("id", patch.id).eq("owner_id", user.id).select().single();
     if (error) throw error;
     return data;
   }
@@ -50,7 +53,9 @@ export const upsertEmpresa = async (patch) => {
 };
 
 export const deleteEmpresa = async (id) => {
-  const { error } = await supabase.from("empresas").delete().eq("id", id);
+  const user = await requireUser();
+  const { error } = await supabase.from("empresas")
+    .delete().eq("id", id).eq("owner_id", user.id);
   if (error) throw error;
 };
 
@@ -63,7 +68,7 @@ export const setDefaultEmpresa = async (id) => {
     .eq("owner_id", user.id).eq("is_default", true);
   if (eClr) throw eClr;
   const { error } = await supabase.from("empresas")
-    .update({ is_default: true }).eq("id", id);
+    .update({ is_default: true }).eq("id", id).eq("owner_id", user.id);
   if (error) throw error;
 };
 
