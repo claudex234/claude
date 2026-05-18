@@ -3,7 +3,7 @@ import { icon } from "../lib/icons.js";
 import { PRODUCTOS } from "../data/productos.js";
 import { PROFORMAS, toMemoryProforma } from "../data/proformas.js";
 import { navigate } from "../lib/router.js";
-import { createProforma, updateProforma, nextNumero, ensurePublicLink, fetchProformaDetail } from "../data/api.js";
+import { createProforma, updateProforma, nextNumero, ensurePublicLink, fetchProformaDetail, listAdjuntosForProductos } from "../data/api.js";
 import { supabase } from "../lib/supabase.js";
 import { toast } from "../lib/toast.js";
 import { EMISOR, FORMAS_PAGO } from "../data/empresa.js";
@@ -34,6 +34,11 @@ const initialState = () => ({
   proformaId: null, // uuid devuelto por createProforma; null hasta primer guardado
   skinCodigo: defaultSkinCodigo(),
   empresaId: defaultEmpresa()?.id || null,
+  // UUIDs de adjuntos del catálogo a NO incluir en el visor de esta
+  // proforma. Default vacío = todos los adjuntos de los productos van.
+  // Se hidrata con los adjuntos disponibles vía cargarAdjuntosDisponibles.
+  adjuntosExcluidos: [],
+  adjuntosDisponibles: [], // {id, producto_id, tipo, nombre, ...}
   emitidaIso: new Date().toISOString().slice(0, 10),
   isEdit: false,
 });
@@ -101,6 +106,54 @@ const productoRowHtml = (p, i) => `
 
 const chipHtml = (label, ok) =>
   `<span class="chip ${ok ? "chip-ok" : "chip-mute"}">${ok ? "✓" : "·"} ${label}</span>`;
+
+// Sección "Material adjunto": lista los adjuntos disponibles para los
+// productos elegidos. Por default todos van. Desmarcar = excluir.
+const adjuntosSectionHtml = (s) => {
+  const disponibles = s.adjuntosDisponibles || [];
+  const excluidos = new Set(s.adjuntosExcluidos || []);
+  if (!disponibles.length) {
+    return `
+      <section class="gen-section">
+        <div class="gen-section-title">MATERIAL ADJUNTO</div>
+        <div class="gen-section-hint">
+          Los productos elegidos no tienen adjuntos cargados. Subí PDFs o links desde <b>Productos</b>.
+        </div>
+      </section>`;
+  }
+  // Agrupo por producto para que sea claro de dónde viene cada adjunto.
+  const byProd = new Map();
+  for (const a of disponibles) {
+    const k = a.producto_id || "—";
+    if (!byProd.has(k)) byProd.set(k, []);
+    byProd.get(k).push(a);
+  }
+  const incluidos = disponibles.length - disponibles.filter((a) => excluidos.has(a.id)).length;
+  const groups = Array.from(byProd.entries()).map(([prodId, arr]) => {
+    const ref = Object.values(PRODUCTOS).find((p) => p.id === prodId);
+    const prodLabel = ref ? `${ref.codigo} · ${ref.nombre}` : "Producto";
+    return `
+      <div style="margin-bottom:10px">
+        <div style="font-size:11px;color:var(--text-mute);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">${e(prodLabel)}</div>
+        ${arr.map((a) => `
+          <label style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--bg-soft);border-radius:4px;margin-bottom:3px;cursor:pointer;font-size:12.5px">
+            <input type="checkbox" data-adj-toggle data-id="${e(a.id)}" ${excluidos.has(a.id) ? "" : "checked"}>
+            <span style="display:inline-grid;place-items:center;width:28px;height:18px;background:#2563eb;color:#fff;border-radius:3px;font-size:9px;font-weight:800;letter-spacing:.5px;flex-shrink:0">${a.tipo === "pdf" ? "PDF" : "↗"}</span>
+            <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${e(a.nombre)}</span>
+          </label>`).join("")}
+      </div>`;
+  }).join("");
+  return `
+    <section class="gen-section">
+      <div class="gen-section-head">
+        <span class="gen-section-title">MATERIAL ADJUNTO (${incluidos}/${disponibles.length})</span>
+      </div>
+      <div class="gen-section-hint" style="margin-bottom:8px">
+        Por default todos van al visor. Desmarcá los que NO querés mostrar en esta proforma.
+      </div>
+      ${groups}
+    </section>`;
+};
 
 const renderEditor = (s) => `
   <div class="gen-shell fade-in">
@@ -204,6 +257,8 @@ const renderEditor = (s) => `
             Empresas se gestionan en <b>Empresas</b>. Skins en <b>Plantillas</b>.
           </div>
         </section>
+
+        <div data-adj-section>${adjuntosSectionHtml(s)}</div>
       </aside>
 
       <main class="gen-preview" data-preview><div class="pv-fit"><div class="pv-doc"><article class="pv-page" style="padding:60px;color:#999">Cargando planilla…</article></div></div></main>
@@ -329,6 +384,7 @@ export const render = (root, ctx) => {
         s.publicSlug = detail.slug || null;
         s.skinCodigo = detail.skin?.codigo || defaultSkinCodigo();
         s.empresaId = p.empresa_id || defaultEmpresa()?.id || null;
+        s.adjuntosExcluidos = Array.isArray(p.adjuntos_excluidos) ? p.adjuntos_excluidos : [];
         s.emitidaIso = p.emitida || s.emitidaIso;
         s.cliente = {
           razonSocial: c.razon_social || "",
@@ -420,7 +476,46 @@ export const render = (root, ctx) => {
     fitPreview();
   };
 
-  const refreshAll = () => { refreshChips(); refreshProductos(); refreshPreview(); };
+  // Re-render del bloque de adjuntos a partir del state. Se re-arma el
+  // HTML completo (chequeos por item) cuando cambia s.productos o
+  // s.adjuntosDisponibles.
+  const refreshAdjuntosSection = () => {
+    const aside = node.querySelector(".gen-editor");
+    if (!aside) return;
+    const old = aside.querySelector("[data-adj-section]");
+    const wrap = document.createElement("div");
+    wrap.dataset.adjSection = "1";
+    wrap.innerHTML = adjuntosSectionHtml(s);
+    if (old) old.replaceWith(wrap);
+    else aside.appendChild(wrap);
+  };
+
+  // Refresca la lista de adjuntos disponibles según los productos
+  // actuales. Llama a la API una sola vez con todos los producto_id.
+  const refreshAdjuntosDisponibles = async () => {
+    const codes = s.productos.map((p) => p.modelo).filter(Boolean);
+    const productIds = codes
+      .map((c) => Object.values(PRODUCTOS).find((p) => p.codigo === c)?.id)
+      .filter(Boolean);
+    if (!productIds.length) {
+      s.adjuntosDisponibles = [];
+      refreshAdjuntosSection();
+      return;
+    }
+    try {
+      const adj = await listAdjuntosForProductos(productIds);
+      s.adjuntosDisponibles = adj;
+    } catch (err) {
+      console.warn("[adjuntos]", err);
+      s.adjuntosDisponibles = [];
+    }
+    refreshAdjuntosSection();
+  };
+
+  const refreshAll = () => {
+    refreshChips(); refreshProductos(); refreshPreview();
+    refreshAdjuntosDisponibles();
+  };
 
   // Un único handler para todos los inputs/selects con data-f.
   const CLIENTE_FIELDS = ["razonSocial", "ruc", "contacto", "email", "telefono"];
@@ -484,6 +579,16 @@ export const render = (root, ctx) => {
     refreshAll();
     markDirty();
   });
+
+  // Checkbox de adjunto: toggle inclusion/exclusion en esta proforma.
+  on(node, "change", "[data-adj-toggle]", (ev) => {
+    const id = ev.target.dataset.id;
+    const set = new Set(s.adjuntosExcluidos || []);
+    if (ev.target.checked) set.delete(id); else set.add(id);
+    s.adjuntosExcluidos = Array.from(set);
+    refreshAdjuntosSection(); // actualiza el contador "X/Y"
+    markDirty();
+  });
   on(node, "input", "[data-fp]", (ev) => {
     const i = parseInt(ev.target.dataset.i, 10);
     const f = ev.target.dataset.fp;
@@ -518,6 +623,7 @@ export const render = (root, ctx) => {
         items: s.productos,
         skinCodigo: s.skinCodigo,
         empresaId: s.empresaId,
+        adjuntosExcluidos: s.adjuntosExcluidos,
       });
       // Sincronizar PROFORMAS en memoria
       const rec = PROFORMAS.find((p) => p.proformaId === s.proformaId);
@@ -568,6 +674,7 @@ export const render = (root, ctx) => {
           items: s.productos,
           skinCodigo: s.skinCodigo,
           empresaId: s.empresaId,
+          adjuntosExcluidos: s.adjuntosExcluidos,
         });
         s.proformaId = proforma.id;
         s.numero = proforma.numero;

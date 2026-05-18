@@ -40,7 +40,7 @@ const buildItemRows = (proformaId, items, productoIds) =>
 // items = [{ qty, modelo, nombre, precio }]
 // cliente = { razonSocial, ruc, contacto, email, telefono }
 // skinCodigo = "corporate" | "warm" | …
-export const createProforma = async ({ estado, cliente, asunto, items, skinCodigo, empresaId = null }) => {
+export const createProforma = async ({ estado, cliente, asunto, items, skinCodigo, empresaId = null, adjuntosExcluidos = [] }) => {
   if (!Array.isArray(items) || !items.length) throw new Error("Agregá al menos un ítem");
   const user = await requireUser();
   const cliente_id = await findOrCreateCliente(user.id, {
@@ -65,6 +65,7 @@ export const createProforma = async ({ estado, cliente, asunto, items, skinCodig
       ...totals, moneda: "PEN",
       skin_id,
       empresa_id: empresaId || null,
+      adjuntos_excluidos: adjuntosExcluidos,
       owner_id: user.id,
     })
     .select()
@@ -96,7 +97,7 @@ export const createProforma = async ({ estado, cliente, asunto, items, skinCodig
 // Edita una proforma existente. Reemplaza todos los items (borra + inserta)
 // y actualiza cliente/totales/skin/asunto. No cambia el numero ni emitida.
 // estado: si viene, se actualiza; si no, queda como estaba.
-export const updateProforma = async (proformaId, { cliente, asunto, items, skinCodigo, estado, empresaId }) => {
+export const updateProforma = async (proformaId, { cliente, asunto, items, skinCodigo, estado, empresaId, adjuntosExcluidos }) => {
   if (!proformaId) throw new Error("Falta proformaId");
   if (!Array.isArray(items) || !items.length) throw new Error("Agregá al menos un ítem");
   const user = await requireUser();
@@ -114,6 +115,7 @@ export const updateProforma = async (proformaId, { cliente, asunto, items, skinC
   const patch = { cliente_id, asunto: asunto || null, ...totals, skin_id };
   if (estado) patch.estado = estado;
   if (empresaId !== undefined) patch.empresa_id = empresaId || null;
+  if (Array.isArray(adjuntosExcluidos)) patch.adjuntos_excluidos = adjuntosExcluidos;
 
   const { data: prof, error } = await supabase
     .from("proformas")

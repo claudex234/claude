@@ -18,6 +18,21 @@ export const listAdjuntos = async (productoId) => {
   return data || [];
 };
 
+// Variante: trae adjuntos de varios productos en una sola query. Usado
+// por el generador para hidratar la sección 'Adjuntos disponibles' sin
+// hacer N requests cuando la proforma tiene varios productos.
+export const listAdjuntosForProductos = async (productoIds) => {
+  const ids = (productoIds || []).filter(Boolean);
+  if (!ids.length) return [];
+  const { data, error } = await supabase.from("adjuntos")
+    .select("*")
+    .in("producto_id", ids)
+    .order("orden", { ascending: true })
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return data || [];
+};
+
 // Sube un PDF al bucket y crea la fila en adjuntos.
 // Path: <ownerId>/<productoId>/<timestamp>-<safeName>
 export const uploadAdjuntoPdf = async (productoId, file) => {

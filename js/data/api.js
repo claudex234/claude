@@ -54,6 +54,7 @@ export {
 
 export {
   listAdjuntos,
+  listAdjuntosForProductos,
   uploadAdjuntoPdf,
   addAdjuntoLink,
   removeAdjunto,

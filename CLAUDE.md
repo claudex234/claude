@@ -24,7 +24,7 @@ URL deploy: `https://duecaz.github.io/test/`
 
 ## Estado actual
 
-Versión: **0.19.0**
+Versión: **0.19.1**
 
 ### Hecho
 
