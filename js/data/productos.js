@@ -22,6 +22,7 @@ export const PRODUCTOS = {};
 
 // Fila de la tabla `productos` → shape de memoria.
 export const adaptProducto = (row) => ({
+  id: row.id,
   codigo: row.codigo,
   nombre: row.nombre,
   tamano: row.tamano || "",

@@ -77,7 +77,9 @@ const loadDraft = () => {
 const saveDraft = (s) => {
   if (isDraftEmpty(s)) return clearDraft();
   try {
-    const { dirty, isEdit, ...rest } = s;
+    // adjuntosDisponibles se rehidrata desde la red al cambiar productos,
+    // no tiene sentido persistirlo (infla localStorage con metadata).
+    const { dirty, isEdit, adjuntosDisponibles, ...rest } = s;
     localStorage.setItem(DRAFT_KEY, JSON.stringify({ ...rest, savedAt: Date.now() }));
   } catch {}
 };
@@ -340,6 +342,7 @@ export const render = (root, ctx) => {
         s.terminos = { ...s.terminos, ...(draft.terminos || {}) };
         s.skinCodigo = draft.skinCodigo || s.skinCodigo;
         s.empresaId = draft.empresaId !== undefined ? draft.empresaId : s.empresaId;
+        s.adjuntosExcluidos = Array.isArray(draft.adjuntosExcluidos) ? draft.adjuntosExcluidos : [];
         s.rucSeguro = !!draft.rucSeguro;
         // Rehidratar inputs visibles
         ["razonSocial", "ruc", "contacto", "email", "telefono"].forEach((k) => {
