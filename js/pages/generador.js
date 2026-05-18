@@ -535,7 +535,7 @@ export const render = (root, ctx) => {
       }
       toast(`${proforma.numero} actualizada`, { type: "ok" });
       markClean();
-      navigate("detalle/" + proforma.numero);
+      navigate("proformas");
     } catch (err) {
       console.error(err);
       toast(err.message || "No pude guardar", { type: "err" });

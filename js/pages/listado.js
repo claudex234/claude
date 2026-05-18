@@ -126,10 +126,11 @@ export const render = (root) => {
           </div>
           <div style="display:flex;gap:4px">
             ${d.slug
-              ? `<button class="btn btn-sm" data-action="aside-copy-link" title="Copiar link público">${icon("link", 12)}</button>`
-              : `<button class="btn btn-sm" data-action="aside-gen-link" title="Generar link público">${icon("link", 12)}</button>`}
+              ? `<button class="btn btn-sm" data-action="aside-copy-link" title="Copiar link público (lo que mandás al cliente)">${icon("copy", 12)} Copiar link</button>
+                 <button class="btn btn-sm btn-primary" data-action="aside-preview" title="Abre la proforma sin registrar visita">${icon("eye", 12)} Ver</button>`
+              : `<button class="btn btn-sm" data-action="aside-gen-link" title="Generar link público">${icon("link", 12)} Generar link</button>`}
             <button class="btn btn-sm" data-action="aside-pdf" title="PDF">${icon("download", 12)}</button>
-            <button class="btn btn-sm btn-primary" data-action="aside-ver" title="Ver detalle completo">Ver →</button>
+            <button class="btn btn-sm" data-action="aside-edit" title="Editar">${icon("edit", 12)}</button>
           </div>
         </div>
         ${p.estado === "vista" ? `
@@ -143,9 +144,6 @@ export const render = (root) => {
         ${d.slug ? `
           <div style="margin-top:10px;display:flex;gap:6px;align-items:center;background:var(--bg-soft);padding:6px 8px;border-radius:6px;font-family:var(--font-mono);font-size:11px">
             <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text-2)">${e(publicUrl(d.slug))}</span>
-            <button class="btn-icon btn-ghost" data-action="aside-copy-link" title="Copiar">${icon("copy", 11)}</button>
-            <a class="btn-icon btn-ghost" href="${e(publicUrl(d.slug))}" target="_blank" rel="noopener" title="Abrir (cuenta como visita)">${icon("link", 11)}</a>
-            <a class="btn-icon btn-ghost" href="${e(publicUrl(d.slug))}?notrack=1" target="_blank" rel="noopener" title="Ver sin registrar visita (preview interno)">${icon("eye", 11)}</a>
           </div>` : ""}
       </div>
       <div style="padding:14px 16px">
@@ -268,8 +266,8 @@ export const render = (root) => {
   // Selección de fila → carga detail/aperturas
   // -----------------------------------------------------------------
   const selectRow = async (id) => {
-    // En mobile/tablet preferimos navegar al detalle completo.
-    if (!wideEnough()) { navigate("detalle/" + id); return; }
+    // En mobile/tablet el panel está oculto por CSS (< 1180px). La
+    // vista mobile dedicada queda pendiente del pase responsive.
     if (state.selectedId === id) return; // ya está cargado
     state.selectedId = id;
     state.detail = null;
@@ -354,8 +352,12 @@ export const render = (root) => {
     });
 
     // ----- Aside actions -----
-    on(target, "click", "[data-action='aside-ver']", () => {
-      if (state.selectedId) navigate("detalle/" + state.selectedId);
+    on(target, "click", "[data-action='aside-preview']", () => {
+      if (!state.detail?.slug) return;
+      window.open(publicUrl(state.detail.slug) + "?notrack=1", "_blank", "noopener");
+    });
+    on(target, "click", "[data-action='aside-edit']", () => {
+      if (state.detail?.proforma?.numero) navigate("generador/" + state.detail.proforma.numero);
     });
     on(target, "click", "[data-action='aside-pdf']", () => {
       if (!state.selectedId) return;

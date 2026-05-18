@@ -38,7 +38,6 @@ export const mountSidebar = (container) => {
   const build = () => {
     const { name } = currentRoute();
     const collapsed = state.sidebarCollapsed;
-    const detalleActive = name === "detalle";
     const node = el(html`
       <aside class="sidebar ${collapsed ? "sidebar-collapsed" : ""}">
         <div class="brand">
@@ -49,7 +48,7 @@ export const mountSidebar = (container) => {
           </button>
         </div>
         ${collapsed ? "" : raw('<div class="nav-section">Principal</div>')}
-        ${raw(MAIN.map(it => renderItem(it, name, collapsed, it.id === "proformas" && detalleActive)).join(""))}
+        ${raw(MAIN.map(it => renderItem(it, name, collapsed, false)).join(""))}
         ${collapsed ? raw('<div style="height:8px"></div>') : raw('<div class="nav-section">Catálogo</div>')}
         ${raw(CATALOGO.map(it => renderItem(it, name, collapsed)).join(""))}
         ${collapsed ? raw('<div style="height:8px"></div>') : raw('<div class="nav-section">Seguimiento</div>')}

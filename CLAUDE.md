@@ -24,7 +24,7 @@ URL deploy: `https://duecaz.github.io/test/`
 
 ## Estado actual
 
-Versión: **0.17.1**
+Versión: **0.18.0**
 
 ### Hecho
 
@@ -135,7 +135,6 @@ Versión: **0.17.1**
 │   │   ├── adjuntos.js            (mock placeholder con banner "en desarrollo")
 │   │   ├── competidores.js        manager + detalle de páginas rastreadas
 │   │   ├── config.js              empresa / defaults / solo-PE
-│   │   ├── detalle.js             proforma detail completa
 │   │   ├── generador.js           editor + autosave + dictado + mic wave
 │   │   ├── listado.js             split: lista + panel tracking
 │   │   ├── print.js               versión imprimible (#/print/<numero>)
@@ -159,7 +158,6 @@ Versión: **0.17.1**
 | `#/proformas` | Listado split con panel tracking | sí |
 | `#/generador` | Nueva proforma | sí |
 | `#/generador/<numero>` | Editar proforma existente | sí |
-| `#/detalle/<numero>` | Detalle completo | sí |
 | `#/productos` | CRUD productos | sí |
 | `#/templates` | Manager de skins | sí |
 | `#/competidores` | Manager páginas rastreadas | sí |

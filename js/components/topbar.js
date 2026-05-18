@@ -6,7 +6,6 @@ import { APP_VERSION, clearCacheAndReload } from "../lib/version.js";
 
 const titleFor = (name) => ({
   proformas: "Proformas",
-  detalle: "Proformas",
   generador: "Nueva proforma",
   productos: "Productos",
   stock: "Stock",
@@ -19,7 +18,7 @@ const titleFor = (name) => ({
 export const mountTopbar = (container) => {
   const build = () => {
     const { name, params } = currentRoute();
-    const crumbId = (name === "detalle" || name === "generador") && params?.[0] ? params[0] : null;
+    const crumbId = (name === "generador") && params?.[0] ? params[0] : null;
     const titleOverride = name === "generador" && params?.[0] ? "Editar proforma" : null;
     const node = el(html`
       <div class="topbar">

@@ -5,6 +5,7 @@
 import { fmtTime, fmtDateTime, escapeHtml as e, ago } from "./utils.js";
 import { isLiveApertura } from "../data/api/aperturas.js";
 import { icon } from "./icons.js";
+import { infoTip } from "./popover.js";
 
 // === Helpers de presentación ============================================
 
@@ -175,10 +176,10 @@ const aperturasRow = (a) => {
       <td>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
           ${bloqueada ? '<span class="badge" style="font-size:10px;color:var(--danger);border-color:var(--danger)">bloqueada</span>' : ""}
-          ${a.impresion ? '<span class="badge" style="font-size:10px" title="Disparó el evento beforeprint (Ctrl+P o menú → Imprimir). NO detecta capturas del SO ni guardado como PDF desde el menú nativo de Safari mobile.">impresión</span>' : ""}
-          ${a.descarga ? '<span class="badge" style="font-size:10px" title="Solo detecta Ctrl+S / Cmd+S. NO detecta PrintScreen, screenshot del SO, foto al monitor, o guardado desde menú nativo del browser.">Ctrl+S</span>' : ""}
-          ${a.print_screen_attempts > 0 ? `<span class="badge" style="font-size:10px;color:var(--danger)" title="Tecla PrintScreen detectada (solo desktop). En mobile las screenshots del SO no son detectables desde JS.">prntscr ${a.print_screen_attempts}</span>` : ""}
-          ${a.clicks > 0 ? `<span class="badge" style="font-size:10px" title="Cualquier click dentro del visor — incluye watermark, botones del browser, etc. No solo sobre el contenido.">${a.clicks} clicks</span>` : ""}
+          ${a.impresion ? `<span class="badge" style="font-size:10px">impresión${infoTip("Disparó el evento beforeprint (Ctrl+P o menú → Imprimir). NO detecta capturas del SO ni guardado como PDF desde el menú nativo de Safari mobile.")}</span>` : ""}
+          ${a.descarga ? `<span class="badge" style="font-size:10px">Ctrl+S${infoTip("Solo detecta Ctrl+S / Cmd+S. NO detecta PrintScreen, screenshot del SO, foto al monitor, o guardado desde el menú nativo del browser.")}</span>` : ""}
+          ${a.print_screen_attempts > 0 ? `<span class="badge" style="font-size:10px;color:var(--danger)">prntscr ${a.print_screen_attempts}${infoTip("Tecla PrintScreen detectada (solo desktop). En mobile las screenshots del SO no son detectables desde JS.")}</span>` : ""}
+          ${a.clicks > 0 ? `<span class="badge" style="font-size:10px">${a.clicks} clicks${infoTip("Cualquier click dentro del visor — incluye watermark, botones del browser, etc. No solo sobre el contenido.")}</span>` : ""}
         </div>
       </td>
     </tr>`;
@@ -216,11 +217,8 @@ const aperturasTable = (aperturas) => `
 // API JS de RAM devuelve un bucket, no la RAM real).
 const row = (label, val, mono = false, tip = null) => {
   if (val === null || val === undefined || val === "" || val === "—") return "";
-  const labelHtml = tip
-    ? `<span title="${e(tip)}" style="border-bottom:1px dotted var(--text-mute);cursor:help">${label}</span>`
-    : label;
   return `<tr>
-    <td style="color:var(--text-3);width:140px">${labelHtml}</td>
+    <td style="color:var(--text-3);width:140px">${label}${tip ? infoTip(tip) : ""}</td>
     <td${mono ? ' style="font-family:var(--font-mono);font-size:11.5px"' : ""}>${e(String(val))}</td>
   </tr>`;
 };
@@ -289,8 +287,8 @@ const sessionCard = (a) => {
             ${a.ciudad ? `<span>${e(a.ciudad)}</span>` : ""}
             ${a.ip ? `<span style="color:var(--text-mute);font-family:var(--font-mono);font-size:11px">${e(a.ip)}</span>` : ""}
           </div>` : ""}
-        ${net ? `<div class="session-hero-meta" title="${e(NET_TOOLTIP)}">${icon("zap", 12)}<span>${e(net)}</span></div>` : ""}
-        ${hw ? `<div class="session-hero-meta" title="${e(HW_TOOLTIP)}">${icon("cpu", 12)}<span>${e(hw)}</span></div>` : ""}
+        ${net ? `<div class="session-hero-meta">${icon("zap", 12)}<span>${e(net)}</span>${infoTip(NET_TOOLTIP)}</div>` : ""}
+        ${hw ? `<div class="session-hero-meta">${icon("cpu", 12)}<span>${e(hw)}</span>${infoTip(HW_TOOLTIP)}</div>` : ""}
         ${live ? `<div class="session-hero-meta" style="color:var(--accent-strong);font-weight:600">${icon("eye", 12)}<span>Mirando hace ${fmtTime(a.duracion_s || 0)}</span></div>` : ""}
       </div>
     </div>`;
@@ -308,7 +306,7 @@ const sessionCard = (a) => {
   const ptsClk = Math.round(Math.min(clicks / 10, 1) * 20);
   const tagRow = `
     <div style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid var(--border)">
-      <span class="visitor-tag ${tag.cls}"${tag.tip ? ` title="${e(tag.tip)}" style="cursor:help"` : ""}>${tag.label}</span>
+      <span class="visitor-tag ${tag.cls}">${tag.label}${tag.tip ? infoTip(tag.tip) : ""}</span>
       <span style="font-size:11px;color:var(--text-mute)">
         ${fmtTime(duracion)} · ${scroll}% scroll · ${clicks} clicks
       </span>
@@ -333,7 +331,7 @@ const sessionCard = (a) => {
 
   // --- DETALLES técnicos colapsables ---
   const flags = [];
-  if (meta.webdriver) flags.push('<span class="badge" style="font-size:10px;color:var(--danger);border-color:var(--danger)" title="navigator.webdriver=true → puppeteer/selenium/playwright con flags default. Bots reales que usan puppeteer-stealth o undetected-chromedriver lo bypasean — esto detecta solo automation poco sofisticada.">webdriver/bot</span>');
+  if (meta.webdriver) flags.push(`<span class="badge" style="font-size:10px;color:var(--danger);border-color:var(--danger)">webdriver/bot${infoTip("navigator.webdriver=true → puppeteer/selenium/playwright con flags default. Bots reales con stealth plugins (puppeteer-stealth, undetected-chromedriver) lo bypasean. Esto detecta solo automation poco sofisticada.")}</span>`);
   if (meta.do_not_track === "1") flags.push('<span class="badge" style="font-size:10px">Do-Not-Track</span>');
   if (meta.net_save_data) flags.push('<span class="badge" style="font-size:10px">Save-Data</span>');
   if (meta.online === false) flags.push('<span class="badge" style="font-size:10px">offline</span>');
@@ -343,7 +341,7 @@ const sessionCard = (a) => {
   // ("tracking_details_open") para sobrevivir los re-renders del panel
   // live. Default: cerrado.
   const details = `
-    <details class="session-details" data-persist-key="tracking_details_open"${isOpen("tracking_details_open", false) ? " open" : ""}>
+    <details class="session-details" data-persist-key="tracking_details_open"${isOpen("tracking_details_open", true) ? " open" : ""}>
       <summary>Detalles técnicos</summary>
       <table class="table" style="margin:0;font-size:12px">
         <tbody>
