@@ -67,7 +67,7 @@ const classifyVisitor = (a) => {
   const meta = a.meta || {};
   if (meta.bloqueado) return { label: "Bloqueada", cls: "tag-blocked" };
   if (meta.webdriver) return { label: "Bot / automation", cls: "tag-bot" };
-  if (a.reenvio) return { label: "Reenvío", cls: "tag-resend" };
+  if (a.reenvio) return { label: "Otra IP", cls: "tag-resend" };
   if (a.pais && a.pais !== "PE") return { label: "Visita extranjera", cls: "tag-foreigner" };
   const duracion = a.duracion_s || 0;
   const clicks = a.clicks || 0;
@@ -112,7 +112,7 @@ const statsSummary = (s) => `
   <div class="tracking-summary">
     <div><strong>${s.aperturas}</strong> aperturas · <span class="mute">${s.ips} IP${s.ips === 1 ? "" : "s"} únicas</span></div>
     <div><strong>${fmtTime(s.total_s)}</strong> leído total · <span class="mute">última ${ago(s.ultima)}</span></div>
-    <div><strong>${s.reenvios}</strong> reenvíos · <span class="mute">${s.bloqueadas} bloqueadas por país</span></div>
+    <div><strong>${s.reenvios}</strong> con IP distinta · <span class="mute">${s.bloqueadas} bloqueadas por país</span></div>
     <div><strong>${s.impresiones}</strong> impresiones · <span class="mute">${s.descargas} descargas</span></div>
   </div>`;
 
@@ -131,7 +131,7 @@ const aperturasRow = (a) => {
       <td>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
           ${bloqueada ? '<span class="badge" style="font-size:10px;color:var(--danger);border-color:var(--danger)">bloqueada</span>' : ""}
-          ${a.reenvio ? '<span class="badge badge-warn" style="font-size:10px">reenvío</span>' : ""}
+          ${a.reenvio ? '<span class="badge badge-warn" style="font-size:10px" title="Apertura desde una IP o UA distinta a la primera">otra IP</span>' : ""}
           ${a.impresion ? '<span class="badge" style="font-size:10px">impresión</span>' : ""}
           ${a.descarga ? '<span class="badge" style="font-size:10px">descarga</span>' : ""}
           ${a.print_screen_attempts > 0 ? `<span class="badge" style="font-size:10px;color:var(--danger)">prntscr ${a.print_screen_attempts}</span>` : ""}
@@ -231,18 +231,30 @@ const sessionCard = (a) => {
   const tag = classifyVisitor(a);
   const score = engagementScore(a);
   const scoreCls = engagementClass(score);
+  // Aportes de cada señal al score (mismos pesos que engagementScore).
+  const duracion = a.duracion_s || 0;
+  const scroll = a.scroll_pct || 0;
+  const clicks = a.clicks || 0;
+  const ptsDur = Math.round(Math.min(duracion / 120, 1) * 40);
+  const ptsScr = Math.round((scroll / 100) * 40);
+  const ptsClk = Math.round(Math.min(clicks / 10, 1) * 20);
   const tagRow = `
     <div style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid var(--border)">
       <span class="visitor-tag ${tag.cls}">${tag.label}</span>
       <span style="font-size:11px;color:var(--text-mute)">
-        ${fmtTime(a.duracion_s || 0)} · ${a.scroll_pct || 0}% scroll · ${a.clicks || 0} clicks
+        ${fmtTime(duracion)} · ${scroll}% scroll · ${clicks} clicks
       </span>
     </div>`;
   const engagement = `
     <div class="engagement">
       <div class="engagement-label">Engagement</div>
-      <div class="engagement-bar"><div class="engagement-fill ${scoreCls}" style="width:${score}%"></div></div>
+      <div class="engagement-bar" title="Duración ${ptsDur}/40 + Scroll ${ptsScr}/40 + Clicks ${ptsClk}/20"><div class="engagement-fill ${scoreCls}" style="width:${score}%"></div></div>
       <div class="engagement-score">${score}</div>
+    </div>
+    <div class="engagement-breakdown">
+      <span><span class="muted">Duración</span> <strong>${ptsDur}</strong>/40 <span class="muted">(${fmtTime(duracion)})</span></span>
+      <span><span class="muted">Scroll</span> <strong>${ptsScr}</strong>/40 <span class="muted">(${scroll}%)</span></span>
+      <span><span class="muted">Clicks</span> <strong>${ptsClk}</strong>/20 <span class="muted">(${clicks})</span></span>
     </div>`;
 
   // --- DETALLES técnicos colapsables ---

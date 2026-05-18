@@ -997,6 +997,14 @@ tr.row-selected td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
   font-family: var(--font-mono); font-weight: 700; font-size: 13px;
   min-width: 36px; text-align: right;
 }
+.engagement-bar { cursor: help; }
+.engagement-breakdown {
+  display: flex; flex-wrap: wrap; gap: 14px;
+  padding: 8px 16px 12px; border-bottom: 1px solid var(--border);
+  font-size: 11px; color: var(--text-2);
+}
+.engagement-breakdown strong { color: var(--text); font-weight: 700; font-family: var(--font-mono); }
+.engagement-breakdown .muted { color: var(--text-mute); }
 
 /* === Detalles técnicos (siempre visibles) === */
 .session-details {
