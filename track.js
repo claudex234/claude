@@ -83,7 +83,7 @@
 
     function post(body) {
       try {
-        fetch(SUPABASE_URL + "/rest/v1/rpc/track_hit", {
+        fetch(SUPABASE_URL + "/functions/v1/track-hit", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -96,21 +96,18 @@
       } catch (e) {}
     }
 
-    function send(geo) {
+    function send() {
       post({
-        p_slug: slug,
-        p_user_agent: ua,
-        p_dispositivo: dispositivo,
-        p_os: os,
+        slug: slug,
+        user_agent: ua,
+        dispositivo: dispositivo,
+        os: os,
         // Referrer = URL del host (página donde está pegado el snippet).
-        p_referrer: (location && location.href) || null,
-        p_idioma: lang,
-        p_timezone: tz,
-        p_pais: geo && geo.country ? geo.country : null,
-        p_ciudad: null,
-        p_region: null,
-        p_query: queryObj,
-        p_meta: meta,
+        referrer: (location && location.href) || null,
+        idioma: lang,
+        timezone: tz,
+        query: queryObj,
+        meta: meta,
       });
     }
 
@@ -188,16 +185,15 @@
       } catch (e) {}
     }
 
-    // Geo best-effort con timeout corto. Si falla / tarda, mandamos sin geo.
+    // Geo: ya NO la pide el cliente — la resuelve la edge function desde
+    // la IP real del request. Igual damos un margen corto para que la
+    // detección async de UA-CH (Win10 vs 11) termine antes de enviar.
     var done = false;
-    var to = setTimeout(function () { if (!done) { done = true; send(null); } }, 1500);
-    try {
-      fetch("https://api.country.is/", { cache: "no-store" })
-        .then(function (r) { return r.ok ? r.json() : null; })
-        .then(function (g) { if (!done) { done = true; clearTimeout(to); send(g); } })
-        .catch(function () { if (!done) { done = true; clearTimeout(to); send(null); } });
-    } catch (e) {
-      if (!done) { done = true; clearTimeout(to); send(null); }
+    var fire = function () { if (!done) { done = true; send(); } };
+    if (uad && uad.getHighEntropyValues) {
+      setTimeout(fire, 1200);
+    } else {
+      fire();
     }
   } catch (e) {}
 })();

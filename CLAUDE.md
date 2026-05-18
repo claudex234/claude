@@ -24,7 +24,7 @@ URL deploy: `https://duecaz.github.io/test/`
 
 ## Estado actual
 
-Versión: **0.14.0**
+Versión: **0.14.1**
 
 ### Hecho
 
@@ -41,7 +41,7 @@ Versión: **0.14.0**
 | ✅ | Skins HTML/CSS separados (DB + archivos fallback corporate/warm) + manager con editor tabs |
 | ✅ | Visor público con anti-capture, watermark opt-in (`?wm=1`) |
 | ✅ | PDF interno (`#/print/<numero>`) via `window.print()` |
-| ✅ | Tracking real: geo (api.country.is), IP server-side, UA-CH (Win10 vs 11), heartbeat 5s, IP refresca en cada tick (sigue VPN switches) |
+| ✅ | Tracking real: IP + geo server-side (edge function `open-apertura` vía ip-api.com), UA-CH (Win10 vs 11), heartbeat 5s, IP refresca en cada tick (sigue VPN switches) |
 | ✅ | Live indicator "Abierta ahora" — dot verde pulsante en filas + en panel. Open detection ≤4s, close ≤3s (tick con `p_closing=true`) |
 | ✅ | Sesión actual rediseñada: **hero** (icono device + título + país + red) + **tag visitante** (bot/cliente/reenvío/extranjero/etc) + **engagement score 0-100** + **detalles colapsables** |
 | ✅ | Heatmap por zona de la hoja A4 (4 franjas) + sparkline 30 días |
@@ -196,7 +196,7 @@ Versión: **0.14.0**
 | `open_apertura(slug, ua, dispositivo, os, referrer, idioma, timezone, pais, ciudad, region, meta, ip)` | edge function `open-apertura` | Crea apertura, gate por solo_pe. `ip`/`pais` los pasa la edge function (geo server-side). Si viene `ip` lo usa; si no, cae al header `x-forwarded-for` |
 | `tick_apertura(id, duracion_s, scroll_pct, clicks, gyro_events, prntscr, descarga, impresion, zonas, ua, dispositivo, os, closing)` | anon | Heartbeat. Idempotente y monótono. `closing=true` expira la sesión |
 | `get_tracking_page(slug)` | anon | Datos mínimos para renderer de Competidores |
-| `track_hit(slug, ua, dispositivo, os, referrer, idioma, timezone, pais, ciudad, region, query, meta)` | anon | Crea hit en tracking_hits |
+| `track_hit(slug, ua, dispositivo, os, referrer, idioma, timezone, pais, ciudad, region, query, meta, ip)` | edge function `track-hit` | Crea hit en tracking_hits. `ip`/`pais` los pasa la edge function (geo server-side); fallback a header si vienen null |
 | `tick_tracking_hit(id, duracion_s)` | anon | Heartbeat para tipo html |
 
 Todas son `SECURITY DEFINER`. Las que leen IP usan el header `x-forwarded-for` del request, salvo `open_apertura` que prioriza el param `ip` (resuelto por la edge function).
@@ -207,7 +207,8 @@ Trigger `detect_reenvio` antes de insertar en `proforma_aperturas`: si hay otra 
 
 | Función | verify_jwt | Quién la llama | Descripción |
 |---|---|---|---|
-| `open-apertura` | no | visor público (anon) | Lee la IP real del request, geolocaliza vía ip-api.com (país/ciudad/región + flags `proxy`/`hosting`/`mobile` en `meta.geo`) y llama a la RPC `open_apertura` con `p_ip`/`p_pais`. Devuelve `{id, blocked}`. Fuente: `supabase/functions/open-apertura/index.ts`. Deploy vía MCP o `supabase functions deploy open-apertura --no-verify-jwt` |
+| `open-apertura` | no | visor público (anon) | Lee la IP real del request, geolocaliza vía ip-api.com (país/ciudad/región + flags `proxy`/`hosting`/`mobile` en `meta.geo`) y llama a la RPC `open_apertura` con `p_ip`/`p_pais`. Devuelve `{id, blocked}`. Fuente: `supabase/functions/open-apertura/index.ts` |
+| `track-hit` | no | pixel `track.js` + renderer `#/t/<slug>` (anon) | Igual que `open-apertura` pero para Competidores. Llama RPC `track_hit` con geo server-side. Devuelve `{id}`. Fuente: `supabase/functions/track-hit/index.ts` |
 
 ## Convenciones
 

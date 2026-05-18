@@ -14,12 +14,33 @@ const slugFromHash = () => {
   return m ? m[1] : null;
 };
 
-const fetchGeo = async () => {
+// Hit a la edge function track-hit. La geo (país/ciudad/región + flags
+// proxy/hosting) la resuelve la función desde la IP real del request,
+// el cliente ya no manda país. Devuelve el id del hit (o null).
+const callTrackHit = async ({ slug, ua, fingerprint, query }) => {
   try {
-    const r = await fetch("https://api.country.is/", { cache: "no-store" });
+    const r = await fetch(`${SUPABASE_URL}/functions/v1/track-hit`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SUPABASE_PUBLISHABLE_KEY,
+        Authorization: `Bearer ${SUPABASE_PUBLISHABLE_KEY}`,
+      },
+      body: JSON.stringify({
+        slug,
+        user_agent: navigator.userAgent,
+        dispositivo: ua.dispositivo,
+        os: ua.os,
+        referrer: document.referrer || null,
+        idioma: navigator.language || null,
+        timezone: (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return null; } })(),
+        query,
+        meta: { ...fingerprint, via: "tracker_page" },
+      }),
+    });
     if (!r.ok) return null;
     const j = await r.json();
-    return { pais: j.country || null };
+    return j.id ?? null;
   } catch { return null; }
 };
 
@@ -64,30 +85,10 @@ export const render = async (root) => {
     return () => {};
   }
 
-  // 2) Registrar el hit en paralelo (no bloqueante)
+  // 2) Registrar el hit vía edge function (geo server-side)
   const ua = await enrichUA(parseUA());
-  const geo = await fetchGeo();
   const fingerprint = await collectDeviceInfo();
-  let hitId = null;
-  try {
-    const { data } = await supabase.rpc("track_hit", {
-      p_slug: slug,
-      p_user_agent: navigator.userAgent,
-      p_dispositivo: ua.dispositivo,
-      p_os: ua.os,
-      p_referrer: document.referrer || null,
-      p_idioma: navigator.language || null,
-      p_timezone: (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return null; } })(),
-      p_pais: geo?.pais || null,
-      p_ciudad: null,
-      p_region: null,
-      p_query: parseQuery(),
-      p_meta: { ...fingerprint, via: "tracker_page" },
-    });
-    hitId = data;
-  } catch (err) {
-    console.warn("[tracker] track_hit:", err);
-  }
+  const hitId = await callTrackHit({ slug, ua, fingerprint, query: parseQuery() });
 
   // 3) Renderizar según tipo
   if (page.tipo === "link") {
