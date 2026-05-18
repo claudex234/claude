@@ -40,35 +40,18 @@ const hookDetailsToggle = () => {
   }, true);
 };
 
-// Browser freshness: cuántos meses atrás respecto al stable más reciente
-// conocido al commit. Si el cliente tiene una versión MAYOR (dev/canary),
-// devuelve "actualizado". Si el browser no está en la tabla, null.
-// Bumpear estas constantes cada tanto manualmente (release ciclo ~1 mes
-// para chromium-based + firefox, ~6 meses para safari).
-const LATEST_BROWSERS = {
-  "Chrome": 137, "Google Chrome": 137, "Chromium": 137,
-  "Microsoft Edge": 137, "Edge": 137,
-  "Opera": 122, "Samsung Internet": 27,
-  "Firefox": 138, "Safari": 18,
-};
-const MONTHS_PER_MAJOR = {
-  "Chrome": 1, "Google Chrome": 1, "Chromium": 1,
-  "Microsoft Edge": 1, "Edge": 1,
-  "Opera": 1, "Samsung Internet": 2,
-  "Firefox": 1, "Safari": 6,
-};
-const browserFreshness = (name, versionStr) => {
-  if (!name || !versionStr) return null;
-  const latest = LATEST_BROWSERS[name];
-  const perMajor = MONTHS_PER_MAJOR[name] || 1;
-  if (!latest) return null;
-  const cur = parseInt(String(versionStr).split(".")[0], 10);
-  if (!Number.isFinite(cur)) return null;
-  const months = Math.max(0, (latest - cur) * perMajor);
-  if (months <= 1) return { cls: "fresh", label: "actualizado" };
-  if (months < 6) return { cls: "stale", label: `${months} meses atrás` };
-  return { cls: "old", label: `${months} meses desactualizado` };
-};
+// Browser freshness: descartado en favor de honestidad.
+//
+// Por qué no se calcula ya: Chrome desde 2023 CONGELA el UA string a
+// "Chrome 110" por anti-fingerprinting, así que browser_version del UA
+// es una mentira persistente. La única fuente confiable es UA-CH
+// (browser_version_full), que solo Chromium-based exponen — Firefox y
+// Safari NO. Cualquier cálculo "X meses desactualizado" sería ruleta
+// (cliente con Chrome 140 real podría aparecer como "30 meses atrás").
+//
+// Además, manteníamos una tabla LATEST_BROWSERS hardcoded que envejecía
+// con el código y nadie bumpea. Net: el label engañaba más que ayudaba.
+const browserFreshness = () => null;
 
 // Score 0-100 combinando duración (40), scroll (40), clicks (20).
 const engagementScore = (a) => {
@@ -87,14 +70,17 @@ const engagementClass = (s) => s >= 60 ? "high" : (s >= 30 ? "medium" : "low");
 // Clasifica al visitante con un tag prominente.
 const classifyVisitor = (a) => {
   const meta = a.meta || {};
-  if (meta.bloqueado) return { label: "Bloqueada", cls: "tag-blocked" };
-  if (meta.webdriver) return { label: "Bot / automation", cls: "tag-bot" };
+  if (meta.bloqueado) return { label: "Bloqueada", cls: "tag-blocked", tip: null };
+  if (meta.webdriver) return { label: "Bot / automation", cls: "tag-bot", tip: "Detectado solo por navigator.webdriver=true. Bots con stealth plugins lo evaden." };
   if (a.pais && a.pais !== "PE") return { label: "Visita extranjera", cls: "tag-foreigner" };
   const duracion = a.duracion_s || 0;
   const clicks = a.clicks || 0;
   if (duracion >= 30 && clicks >= 2) return { label: "Cliente activo", cls: "tag-active" };
   if (duracion >= 10) return { label: "Cliente", cls: "tag-client" };
-  if (duracion < 5) return { label: "Rebote", cls: "tag-bounce" };
+  // < 5s era el umbral original, pero la carga inicial del visor en
+  // mobile low-end ya consume 3-5s. Subimos a 8s para que un cliente
+  // que abre y mira "un segundo" no quede etiquetado como rebote duro.
+  if (duracion < 8) return { label: "Rebote", cls: "tag-bounce" };
   return { label: "Visitante", cls: "tag-client" };
 };
 
@@ -133,14 +119,16 @@ const cleanGpu = (raw) => {
 };
 
 // Línea de hardware para el hero: CPU cores · RAM · GPU (limpio + truncado).
+// '≥X GB' porque deviceMemory devuelve buckets (ver tooltip en details).
 const formatHardware = (meta) => {
   const parts = [];
   if (meta.hwc) parts.push(`${meta.hwc} cores`);
-  if (meta.ram_gb) parts.push(`${meta.ram_gb} GB RAM`);
+  if (meta.ram_gb) parts.push(`≥${meta.ram_gb} GB RAM`);
   const gpu = cleanGpu(meta.gpu_renderer);
   if (gpu) parts.push(gpu.length > 36 ? gpu.slice(0, 33) + "…" : gpu);
   return parts.length ? parts.join(" · ") : null;
 };
+const HW_TOOLTIP = "Datos de las APIs del browser. 'cores' puede estar capado en iOS. 'RAM' es un bucket (≥) no el valor real. GPU puede estar enmascarado en navegadores con privacy fuerte.";
 
 // === Agregados ============================================================
 
@@ -187,10 +175,10 @@ const aperturasRow = (a) => {
       <td>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
           ${bloqueada ? '<span class="badge" style="font-size:10px;color:var(--danger);border-color:var(--danger)">bloqueada</span>' : ""}
-          ${a.impresion ? '<span class="badge" style="font-size:10px">impresión</span>' : ""}
-          ${a.descarga ? '<span class="badge" style="font-size:10px">descarga</span>' : ""}
-          ${a.print_screen_attempts > 0 ? `<span class="badge" style="font-size:10px;color:var(--danger)">prntscr ${a.print_screen_attempts}</span>` : ""}
-          ${a.clicks > 0 ? `<span class="badge" style="font-size:10px">${a.clicks} clicks</span>` : ""}
+          ${a.impresion ? '<span class="badge" style="font-size:10px" title="Disparó el evento beforeprint (Ctrl+P o menú → Imprimir). NO detecta capturas del SO ni guardado como PDF desde el menú nativo de Safari mobile.">impresión</span>' : ""}
+          ${a.descarga ? '<span class="badge" style="font-size:10px" title="Solo detecta Ctrl+S / Cmd+S. NO detecta PrintScreen, screenshot del SO, foto al monitor, o guardado desde menú nativo del browser.">Ctrl+S</span>' : ""}
+          ${a.print_screen_attempts > 0 ? `<span class="badge" style="font-size:10px;color:var(--danger)" title="Tecla PrintScreen detectada (solo desktop). En mobile las screenshots del SO no son detectables desde JS.">prntscr ${a.print_screen_attempts}</span>` : ""}
+          ${a.clicks > 0 ? `<span class="badge" style="font-size:10px" title="Cualquier click dentro del visor — incluye watermark, botones del browser, etc. No solo sobre el contenido.">${a.clicks} clicks</span>` : ""}
         </div>
       </td>
     </tr>`;
@@ -224,10 +212,15 @@ const aperturasTable = (aperturas) => `
 // Si la apertura es reciente (<30s), muestra el badge verde pulsante
 // "Abierta ahora".
 // Fila de tabla helper: solo emite si val no es null/undefined/"".
-const row = (label, val, mono = false) => {
+// `tip` (opcional): tooltip que aclara limitaciones del dato (ej. la
+// API JS de RAM devuelve un bucket, no la RAM real).
+const row = (label, val, mono = false, tip = null) => {
   if (val === null || val === undefined || val === "" || val === "—") return "";
+  const labelHtml = tip
+    ? `<span title="${e(tip)}" style="border-bottom:1px dotted var(--text-mute);cursor:help">${label}</span>`
+    : label;
   return `<tr>
-    <td style="color:var(--text-3);width:140px">${label}</td>
+    <td style="color:var(--text-3);width:140px">${labelHtml}</td>
     <td${mono ? ' style="font-family:var(--font-mono);font-size:11.5px"' : ""}>${e(String(val))}</td>
   </tr>`;
 };
@@ -264,7 +257,7 @@ const sessionCard = (a) => {
     ? `${meta.browser_name} ${meta.browser_version.split(".")[0]}`
     : (meta.browser_name || null);
   const browserFull = meta.browser_version_full || meta.browser_version || null;
-  const fresh = browserFreshness(meta.browser_name, meta.browser_version);
+  const fresh = browserFreshness();
   const arch = [meta.arch, meta.bitness && `${meta.bitness}-bit`].filter(Boolean).join(" · ");
   const net = formatNetwork(meta);
   const hw = formatHardware(meta);
@@ -297,7 +290,7 @@ const sessionCard = (a) => {
             ${a.ip ? `<span style="color:var(--text-mute);font-family:var(--font-mono);font-size:11px">${e(a.ip)}</span>` : ""}
           </div>` : ""}
         ${net ? `<div class="session-hero-meta" title="${e(NET_TOOLTIP)}">${icon("zap", 12)}<span>${e(net)}</span></div>` : ""}
-        ${hw ? `<div class="session-hero-meta">${icon("cpu", 12)}<span>${e(hw)}</span></div>` : ""}
+        ${hw ? `<div class="session-hero-meta" title="${e(HW_TOOLTIP)}">${icon("cpu", 12)}<span>${e(hw)}</span></div>` : ""}
         ${live ? `<div class="session-hero-meta" style="color:var(--accent-strong);font-weight:600">${icon("eye", 12)}<span>Mirando hace ${fmtTime(a.duracion_s || 0)}</span></div>` : ""}
       </div>
     </div>`;
@@ -315,7 +308,7 @@ const sessionCard = (a) => {
   const ptsClk = Math.round(Math.min(clicks / 10, 1) * 20);
   const tagRow = `
     <div style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;gap:10px;border-bottom:1px solid var(--border)">
-      <span class="visitor-tag ${tag.cls}">${tag.label}</span>
+      <span class="visitor-tag ${tag.cls}"${tag.tip ? ` title="${e(tag.tip)}" style="cursor:help"` : ""}>${tag.label}</span>
       <span style="font-size:11px;color:var(--text-mute)">
         ${fmtTime(duracion)} · ${scroll}% scroll · ${clicks} clicks
       </span>
@@ -340,7 +333,7 @@ const sessionCard = (a) => {
 
   // --- DETALLES técnicos colapsables ---
   const flags = [];
-  if (meta.webdriver) flags.push('<span class="badge" style="font-size:10px;color:var(--danger);border-color:var(--danger)">webdriver/bot</span>');
+  if (meta.webdriver) flags.push('<span class="badge" style="font-size:10px;color:var(--danger);border-color:var(--danger)" title="navigator.webdriver=true → puppeteer/selenium/playwright con flags default. Bots reales que usan puppeteer-stealth o undetected-chromedriver lo bypasean — esto detecta solo automation poco sofisticada.">webdriver/bot</span>');
   if (meta.do_not_track === "1") flags.push('<span class="badge" style="font-size:10px">Do-Not-Track</span>');
   if (meta.net_save_data) flags.push('<span class="badge" style="font-size:10px">Save-Data</span>');
   if (meta.online === false) flags.push('<span class="badge" style="font-size:10px">offline</span>');
@@ -358,14 +351,14 @@ const sessionCard = (a) => {
           ${row("Idiomas preferidos", meta.languages?.join(", "))}
           ${row("Zona horaria", a.timezone, true)}
           ${meta.screen ? `<tr><td colspan="2" style="background:var(--bg-soft);font-size:10.5px;color:var(--text-mute);text-transform:uppercase;letter-spacing:.5px;padding:6px 12px">Display</td></tr>` : ""}
-          ${row("Pantalla", display)}
+          ${row("Pantalla", display, false, "Valor en CSS pixels lógicos, no físicos. Un iPhone con pantalla real 1170×2532 reporta 390×844 porque cada CSS px = 3 px físicos (ver pixel ratio).")}
           ${row("Viewport", meta.viewport, true)}
           ${row("Orientación", meta.orientation)}
           ${meta.hwc || meta.ram_gb || meta.gpu_renderer ? `<tr><td colspan="2" style="background:var(--bg-soft);font-size:10.5px;color:var(--text-mute);text-transform:uppercase;letter-spacing:.5px;padding:6px 12px">Hardware</td></tr>` : ""}
-          ${row("CPU cores", meta.hwc)}
-          ${row("RAM", meta.ram_gb ? `${meta.ram_gb} GB` : null)}
-          ${row("GPU vendor", meta.gpu_vendor)}
-          ${row("GPU", meta.gpu_renderer)}
+          ${row("CPU cores", meta.hwc, false, "navigator.hardwareConcurrency. En iOS/Safari está capado a 2 incluso en chips con 6+ cores reales. Privacy extensions también pueden falsearlo.")}
+          ${row("RAM", meta.ram_gb ? `≥${meta.ram_gb} GB` : null, false, "navigator.deviceMemory devuelve un BUCKET (0.25/0.5/1/2/4/8 GB) por privacy. '8 GB' acá puede ser un equipo con 16, 32 o más. Es el piso, no el valor real.")}
+          ${row("GPU vendor", meta.gpu_vendor, false, "WebGL UNMASKED_VENDOR. Safari y Brave en privacy mode pueden devolver un valor genérico o vacío.")}
+          ${row("GPU", meta.gpu_renderer, false, "WebGL UNMASKED_RENDERER. Mismo caveat que el vendor — puede estar enmascarado en navegadores con privacy fuerte.")}
           ${flags.length ? `<tr><td style="color:var(--text-3);width:140px">Flags</td><td><div style="display:flex;gap:4px;flex-wrap:wrap">${flags.join("")}</div></td></tr>` : ""}
           ${a.referrer ? `<tr><td style="color:var(--text-3);width:140px">Referrer</td><td style="font-size:11px;color:var(--text-2);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${e(a.referrer)}">${e(a.referrer)}</td></tr>` : ""}
         </tbody>

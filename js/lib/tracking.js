@@ -79,10 +79,16 @@ const openApertura = async ({ slug, ua, fingerprint }) => {
 
 // Suma 1 al contador de cambios de orientación significativos (Δ > 15°).
 // iOS 13+ requiere permiso explícito que ya solicitamos antes.
+// Throttle a 5Hz (sample cada 200ms) — el event nativo dispara a ~60Hz
+// y no necesitamos esa resolución para detectar cambios mayores a 15°.
 const installGyro = (state) => {
   if (typeof DeviceOrientationEvent === "undefined") return () => {};
   let last = null;
+  let nextSampleAt = 0;
   const onOrient = (ev) => {
+    const now = performance.now();
+    if (now < nextSampleAt) return;
+    nextSampleAt = now + 200;
     const cur = { a: ev.alpha || 0, b: ev.beta || 0, g: ev.gamma || 0 };
     if (last) {
       const d = Math.max(Math.abs(cur.a - last.a), Math.abs(cur.b - last.b), Math.abs(cur.g - last.g));
@@ -142,6 +148,10 @@ export const startTracking = async ({ slug, root, onBlocked }) => {
   // Overlays de zonas — solo cuando hay tracking real.
   const zones = installZones(root);
 
+  // Cache del elemento .pv-page: evita querySelector en cada click/zoom
+  // (en mobile low-end con > 100 clicks la diferencia se nota).
+  const pageEl = root?.querySelector(".pv-page") || root?.querySelector(".vp-doc, .pv-doc") || null;
+
   // Timer: cuenta cuando la pestaña está visible y la ventana tiene foco.
   // El mismo tick incrementa la duración total y cada zona visible.
   let active = !document.hidden && document.hasFocus();
@@ -166,12 +176,20 @@ export const startTracking = async ({ slug, root, onBlocked }) => {
   window.addEventListener("blur", onVis);
 
   // Scroll % — sobre el viewport. La hoja A4 puede no scrollear, pero el
-  // wrapper sí; medimos contra documentElement.
+  // wrapper sí; medimos contra documentElement. Throttled con rAF para
+  // no procesar cada evento de scroll (en mobile son cientos por gesto).
+  let scrollPending = false;
   const onScroll = () => {
-    const el = document.scrollingElement || document.documentElement;
-    const max = Math.max(1, el.scrollHeight - el.clientHeight);
-    const pct = Math.min(100, Math.round((el.scrollTop / max) * 100));
-    if (pct > state.scroll_pct) state.scroll_pct = pct;
+    if (scrollPending) return;
+    scrollPending = true;
+    requestAnimationFrame(() => {
+      scrollPending = false;
+      const el = document.scrollingElement || document.documentElement;
+      const diff = el.scrollHeight - el.clientHeight;
+      if (diff <= 0) return; // no hay scroll posible → no medimos
+      const pct = Math.min(100, Math.round((el.scrollTop / diff) * 100));
+      if (pct > state.scroll_pct) state.scroll_pct = pct;
+    });
   };
   window.addEventListener("scroll", onScroll, { passive: true });
   onScroll();
@@ -182,9 +200,8 @@ export const startTracking = async ({ slug, root, onBlocked }) => {
   // exacto sin compensar por el escalado del a4_fit.
   const onClick = (ev) => {
     state.clicks++;
-    const page = root?.querySelector(".pv-page") || root?.querySelector(".vp-doc, .pv-doc");
-    if (page && state.clicks_xy.length < MAX_CLICKS_XY) {
-      const r = page.getBoundingClientRect();
+    if (pageEl && state.clicks_xy.length < MAX_CLICKS_XY) {
+      const r = pageEl.getBoundingClientRect();
       if (r.width > 0 && r.height > 0) {
         const x = (ev.clientX - r.left) / r.width;
         const y = (ev.clientY - r.top) / r.height;
@@ -204,9 +221,8 @@ export const startTracking = async ({ slug, root, onBlocked }) => {
   let lastScale = 1;
   const recordZoom = (scale, clientX, clientY) => {
     if (state.zooms.length >= MAX_ZOOMS) return;
-    const page = root?.querySelector(".pv-page") || root?.querySelector(".vp-doc, .pv-doc");
-    if (!page) return;
-    const r = page.getBoundingClientRect();
+    if (!pageEl) return;
+    const r = pageEl.getBoundingClientRect();
     if (r.width <= 0 || r.height <= 0) return;
     const x = (clientX - r.left) / r.width;
     const y = (clientY - r.top) / r.height;
@@ -262,11 +278,15 @@ export const startTracking = async ({ slug, root, onBlocked }) => {
   // Sin esto: el setTimeout inicial o un flush async pendiente podía
   // mandar un tick post-dispose y re-abrir la sesión "live" en el admin.
   let disposed = false;
+  let ticksSent = 0;
   const flush = async (useBeacon = false) => {
     if (disposed && !useBeacon) return;
     // useBeacon = true ⇒ es el tick final al cerrar la pestaña. Marcamos
     // p_closing=true para que el server ponga ultima_actividad_at en el
     // pasado y el admin vea "no live" instantáneo.
+    // UA/dispositivo/os: solo en el primer tick y al closing. En los
+    // intermedios no cambian — ahorra ~300 bytes por heartbeat en mobile.
+    const sendUA = ticksSent === 0 || useBeacon;
     const body = {
       p_id: aperturaId,
       p_duracion_s: state.duracion_s,
@@ -279,14 +299,12 @@ export const startTracking = async ({ slug, root, onBlocked }) => {
       p_zonas: Object.keys(state.zonas).length ? state.zonas : null,
       p_clicks_xy: state.clicks_xy.length ? state.clicks_xy : null,
       p_zooms: state.zooms.length ? state.zooms : null,
-      // Refrescamos device/os/UA en cada tick: si el visor se cargó
-      // antes de un deploy con detección mejorada (UA-CH), una sesión
-      // existente se corrige sola al próximo heartbeat.
-      p_user_agent: navigator.userAgent || null,
-      p_dispositivo: ua.dispositivo,
-      p_os: ua.os,
+      p_user_agent: sendUA ? (navigator.userAgent || null) : null,
+      p_dispositivo: sendUA ? ua.dispositivo : null,
+      p_os: sendUA ? ua.os : null,
       p_closing: !!useBeacon,
     };
+    ticksSent++;
     if (useBeacon) {
       // Al cerrar la pestaña: fetch con keepalive (más fiable que
       // sendBeacon porque permite headers custom — apikey requerido).
