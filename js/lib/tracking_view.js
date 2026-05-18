@@ -1,6 +1,6 @@
 // Render del bloque de tracking en el detalle de la proforma:
 // hero del visitante actual + score de engagement + tag de tipo +
-// stats, sparkline 30 días, heatmap por zona y tabla de aperturas.
+// stats resumidas y tabla de aperturas.
 
 import { fmtTime, escapeHtml as e, ago } from "./utils.js";
 import { isLiveApertura } from "../data/api/aperturas.js";
@@ -16,6 +16,36 @@ const deviceTypeIcon = (a) => {
   if (/Mobile|Android/.test(d) && !/Tablet/.test(d)) return "smartphone";
   if (/Tablet/.test(d)) return "tablet";
   return "laptop";
+};
+
+// Browser freshness: cuántos meses atrás respecto al stable más reciente
+// conocido al commit. Si el cliente tiene una versión MAYOR (dev/canary),
+// devuelve "actualizado". Si el browser no está en la tabla, null.
+// Bumpear estas constantes cada tanto manualmente (release ciclo ~1 mes
+// para chromium-based + firefox, ~6 meses para safari).
+const LATEST_BROWSERS = {
+  "Chrome": 137, "Google Chrome": 137, "Chromium": 137,
+  "Microsoft Edge": 137, "Edge": 137,
+  "Opera": 122, "Samsung Internet": 27,
+  "Firefox": 138, "Safari": 18,
+};
+const MONTHS_PER_MAJOR = {
+  "Chrome": 1, "Google Chrome": 1, "Chromium": 1,
+  "Microsoft Edge": 1, "Edge": 1,
+  "Opera": 1, "Samsung Internet": 2,
+  "Firefox": 1, "Safari": 6,
+};
+const browserFreshness = (name, versionStr) => {
+  if (!name || !versionStr) return null;
+  const latest = LATEST_BROWSERS[name];
+  const perMajor = MONTHS_PER_MAJOR[name] || 1;
+  if (!latest) return null;
+  const cur = parseInt(String(versionStr).split(".")[0], 10);
+  if (!Number.isFinite(cur)) return null;
+  const months = Math.max(0, (latest - cur) * perMajor);
+  if (months <= 1) return { cls: "fresh", label: "actualizado" };
+  if (months < 6) return { cls: "stale", label: `${months} meses atrás` };
+  return { cls: "old", label: `${months} meses desactualizado` };
 };
 
 // Score 0-100 combinando duración (40), scroll (40), clicks (20).
@@ -74,97 +104,17 @@ const trackingStats = (aperturas) => {
   };
 };
 
-const aggregateZonas = (aperturas) => {
-  const acc = { encabezado: 0, items: 0, totales: 0, terminos: 0 };
-  for (const a of aperturas) {
-    const z = a.zonas_s || {};
-    for (const k of Object.keys(acc)) acc[k] += z[k] || 0;
-  }
-  return acc;
-};
-
 // === Subcomponentes (HTML strings) =======================================
 
-const statsGrid = (s) => `
-  <div class="stat-grid" style="margin-bottom:16px">
-    <div class="stat">
-      <div class="stat-label">Aperturas</div>
-      <div class="stat-value">${s.aperturas}</div>
-      <div class="stat-delta">${s.ips} IP${s.ips === 1 ? "" : "s"} únicas</div>
-    </div>
-    <div class="stat">
-      <div class="stat-label">Tiempo total leído</div>
-      <div class="stat-value">${fmtTime(s.total_s)}</div>
-      <div class="stat-delta">Última: ${ago(s.ultima)}</div>
-    </div>
-    <div class="stat">
-      <div class="stat-label">Reenvíos</div>
-      <div class="stat-value">${s.reenvios}</div>
-      <div class="stat-delta">${s.bloqueadas} bloqueadas por país</div>
-    </div>
-    <div class="stat">
-      <div class="stat-label">Impresiones</div>
-      <div class="stat-value">${s.impresiones}</div>
-      <div class="stat-delta">${s.descargas} descargas</div>
-    </div>
+// Resumen en texto plano (antes era un grid de 4 cards). Las cifras claves
+// quedan en negrita, los detalles secundarios en mute.
+const statsSummary = (s) => `
+  <div class="tracking-summary">
+    <div><strong>${s.aperturas}</strong> aperturas · <span class="mute">${s.ips} IP${s.ips === 1 ? "" : "s"} únicas</span></div>
+    <div><strong>${fmtTime(s.total_s)}</strong> leído total · <span class="mute">última ${ago(s.ultima)}</span></div>
+    <div><strong>${s.reenvios}</strong> reenvíos · <span class="mute">${s.bloqueadas} bloqueadas por país</span></div>
+    <div><strong>${s.impresiones}</strong> impresiones · <span class="mute">${s.descargas} descargas</span></div>
   </div>`;
-
-const sparkline = (aperturas) => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const days = Array.from({ length: 30 }, (_, i) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() - (29 - i));
-    return { date: d, count: 0 };
-  });
-  for (const a of aperturas) {
-    if (!a.abierta_at) continue;
-    const d = new Date(a.abierta_at);
-    d.setHours(0, 0, 0, 0);
-    const idx = 29 - Math.round((today - d) / 86400000);
-    if (idx >= 0 && idx < 30) days[idx].count++;
-  }
-  const max = Math.max(1, ...days.map((d) => d.count));
-  const bw = 7, gap = 3, w = 30 * (bw + gap) - gap, h = 40;
-  return `
-    <div class="card" style="margin-bottom:16px">
-      <div class="card-header"><div class="card-title">Aperturas por día · últimos 30</div></div>
-      <div class="card-body" style="padding:14px 16px">
-        <svg viewBox="0 0 ${w} ${h}" width="100%" height="${h}" preserveAspectRatio="none" style="display:block;max-width:${w}px">
-          ${days.map((d, i) => {
-            const bh = Math.max(1, Math.round((d.count / max) * (h - 2)));
-            const y = h - bh, x = i * (bw + gap);
-            const fill = d.count > 0 ? "var(--accent)" : "var(--border)";
-            return `<rect x="${x}" y="${y}" width="${bw}" height="${bh}" fill="${fill}" rx="1"><title>${d.date.toISOString().slice(0, 10)} · ${d.count}</title></rect>`;
-          }).join("")}
-        </svg>
-      </div>
-    </div>`;
-};
-
-const heatmapZonas = (aperturas) => {
-  const z = aggregateZonas(aperturas);
-  const total = z.encabezado + z.items + z.totales + z.terminos;
-  if (total === 0) return "";
-  const labels = { encabezado: "Encabezado", items: "Ítems", totales: "Totales", terminos: "Términos" };
-  return `
-    <div class="card" style="margin-bottom:16px">
-      <div class="card-header"><div class="card-title">Tiempo por zona de la hoja</div></div>
-      <div class="card-body">
-        ${Object.entries(labels).map(([k, l]) => {
-          const pct = Math.round((z[k] / total) * 100);
-          return `
-            <div style="display:grid;grid-template-columns:90px 1fr 100px;align-items:center;gap:12px;padding:6px 0">
-              <div style="font-size:12.5px;color:var(--text-2)">${l}</div>
-              <div style="background:var(--bg-soft);height:14px;border-radius:7px;overflow:hidden">
-                <div style="width:${pct}%;height:100%;background:var(--accent);transition:width .3s"></div>
-              </div>
-              <div style="font-size:11.5px;color:var(--text-mute);font-family:var(--font-mono);text-align:right">${pct}% · ${fmtTime(z[k])}</div>
-            </div>`;
-        }).join("")}
-      </div>
-    </div>`;
-};
 
 const aperturasRow = (a) => {
   const lugar = [a.ciudad, a.pais].filter(Boolean).join(", ") || "—";
@@ -241,6 +191,7 @@ const sessionCard = (a) => {
     ? `${meta.browser_name} ${meta.browser_version.split(".")[0]}`
     : (meta.browser_name || null);
   const browserFull = meta.browser_version_full || meta.browser_version || null;
+  const fresh = browserFreshness(meta.browser_name, meta.browser_version);
   const arch = [meta.arch, meta.bitness && `${meta.bitness}-bit`].filter(Boolean).join(" · ");
   const net = formatNetwork(meta);
   const display = meta.screen
@@ -249,7 +200,7 @@ const sessionCard = (a) => {
 
   // --- HERO: icono device + título grande + subline + chip país + red ---
   const deviceLabel = (a.dispositivo || "Desconocido").split("·")[0].trim();
-  const heroTitle = `${e(deviceLabel)}${browser ? ` · ${e(browser)}` : ""}`;
+  const heroTitle = `${e(deviceLabel)}${browser ? ` · ${e(browser)}` : ""}${fresh ? ` <span class="browser-fresh browser-fresh-${fresh.cls}">${fresh.label}</span>` : ""}`;
   const heroSub = [a.os, arch].filter(Boolean).join(" · ");
   const countryCls = a.pais === "PE" ? "is-pe" : "is-other";
   const hero = `
@@ -302,9 +253,11 @@ const sessionCard = (a) => {
   if (meta.online === false) flags.push('<span class="badge" style="font-size:10px">offline</span>');
   if (meta.touch_points > 0) flags.push(`<span class="badge" style="font-size:10px">touch · ${meta.touch_points}</span>`);
 
+  // Detalles técnicos: siempre visibles. El <details> colapsable se
+  // descartó porque se cerraba en cada re-render del panel live.
   const details = `
-    <details class="session-details">
-      <summary>Detalles técnicos</summary>
+    <div class="session-details">
+      <div class="session-details-title">Detalles técnicos</div>
       <table class="table" style="margin:0;font-size:12px">
         <tbody>
           ${row("Versión completa", browserFull, true)}
@@ -323,7 +276,7 @@ const sessionCard = (a) => {
           ${a.referrer ? `<tr><td style="color:var(--text-3);width:140px">Referrer</td><td style="font-size:11px;color:var(--text-2);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${e(a.referrer)}">${e(a.referrer)}</td></tr>` : ""}
         </tbody>
       </table>
-    </details>`;
+    </div>`;
 
   return `
     <div class="card" style="margin-bottom:16px;padding:0;overflow:hidden">
@@ -351,9 +304,7 @@ export const renderTracking = (aperturas) => {
   const ultima = withLabels[0];
   return [
     sessionCard(ultima),
-    statsGrid(trackingStats(withLabels)),
-    sparkline(withLabels),
-    heatmapZonas(withLabels),
+    statsSummary(trackingStats(withLabels)),
     aperturasTable(withLabels),
   ].join("");
 };

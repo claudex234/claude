@@ -998,26 +998,38 @@ tr.row-selected td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
   min-width: 36px; text-align: right;
 }
 
-/* === Detalles técnicos colapsables === */
+/* === Detalles técnicos (siempre visibles) === */
 .session-details {
   border-top: 1px solid var(--border);
   font-size: 12px;
 }
-.session-details > summary {
-  padding: 10px 16px; cursor: pointer; user-select: none;
-  font-size: 12px; font-weight: 600; color: var(--text-2);
-  display: flex; align-items: center; gap: 8px;
-  list-style: none;
+.session-details-title {
+  padding: 10px 16px;
+  font-size: 11px; font-weight: 600; color: var(--text-mute);
+  text-transform: uppercase; letter-spacing: .5px;
 }
-.session-details > summary::-webkit-details-marker { display: none; }
-.session-details > summary::before {
-  content: "▸"; color: var(--text-mute);
-  transition: transform .15s;
-  display: inline-block;
-}
-.session-details[open] > summary::before { transform: rotate(90deg); }
-.session-details > summary:hover { background: var(--bg-soft); }
 .session-details > .table { margin: 0; }
+
+/* === Resumen tracking en texto plano === */
+.tracking-summary {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 12px 14px; margin-bottom: 16px;
+  background: var(--bg-soft); border: 1px solid var(--border); border-radius: 8px;
+  font-size: 12.5px; color: var(--text-2);
+}
+.tracking-summary strong { color: var(--text); font-weight: 600; }
+.tracking-summary .mute { color: var(--text-mute); }
+
+/* === Indicador de "browser actualizado / desactualizado" en el hero === */
+.browser-fresh {
+  font-size: 10px; font-weight: 600;
+  padding: 2px 6px; border-radius: 4px;
+  margin-left: 6px; vertical-align: middle;
+  text-transform: lowercase; letter-spacing: .2px;
+}
+.browser-fresh-fresh { color: #10b981; background: rgba(16, 185, 129, 0.12); }
+.browser-fresh-stale { color: #f59e0b; background: rgba(245, 158, 11, 0.12); }
+.browser-fresh-old   { color: var(--danger); background: rgba(248, 113, 113, 0.12); }
 @media (max-width: 1180px) {
   .proforma-split { grid-template-columns: 1fr; }
   .proforma-split-aside { display: none; }
