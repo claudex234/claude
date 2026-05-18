@@ -18,13 +18,16 @@ const deviceTypeIcon = (a) => {
   return "laptop";
 };
 
-// Estado del <details> persistido en localStorage. El panel re-renderiza
-// con cada poll del live indicator y perdíamos el estado de apertura;
-// ahora lo restauramos. Listener instalado una sola vez en captura
-// (toggle no burbujea).
-const DETAILS_KEY = "tracking_details_open";
-const detailsOpen = () => {
-  try { return localStorage.getItem(DETAILS_KEY) !== "0"; } catch { return false; }
+// Estado de <details> persistido en localStorage. El panel re-renderiza
+// con cada poll del live indicator y perdíamos el estado de apertura.
+// Cualquier <details data-persist-key="X"> graba "1"/"0" en esa key.
+// Listener instalado en captura porque toggle no burbujea.
+const isOpen = (key, defaultOpen) => {
+  try {
+    const v = localStorage.getItem(key);
+    if (v === null) return defaultOpen;
+    return v !== "0";
+  } catch { return defaultOpen; }
 };
 let _toggleHooked = false;
 const hookDetailsToggle = () => {
@@ -32,9 +35,8 @@ const hookDetailsToggle = () => {
   _toggleHooked = true;
   document.addEventListener("toggle", (ev) => {
     const el = ev.target;
-    if (el && el.matches && el.matches("details[data-tracking-details]")) {
-      try { localStorage.setItem(DETAILS_KEY, el.open ? "1" : "0"); } catch {}
-    }
+    const k = el && el.dataset && el.dataset.persistKey;
+    if (k) { try { localStorage.setItem(k, el.open ? "1" : "0"); } catch {} }
   }, true);
 };
 
@@ -87,7 +89,6 @@ const classifyVisitor = (a) => {
   const meta = a.meta || {};
   if (meta.bloqueado) return { label: "Bloqueada", cls: "tag-blocked" };
   if (meta.webdriver) return { label: "Bot / automation", cls: "tag-bot" };
-  if (a.reenvio) return { label: "Otra IP", cls: "tag-resend" };
   if (a.pais && a.pais !== "PE") return { label: "Visita extranjera", cls: "tag-foreigner" };
   const duracion = a.duracion_s || 0;
   const clicks = a.clicks || 0;
@@ -113,15 +114,31 @@ const formatNetwork = (meta) => {
   return parts.join(" · ");
 };
 
-// Línea de hardware para el hero: CPU cores · RAM · GPU (truncado).
+// Limpia el string del GPU. Chrome/Edge en Windows lo envuelven en ANGLE:
+//   "ANGLE (NVIDIA, NVIDIA GeForce RTX 4070 (0x00002684) Direct3D11 vs_5_0 ps_5_0)"
+// → "NVIDIA GeForce RTX 4070". Otros browsers/SO suelen devolver el
+// nombre del GPU directo y limpio.
+const cleanGpu = (raw) => {
+  if (!raw) return null;
+  let s = String(raw).trim();
+  const angle = s.match(/^ANGLE\s*\(([^]*)\)$/);
+  if (angle) {
+    let inner = angle[1];
+    inner = inner.replace(/^[^,]+,\s*/, "");                      // vendor prefix
+    inner = inner.replace(/\s*\(0x[0-9a-f]+\)/i, "");              // device id
+    inner = inner.replace(/\s+(Direct3D\d+|D3D\d+|Vulkan|Metal|OpenGL)\b.*$/i, ""); // backend tail
+    s = inner.trim();
+  }
+  return s.replace(/\s+/g, " ").trim() || null;
+};
+
+// Línea de hardware para el hero: CPU cores · RAM · GPU (limpio + truncado).
 const formatHardware = (meta) => {
   const parts = [];
   if (meta.hwc) parts.push(`${meta.hwc} cores`);
   if (meta.ram_gb) parts.push(`${meta.ram_gb} GB RAM`);
-  if (meta.gpu_renderer) {
-    const g = String(meta.gpu_renderer).replace(/\([^)]*\)/g, "").trim();
-    parts.push(g.length > 36 ? g.slice(0, 33) + "…" : g);
-  }
+  const gpu = cleanGpu(meta.gpu_renderer);
+  if (gpu) parts.push(gpu.length > 36 ? gpu.slice(0, 33) + "…" : gpu);
   return parts.length ? parts.join(" · ") : null;
 };
 
@@ -170,7 +187,6 @@ const aperturasRow = (a) => {
       <td>
         <div style="display:flex;gap:4px;flex-wrap:wrap">
           ${bloqueada ? '<span class="badge" style="font-size:10px;color:var(--danger);border-color:var(--danger)">bloqueada</span>' : ""}
-          ${a.reenvio ? '<span class="badge badge-warn" style="font-size:10px" title="Apertura desde una IP o UA distinta a la primera">otra IP</span>' : ""}
           ${a.impresion ? '<span class="badge" style="font-size:10px">impresión</span>' : ""}
           ${a.descarga ? '<span class="badge" style="font-size:10px">descarga</span>' : ""}
           ${a.print_screen_attempts > 0 ? `<span class="badge" style="font-size:10px;color:var(--danger)">prntscr ${a.print_screen_attempts}</span>` : ""}
@@ -181,8 +197,8 @@ const aperturasRow = (a) => {
 };
 
 const aperturasTable = (aperturas) => `
-  <div class="card">
-    <div class="card-header"><div class="card-title">Aperturas · ${aperturas.length}</div></div>
+  <details class="card collapsible-card" data-persist-key="tracking_aperturas_open"${isOpen("tracking_aperturas_open", true) ? " open" : ""}>
+    <summary class="card-header card-summary"><div class="card-title">Aperturas · ${aperturas.length}</div></summary>
     <div class="card-body" style="padding:0;max-height:520px;overflow-y:auto">
       <table class="table" style="margin:0">
         <thead>
@@ -199,7 +215,7 @@ const aperturasTable = (aperturas) => `
         </tbody>
       </table>
     </div>
-  </div>`;
+  </details>`;
 
 // === Export principal ====================================================
 
@@ -306,11 +322,11 @@ const sessionCard = (a) => {
   if (meta.online === false) flags.push('<span class="badge" style="font-size:10px">offline</span>');
   if (meta.touch_points > 0) flags.push(`<span class="badge" style="font-size:10px">touch · ${meta.touch_points}</span>`);
 
-  // Detalles técnicos colapsables. El estado abierto/cerrado se persiste
-  // en localStorage (DETAILS_KEY) para sobrevivir los re-renders del
-  // panel live. Default: cerrado.
+  // Detalles técnicos colapsables. Estado persistido en localStorage
+  // ("tracking_details_open") para sobrevivir los re-renders del panel
+  // live. Default: cerrado.
   const details = `
-    <details class="session-details" data-tracking-details${detailsOpen() ? " open" : ""}>
+    <details class="session-details" data-persist-key="tracking_details_open"${isOpen("tracking_details_open", false) ? " open" : ""}>
       <summary>Detalles técnicos</summary>
       <table class="table" style="margin:0;font-size:12px">
         <tbody>

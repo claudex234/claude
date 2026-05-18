@@ -1026,6 +1026,19 @@ tr.row-selected td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .session-details > summary:hover { background: var(--bg-soft); }
 .session-details > .table { margin: 0; }
 
+/* === Card colapsable (usa <details><summary class="card-header"/>) === */
+.collapsible-card > .card-summary {
+  cursor: pointer; user-select: none; list-style: none;
+  display: flex; align-items: center; gap: 8px;
+}
+.collapsible-card > .card-summary::-webkit-details-marker { display: none; }
+.collapsible-card > .card-summary::before {
+  content: "▸"; color: var(--text-mute);
+  transition: transform .15s; display: inline-block;
+}
+.collapsible-card[open] > .card-summary::before { transform: rotate(90deg); }
+.collapsible-card > .card-summary:hover { background: var(--bg-soft); }
+
 /* === Resumen tracking en texto plano === */
 .tracking-summary {
   display: flex; flex-direction: column; gap: 4px;
