@@ -1006,16 +1006,24 @@ tr.row-selected td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .engagement-breakdown strong { color: var(--text); font-weight: 700; font-family: var(--font-mono); }
 .engagement-breakdown .muted { color: var(--text-mute); }
 
-/* === Detalles técnicos (siempre visibles) === */
+/* === Detalles técnicos colapsables (estado persistido en localStorage) === */
 .session-details {
   border-top: 1px solid var(--border);
   font-size: 12px;
 }
-.session-details-title {
-  padding: 10px 16px;
+.session-details > summary {
+  padding: 10px 16px; cursor: pointer; user-select: none;
   font-size: 11px; font-weight: 600; color: var(--text-mute);
   text-transform: uppercase; letter-spacing: .5px;
+  display: flex; align-items: center; gap: 8px;
+  list-style: none;
 }
+.session-details > summary::-webkit-details-marker { display: none; }
+.session-details > summary::before {
+  content: "▸"; transition: transform .15s; display: inline-block;
+}
+.session-details[open] > summary::before { transform: rotate(90deg); }
+.session-details > summary:hover { background: var(--bg-soft); }
 .session-details > .table { margin: 0; }
 
 /* === Resumen tracking en texto plano === */

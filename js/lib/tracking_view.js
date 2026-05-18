@@ -18,6 +18,26 @@ const deviceTypeIcon = (a) => {
   return "laptop";
 };
 
+// Estado del <details> persistido en localStorage. El panel re-renderiza
+// con cada poll del live indicator y perdíamos el estado de apertura;
+// ahora lo restauramos. Listener instalado una sola vez en captura
+// (toggle no burbujea).
+const DETAILS_KEY = "tracking_details_open";
+const detailsOpen = () => {
+  try { return localStorage.getItem(DETAILS_KEY) !== "0"; } catch { return false; }
+};
+let _toggleHooked = false;
+const hookDetailsToggle = () => {
+  if (_toggleHooked || typeof document === "undefined") return;
+  _toggleHooked = true;
+  document.addEventListener("toggle", (ev) => {
+    const el = ev.target;
+    if (el && el.matches && el.matches("details[data-tracking-details]")) {
+      try { localStorage.setItem(DETAILS_KEY, el.open ? "1" : "0"); } catch {}
+    }
+  }, true);
+};
+
 // Browser freshness: cuántos meses atrás respecto al stable más reciente
 // conocido al commit. Si el cliente tiene una versión MAYOR (dev/canary),
 // devuelve "actualizado". Si el browser no está en la tabla, null.
@@ -78,12 +98,31 @@ const classifyVisitor = (a) => {
 };
 
 // Combina downlink + RTT en una etiqueta legible.
+// El effectiveType de la Network Info API ('slow-2g','2g','3g','4g') NO
+// distingue cable/wifi/celular — '4g' significa simplemente "rápida"
+// y se devuelve para Ethernet también. Por eso anteponemos "≈" y el
+// title aclara la limitación de la API.
+const NET_LABELS = { "slow-2g": "lenta", "2g": "2G", "3g": "3G", "4g": "≈4G" };
+const NET_TOOLTIP = "Etiqueta de la Network Information API del browser: ≈4G se usa para cualquier red rápida (Ethernet, Wi-Fi o 4G/5G real).";
 const formatNetwork = (meta) => {
   if (!meta.net_type) return null;
-  const parts = [meta.net_type.toUpperCase()];
+  const label = NET_LABELS[meta.net_type] || meta.net_type.toUpperCase();
+  const parts = [label];
   if (meta.net_downlink_mbps != null) parts.push(`${meta.net_downlink_mbps} Mbps`);
   if (meta.net_rtt_ms != null) parts.push(`${meta.net_rtt_ms}ms`);
   return parts.join(" · ");
+};
+
+// Línea de hardware para el hero: CPU cores · RAM · GPU (truncado).
+const formatHardware = (meta) => {
+  const parts = [];
+  if (meta.hwc) parts.push(`${meta.hwc} cores`);
+  if (meta.ram_gb) parts.push(`${meta.ram_gb} GB RAM`);
+  if (meta.gpu_renderer) {
+    const g = String(meta.gpu_renderer).replace(/\([^)]*\)/g, "").trim();
+    parts.push(g.length > 36 ? g.slice(0, 33) + "…" : g);
+  }
+  return parts.length ? parts.join(" · ") : null;
 };
 
 // === Agregados ============================================================
@@ -194,6 +233,7 @@ const sessionCard = (a) => {
   const fresh = browserFreshness(meta.browser_name, meta.browser_version);
   const arch = [meta.arch, meta.bitness && `${meta.bitness}-bit`].filter(Boolean).join(" · ");
   const net = formatNetwork(meta);
+  const hw = formatHardware(meta);
   const display = meta.screen
     ? `${meta.screen}${meta.pixel_ratio && meta.pixel_ratio !== 1 ? ` @${meta.pixel_ratio}x` : ""}${meta.color_depth ? ` · ${meta.color_depth}bit` : ""}`
     : null;
@@ -222,7 +262,8 @@ const sessionCard = (a) => {
             ${a.ciudad ? `<span>${e(a.ciudad)}</span>` : ""}
             ${a.ip ? `<span style="color:var(--text-mute);font-family:var(--font-mono);font-size:11px">${e(a.ip)}</span>` : ""}
           </div>` : ""}
-        ${net ? `<div class="session-hero-meta">${icon("wifi", 12)}<span>${e(net)}</span></div>` : ""}
+        ${net ? `<div class="session-hero-meta" title="${e(NET_TOOLTIP)}">${icon("wifi", 12)}<span>${e(net)}</span></div>` : ""}
+        ${hw ? `<div class="session-hero-meta">${icon("cpu", 12)}<span>${e(hw)}</span></div>` : ""}
         ${live ? `<div class="session-hero-meta" style="color:var(--accent-strong);font-weight:600">${icon("eye", 12)}<span>Mirando hace ${fmtTime(a.duracion_s || 0)}</span></div>` : ""}
       </div>
     </div>`;
@@ -265,11 +306,12 @@ const sessionCard = (a) => {
   if (meta.online === false) flags.push('<span class="badge" style="font-size:10px">offline</span>');
   if (meta.touch_points > 0) flags.push(`<span class="badge" style="font-size:10px">touch · ${meta.touch_points}</span>`);
 
-  // Detalles técnicos: siempre visibles. El <details> colapsable se
-  // descartó porque se cerraba en cada re-render del panel live.
+  // Detalles técnicos colapsables. El estado abierto/cerrado se persiste
+  // en localStorage (DETAILS_KEY) para sobrevivir los re-renders del
+  // panel live. Default: cerrado.
   const details = `
-    <div class="session-details">
-      <div class="session-details-title">Detalles técnicos</div>
+    <details class="session-details" data-tracking-details${detailsOpen() ? " open" : ""}>
+      <summary>Detalles técnicos</summary>
       <table class="table" style="margin:0;font-size:12px">
         <tbody>
           ${row("Versión completa", browserFull, true)}
@@ -288,7 +330,7 @@ const sessionCard = (a) => {
           ${a.referrer ? `<tr><td style="color:var(--text-3);width:140px">Referrer</td><td style="font-size:11px;color:var(--text-2);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${e(a.referrer)}">${e(a.referrer)}</td></tr>` : ""}
         </tbody>
       </table>
-    </div>`;
+    </details>`;
 
   return `
     <div class="card" style="margin-bottom:16px;padding:0;overflow:hidden">
@@ -300,6 +342,7 @@ const sessionCard = (a) => {
 };
 
 export const renderTracking = (aperturas) => {
+  hookDetailsToggle();
   if (!aperturas || !aperturas.length) {
     return `<div class="card">
       <div class="card-header"><div class="card-title">Tracking</div></div>
