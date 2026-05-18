@@ -120,13 +120,15 @@ export const updateProforma = async (proformaId, { cliente, asunto, items, skinC
   const { data: prof, error } = await supabase
     .from("proformas")
     .update(patch)
-    .eq("id", proformaId)
+    .eq("id", proformaId).eq("owner_id", user.id)
     .select()
     .single();
   if (error) throw error;
 
   // Reemplazo total de items: la edición es destructiva sobre la lista.
-  const { error: eDel } = await supabase.from("proforma_items").delete().eq("proforma_id", proformaId);
+  // proforma_items no tiene owner_id; RLS filtra via FK proforma_id.
+  const { error: eDel } = await supabase.from("proforma_items")
+    .delete().eq("proforma_id", proformaId);
   if (eDel) throw eDel;
 
   const codes = [...new Set(items.map((i) => i.modelo).filter(Boolean))];
