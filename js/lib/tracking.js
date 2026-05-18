@@ -141,9 +141,12 @@ export const startTracking = async ({ slug, root, onBlocked }) => {
     clicks_xy: [],
     // {x, y, s, t} — eventos de zoom (pinch o ctrl+wheel). Cap a 50.
     zooms: [],
+    // Clicks en adjuntos (PDF/link): {adjunto_id, nombre, tipo, t}. Cap 100.
+    adjuntos_vistos: [],
   };
   const MAX_CLICKS_XY = 200;
   const MAX_ZOOMS = 50;
+  const MAX_ADJUNTOS = 100;
 
   // Overlays de zonas — solo cuando hay tracking real.
   const zones = installZones(root);
@@ -216,6 +219,24 @@ export const startTracking = async ({ slug, root, onBlocked }) => {
     }
   };
   if (root) root.addEventListener("click", onClick, { capture: true });
+
+  // Click en adjunto (.vp-adj-card → tiene data-adjunto-id). Se monta
+  // como delegado sobre root para no añadir N listeners. Capture igual
+  // que onClick para que no llegue antes el navigate del <a>.
+  const onAdjClick = (ev) => {
+    const card = ev.target.closest?.("[data-adjunto-id]");
+    if (!card) return;
+    if (state.adjuntos_vistos.length >= MAX_ADJUNTOS) return;
+    state.adjuntos_vistos.push({
+      adjunto_id: card.dataset.adjuntoId,
+      nombre: card.dataset.adjuntoNombre || "",
+      tipo: card.dataset.adjuntoTipo || "",
+      t: state.duracion_s,
+    });
+    // Best-effort: flush ahora para que el admin lo vea pronto.
+    flush(false);
+  };
+  if (root) root.addEventListener("click", onAdjClick, { capture: true });
 
   // Zoom — pinch (visualViewport.scale) y ctrl+wheel (desktop).
   let lastScale = 1;
@@ -299,6 +320,7 @@ export const startTracking = async ({ slug, root, onBlocked }) => {
       p_zonas: Object.keys(state.zonas).length ? state.zonas : null,
       p_clicks_xy: state.clicks_xy.length ? state.clicks_xy : null,
       p_zooms: state.zooms.length ? state.zooms : null,
+      p_adjuntos_vistos: state.adjuntos_vistos.length ? state.adjuntos_vistos : null,
       p_user_agent: sendUA ? (navigator.userAgent || null) : null,
       p_dispositivo: sendUA ? ua.dispositivo : null,
       p_os: sendUA ? ua.os : null,
@@ -343,6 +365,7 @@ export const startTracking = async ({ slug, root, onBlocked }) => {
       window.removeEventListener("blur", onVis);
       window.removeEventListener("scroll", onScroll);
       if (root) root.removeEventListener("click", onClick, { capture: true });
+      if (root) root.removeEventListener("click", onAdjClick, { capture: true });
       window.visualViewport?.removeEventListener("resize", onVisualViewport);
       window.removeEventListener("wheel", onWheel);
       window.removeEventListener("beforeprint", onBeforePrint);

@@ -51,3 +51,10 @@ export {
   upsertTrackingPage,
   deleteTrackingPage,
 } from "./api/tracking.js";
+
+export {
+  listAdjuntos,
+  uploadAdjuntoPdf,
+  addAdjuntoLink,
+  removeAdjunto,
+} from "./api/adjuntos.js";

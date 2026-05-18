@@ -240,6 +240,33 @@ const yesNo = (v) => v === true ? "Sí" : (v === false ? "No" : null);
 // Heatmap mini sobre la hoja A4 (ratio 210:297). Cada click es un dot
 // translúcido con mix-blend-mode multiply — overlaps se oscurecen solos
 // sin tener que calcular densidad. Zooms se marcan con un "+" azul.
+// Adjuntos abiertos por el visitante: agrupa por adjunto_id, cuenta
+// clicks y muestra el primer t (cuándo lo abrió por primera vez).
+const renderAdjuntosVistos = (adjuntos) => {
+  const list = Array.isArray(adjuntos) ? adjuntos : [];
+  if (!list.length) return "";
+  const byId = new Map();
+  for (const v of list) {
+    const k = v.adjunto_id || v.nombre || "";
+    if (!byId.has(k)) byId.set(k, { ...v, count: 0 });
+    byId.get(k).count++;
+  }
+  const items = Array.from(byId.values());
+  return `
+    <div class="adj-vistos">
+      <div class="adj-vistos-label">Material abierto · ${items.length} adjunto${items.length === 1 ? "" : "s"}</div>
+      <div class="adj-vistos-list">
+        ${items.map((v) => `
+          <div class="adj-vistos-row">
+            <span class="adj-vistos-tipo">${v.tipo === "pdf" ? "PDF" : "↗"}</span>
+            <span class="adj-vistos-nombre" title="${e(v.nombre || "")}">${e(v.nombre || "(sin nombre)")}</span>
+            ${v.count > 1 ? `<span class="adj-vistos-count">${v.count}×</span>` : ""}
+            <span class="adj-vistos-t">@${fmtTime(v.t || 0)}</span>
+          </div>`).join("")}
+      </div>
+    </div>`;
+};
+
 const renderHeatmap = (clicks_xy, zooms) => {
   const clicks = Array.isArray(clicks_xy) ? clicks_xy : [];
   const zoomList = Array.isArray(zooms) ? zooms : [];
@@ -329,6 +356,9 @@ const sessionCard = (a) => {
   // sin tener que calcular densidad. Coords ya vienen en 0-1.
   const heatmap = renderHeatmap(a.clicks_xy, a.zooms);
 
+  // --- ADJUNTOS VISTOS: lista agregada por adjunto con contador y t ---
+  const adjuntosVistos = renderAdjuntosVistos(a.adjuntos_vistos);
+
   const engagement = `
     <div class="engagement">
       <div class="engagement-label">Engagement</div>
@@ -380,6 +410,7 @@ const sessionCard = (a) => {
       ${hero}
       ${tagRow}
       ${engagement}
+      ${adjuntosVistos}
       ${heatmap}
       ${details}
     </div>`;

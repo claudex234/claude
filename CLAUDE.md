@@ -24,7 +24,7 @@ URL deploy: `https://duecaz.github.io/test/`
 
 ## Estado actual
 
-Versión: **0.18.1**
+Versión: **0.19.0**
 
 ### Hecho
 
@@ -38,6 +38,7 @@ Versión: **0.18.1**
 | ✅ | Edición de proformas (`#/generador/<numero>`) |
 | ✅ | Detalle real desde Supabase con tracking completo |
 | ✅ | Productos CRUD + upload imagen a Storage (`<userId>/<codigo>/<filename>`) |
+| ✅ | **Adjuntos reales** (PDF + link externo): cada producto tiene 0..N adjuntos. PDFs en bucket `producto-adjuntos` (público, max 50 MB). Visor renderiza bloque "Material adicional" con cards clickeables (descarga PDF / abre link en nueva pestaña). Cada click trackea → `proforma_aperturas.adjuntos_vistos jsonb` array de `{adjunto_id, nombre, tipo, t}`. Panel admin muestra adjuntos vistos con conteo + timestamp |
 | ✅ | Skins HTML/CSS separados (DB + archivos fallback corporate/warm) + manager con editor tabs |
 | ✅ | Visor público con anti-capture, watermark opt-in (`?wm=1`) |
 | ✅ | PDF interno (`#/print/<numero>`) via `window.print()` |
@@ -57,7 +58,6 @@ Versión: **0.18.1**
 
 | Prioridad | Tarea |
 |---|---|
-| Alta | **Adjuntos reales** (plan listo): cada producto tiene PDF/video. Al generar proforma, sus adjuntos se incluyen. Visor muestra adjuntos clickeables. Tracking registra clicks. Implementar: SQL + API + UI productos + visor + detalle |
 | Media | **Más planillas** (minimal/bold/editorial/tech). Hoy solo corporate + warm. Las 4 placeholder de DB se borraron — hay que crear nuevas desde la UI |
 | Media | **Mobile responsive del admin** (visor sí está optimizado). El listado/generador no testeado en mobile |
 | Media | **Bug visor: loop de resize con FancyZones/snap** — al soltar la ventana del browser en una zona de PowerToys FancyZones (Shift+drop), la hoja A4 entra en loop: agranda/achica indefinido. Causa probable: `ResizeObserver` en `lib/a4_fit.js` ping-pong contra `transform: scale` (cambio de scale → relayout → resize event → otro cambio de scale). Fix: debounce con `requestAnimationFrame` + medir el contenedor padre (no escalado), o cortar el observer cuando el scale no cambió |

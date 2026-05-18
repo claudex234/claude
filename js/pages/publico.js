@@ -32,12 +32,48 @@ const showBlocked = (root) => {
     </div>`;
 };
 
+const formatBytes = (n) => {
+  if (!n) return "";
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1)} MB`;
+};
+
+// Bloque "Material adicional" con los adjuntos de los productos en la
+// proforma. Cada card es <a> nativa (no JS) — el tracking se monta
+// como delegado en startTracking.
+const renderAdjuntos = (adjuntos) => {
+  if (!adjuntos || !adjuntos.length) return "";
+  const card = (a) => {
+    const isPdf = a.tipo === "pdf";
+    const sub = isPdf
+      ? `PDF${a.tamano_bytes ? ` · ${formatBytes(a.tamano_bytes)}` : ""}`
+      : `Link externo${a.url ? ` · ${e(new URL(a.url).hostname.replace(/^www\./, ""))}` : ""}`;
+    return `
+      <a class="vp-adj-card" href="${e(a.url)}" target="_blank" rel="noopener"
+         data-adjunto-id="${e(a.id)}" data-adjunto-nombre="${e(a.nombre)}" data-adjunto-tipo="${e(a.tipo)}">
+        <div class="vp-adj-icon">${isPdf ? "PDF" : "↗"}</div>
+        <div class="vp-adj-body">
+          <div class="vp-adj-name">${e(a.nombre)}</div>
+          <div class="vp-adj-sub">${sub}</div>
+          ${a.descripcion ? `<div class="vp-adj-desc">${e(a.descripcion)}</div>` : ""}
+        </div>
+      </a>`;
+  };
+  return `
+    <section class="vp-adjuntos">
+      <div class="vp-adjuntos-title">Material adicional</div>
+      <div class="vp-adjuntos-grid">${adjuntos.map(card).join("")}</div>
+    </section>`;
+};
+
 const renderViewer = async (payload, slug) => {
   const p = payload.proforma;
   const data = fromRpcPayload(payload);
   const inner = (payload.skin_html || payload.skin_css)
     ? renderPlanillaWith({ html: payload.skin_html, css: payload.skin_css }, data)
     : await renderPlanilla(payload.skin_codigo || "corporate", data);
+  const adjuntosHtml = renderAdjuntos(payload.adjuntos);
   // Watermark off por defecto. Se activa con `?wm=1` en la URL del visor
   // para shares sensibles donde sí queremos dejar huella en una captura.
   const wmEnabled = /[?&]wm=1\b/.test(location.hash) || /[?&]wm=1\b/.test(location.search);
@@ -61,6 +97,7 @@ const renderViewer = async (payload, slug) => {
         <div class="vp-fit">
           <div class="pv-doc">
             <article class="pv-page">${inner}</article>
+            ${adjuntosHtml}
           </div>
         </div>
       </main>
