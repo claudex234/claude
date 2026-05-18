@@ -6,6 +6,18 @@ import { fmtTime, fmtDateTime, escapeHtml as e, ago } from "./utils.js";
 import { isLiveApertura } from "../data/api/aperturas.js";
 import { icon } from "./icons.js";
 import { infoTip } from "./popover.js";
+import { friendlyModel } from "./device_models.js";
+
+// Aplica el diccionario de modelos al string "dispositivo" guardado en DB.
+// El dispositivo viene como "MODELO · Browser" (ej. "SM-S938B · Chrome").
+// Pasamos solo la parte del modelo por friendlyModel.
+const prettifyDispositivo = (raw) => {
+  if (!raw) return raw;
+  const parts = String(raw).split("·").map((s) => s.trim());
+  if (!parts.length) return raw;
+  parts[0] = friendlyModel(parts[0]);
+  return parts.join(" · ");
+};
 
 // === Helpers de presentación ============================================
 
@@ -168,7 +180,7 @@ const aperturasRow = (a) => {
     <tr class="row" style="${bloqueada ? "opacity:.55" : ""}">
       <td style="font-family:var(--font-mono);font-size:11.5px">${a._whenLabel}</td>
       <td>
-        <div style="font-size:12.5px">${e(a.dispositivo || "—")}</div>
+        <div style="font-size:12.5px">${e(prettifyDispositivo(a.dispositivo) || "—")}</div>
         <div style="font-size:11px;color:var(--text-mute);margin-top:2px">${e(lugar)} · ${e(a.os || "")}</div>
       </td>
       <td style="text-align:right;font-family:var(--font-mono);font-size:12px">${fmtTime(a.duracion_s || 0)}</td>
@@ -264,7 +276,7 @@ const sessionCard = (a) => {
     : null;
 
   // --- HERO: icono device + título grande + subline + chip país + red ---
-  const deviceLabel = (a.dispositivo || "Desconocido").split("·")[0].trim();
+  const deviceLabel = friendlyModel((a.dispositivo || "Desconocido").split("·")[0].trim());
   const heroTitle = `${e(deviceLabel)}${browser ? ` · ${e(browser)}` : ""}${fresh ? ` <span class="browser-fresh browser-fresh-${fresh.cls}">${fresh.label}</span>` : ""}`;
   const heroSub = [a.os, arch].filter(Boolean).join(" · ");
   const countryCls = a.pais === "PE" ? "is-pe" : "is-other";

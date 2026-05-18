@@ -1,6 +1,8 @@
 // Parser ligero de navigator.userAgent. Heurísticas suficientes para
 // distinguir dispositivos comunes; no compite con bibliotecas grandes.
 // Devuelve { dispositivo, os } amigables: "iPhone 14 · Safari" / "iOS 17".
+
+import { friendlyModel } from "./device_models.js";
 //
 // IMPORTANTE Windows 10 vs 11: el UA string reporta "Windows NT 10.0"
 // para AMBOS (Microsoft mantuvo el string por compatibilidad). La única
@@ -85,10 +87,12 @@ export const enrichUA = async (base) => {
         base.os = major >= 13 ? "Windows 11" : "Windows 10";
       }
     }
-    // Android: hint.model trae el nombre comercial real (ej. "SM-A546B").
+    // Android: hint.model trae el código del fabricante (ej. "SM-S938B").
+    // Lo pasamos por el diccionario para mostrar el nombre comercial
+    // ("Galaxy S25 Ultra"). Si no hay match, queda el código crudo.
     if (hints.model && /Android/.test(uad.platform || "")) {
       const browser = base.dispositivo.split("·")[1]?.trim() || "Chrome";
-      base.dispositivo = `${hints.model} · ${browser}`;
+      base.dispositivo = `${friendlyModel(hints.model)} · ${browser}`;
     }
   } catch {}
   return base;
