@@ -178,7 +178,9 @@
       try {
         uad.getHighEntropyValues(["platformVersion"]).then(function (h) {
           if (uad.platform === "Windows" && h.platformVersion) {
-            var major = parseInt(h.platformVersion.split(".")[0], 10);
+            // String() coerce: spec dice string, pero algunos browsers
+            // viejos podrian devolver number — evita TypeError en split.
+            var major = parseInt(String(h.platformVersion).split(".")[0], 10);
             if (isFinite(major)) os = major >= 13 ? "Windows 11" : "Windows 10";
           }
         }).catch(function(){});

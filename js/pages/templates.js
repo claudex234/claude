@@ -273,8 +273,8 @@ export const render = (root) => {
       node.querySelectorAll("[data-pane]").forEach((p) => p.style.display = p.dataset.pane === tab ? "" : "none");
     });
     // Subida de archivos
-    on(node, "click", "[data-action='upload-html']", () => node.querySelector("[data-file-html]").click());
-    on(node, "click", "[data-action='upload-css']", () => node.querySelector("[data-file-css]").click());
+    on(node, "click", "[data-action='upload-html']", () => node.querySelector("[data-file-html]")?.click());
+    on(node, "click", "[data-action='upload-css']", () => node.querySelector("[data-file-css]")?.click());
     on(node, "change", "[data-file-html]", async (ev) => {
       const f = ev.target.files?.[0]; if (!f) return;
       editing.html = await f.text();

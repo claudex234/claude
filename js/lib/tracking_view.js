@@ -291,7 +291,7 @@ const sessionCard = (a) => {
   const bloqueada = !!meta.bloqueado;
   const lugar = [a.ciudad, a.pais].filter(Boolean).join(", ");
   const browser = meta.browser_name && meta.browser_version
-    ? `${meta.browser_name} ${meta.browser_version.split(".")[0]}`
+    ? `${meta.browser_name} ${String(meta.browser_version).split(".")[0]}`
     : (meta.browser_name || null);
   const browserFull = meta.browser_version_full || meta.browser_version || null;
   const fresh = browserFreshness();
