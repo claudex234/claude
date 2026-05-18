@@ -19,6 +19,7 @@ const SEGUIMIENTO = [
   { id: "competidores", icon: "eye", label: "Competidores" },
 ];
 const OTROS = [
+  { id: "empresas", icon: "user", label: "Empresas" },
   { id: "config", icon: "settings", label: "Configuración" },
 ];
 

@@ -4,10 +4,11 @@ import { supabase } from "../lib/supabase.js";
 import { PRODUCTOS, adaptProducto } from "./productos.js";
 import { SKINS, adaptSkin } from "./skins.js";
 import { PROFORMAS, adaptProforma } from "./proformas.js";
+import { EMPRESAS, adaptEmpresa } from "./empresas.js";
 import { CONFIG } from "./config.js";
 
 export const loadAll = async () => {
-  const [productosRes, skinsRes, clientesRes, proformasRes, linksRes, itemsRes, settingsRes] = await Promise.all([
+  const [productosRes, skinsRes, clientesRes, proformasRes, linksRes, itemsRes, settingsRes, empresasRes] = await Promise.all([
     supabase.from("productos").select("*").eq("activo", true).order("precio_default"),
     supabase.from("skins").select("*").order("created_at"),
     // Clientes: solo para resolver razón social en proformas. La app no
@@ -18,11 +19,16 @@ export const loadAll = async () => {
     supabase.from("proforma_links").select("proforma_id, slug"),
     supabase.from("proforma_items").select("proforma_id"),
     supabase.from("user_settings").select("publico_solo_pe, empresa, defaults").maybeSingle(),
+    supabase.from("empresas").select("*").order("is_default", { ascending: false }).order("created_at"),
   ]);
 
-  for (const [k, r] of Object.entries({ productos: productosRes, skins: skinsRes, clientes: clientesRes, proformas: proformasRes, links: linksRes, items: itemsRes, settings: settingsRes })) {
+  for (const [k, r] of Object.entries({ productos: productosRes, skins: skinsRes, clientes: clientesRes, proformas: proformasRes, links: linksRes, items: itemsRes, settings: settingsRes, empresas: empresasRes })) {
     if (r.error) console.error(`${k}:`, r.error);
   }
+
+  // Empresas (multi-empresa por usuario)
+  EMPRESAS.length = 0;
+  for (const row of empresasRes.data || []) EMPRESAS.push(adaptEmpresa(row));
 
   // CONFIG global
   const s = settingsRes.data || {};

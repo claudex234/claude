@@ -10,6 +10,7 @@ import { EMISOR, FORMAS_PAGO } from "../data/empresa.js";
 import { parsePaste, PRODUCT_CODES } from "../lib/parser.js";
 import { renderPlanilla } from "../lib/planillas.js";
 import { SKINS, defaultSkinCodigo } from "../data/skins.js";
+import { EMPRESAS, defaultEmpresa, findEmpresaById } from "../data/empresas.js";
 import { mountA4Fit } from "../lib/a4_fit.js";
 import { fromEditorState } from "../lib/planilla_data.js";
 import { createDictation } from "../lib/dictation.js";
@@ -32,6 +33,7 @@ const initialState = () => ({
   publicSlug: null,
   proformaId: null, // uuid devuelto por createProforma; null hasta primer guardado
   skinCodigo: defaultSkinCodigo(),
+  empresaId: defaultEmpresa()?.id || null,
   emitidaIso: new Date().toISOString().slice(0, 10),
   isEdit: false,
 });
@@ -82,7 +84,8 @@ const clearDraft = () => {
 // Renderiza el preview vía la planilla seleccionada. Async porque la
 // primera vez se hace fetch del HTML (después la lib lo cachea).
 const renderPreview = async (s) => {
-  const inner = await renderPlanilla(s.skinCodigo, fromEditorState(s, PRODUCTOS, totals(s.productos), CONFIG));
+  const empresa = findEmpresaById(s.empresaId) || defaultEmpresa();
+  const inner = await renderPlanilla(s.skinCodigo, fromEditorState(s, PRODUCTOS, totals(s.productos), { empresa, defaults: CONFIG.defaults }));
   return `<div class="pv-doc"><article class="pv-page">${inner}</article></div>`;
 };
 
@@ -180,6 +183,15 @@ const renderEditor = (s) => `
         <section class="gen-section">
           <div class="gen-section-title">PLANILLA</div>
           <div class="gen-form">
+            <label class="gen-field gen-field-full"><span>Empresa emisora</span>
+              <select class="input" data-f="empresaId">
+                ${EMPRESAS.length === 0
+                  ? `<option value="">— sin empresas configuradas (usa hardcoded)</option>`
+                  : EMPRESAS.map((emp) =>
+                      `<option value="${e(emp.id)}"${emp.id === s.empresaId ? " selected" : ""}>${e(emp.nombre)}${emp.is_default ? " (default)" : ""}</option>`
+                    ).join("")}
+              </select>
+            </label>
             <label class="gen-field gen-field-full"><span>Skin del PDF</span>
               <select class="input" data-f="skinCodigo">
                 ${SKINS.map((sk) =>
@@ -189,7 +201,7 @@ const renderEditor = (s) => `
             </label>
           </div>
           <div class="gen-section-hint" style="margin-top:6px">
-            Para crear, editar o subir nuevas planillas: tab <b>Plantillas</b>.
+            Empresas se gestionan en <b>Empresas</b>. Skins en <b>Plantillas</b>.
           </div>
         </section>
       </aside>
@@ -272,6 +284,7 @@ export const render = (root, ctx) => {
         s.productos = Array.isArray(draft.productos) ? draft.productos : [];
         s.terminos = { ...s.terminos, ...(draft.terminos || {}) };
         s.skinCodigo = draft.skinCodigo || s.skinCodigo;
+        s.empresaId = draft.empresaId !== undefined ? draft.empresaId : s.empresaId;
         s.rucSeguro = !!draft.rucSeguro;
         // Rehidratar inputs visibles
         ["razonSocial", "ruc", "contacto", "email", "telefono"].forEach((k) => {
@@ -284,6 +297,8 @@ export const render = (root, ctx) => {
         if (inAsunto) inAsunto.value = s.asunto;
         const inSkin = node.querySelector("[data-f='skinCodigo']");
         if (inSkin) inSkin.value = s.skinCodigo;
+        const inEmp = node.querySelector("[data-f='empresaId']");
+        if (inEmp) inEmp.value = s.empresaId || "";
         refreshAll();
         banner.remove();
         toast("Borrador restaurado", { type: "ok" });
@@ -313,6 +328,7 @@ export const render = (root, ctx) => {
         s.asunto = p.asunto || "";
         s.publicSlug = detail.slug || null;
         s.skinCodigo = detail.skin?.codigo || defaultSkinCodigo();
+        s.empresaId = p.empresa_id || defaultEmpresa()?.id || null;
         s.emitidaIso = p.emitida || s.emitidaIso;
         s.cliente = {
           razonSocial: c.razon_social || "",
@@ -343,6 +359,7 @@ export const render = (root, ctx) => {
           setVal(`[data-f='${k}']`, s.cliente[k]);
         });
         setVal(`[data-f='skinCodigo']`, s.skinCodigo);
+        setVal(`[data-f='empresaId']`, s.empresaId || "");
         const meta = node.querySelector(".gen-bar-meta .mono");
         if (meta) meta.textContent = s.numero;
         const status = node.querySelector(".gen-bar-meta .status");
@@ -435,6 +452,7 @@ export const render = (root, ctx) => {
     else if (f === "formaPago") s.terminos.formaPago = v;
     else if (f === "tiempoEntrega") s.terminos.tiempoEntrega = v;
     else if (f === "skinCodigo") s.skinCodigo = v;
+    else if (f === "empresaId") s.empresaId = v || null;
     refreshChips();
     refreshPreview();
     markDirty();
@@ -499,6 +517,7 @@ export const render = (root, ctx) => {
         asunto: s.asunto,
         items: s.productos,
         skinCodigo: s.skinCodigo,
+        empresaId: s.empresaId,
       });
       // Sincronizar PROFORMAS en memoria
       const rec = PROFORMAS.find((p) => p.proformaId === s.proformaId);
@@ -548,6 +567,7 @@ export const render = (root, ctx) => {
           asunto: s.asunto,
           items: s.productos,
           skinCodigo: s.skinCodigo,
+          empresaId: s.empresaId,
         });
         s.proformaId = proforma.id;
         s.numero = proforma.numero;

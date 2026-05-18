@@ -1,7 +1,9 @@
-// Configuración por usuario. Tres secciones:
-//   1. Empresa (datos del emisor que aparecen en las proformas)
-//   2. Defaults del generador (validez, forma pago, tiempo entrega…)
-//   3. Visor público (Solo Perú)
+// Configuración por usuario. Dos secciones:
+//   1. Defaults del generador (validez, forma pago, tiempo entrega…)
+//   2. Visor público (Solo Perú)
+// Los datos del emisor (razón social, RUC, logo, cuentas…) se gestionan
+// en /empresas — un usuario puede tener varias empresas y elegir cuál
+// usa en cada proforma.
 // Todo persiste en user_settings de Supabase.
 
 import { html, raw, el, on } from "../lib/utils.js";
@@ -29,18 +31,7 @@ export const render = async (root) => {
     return { publico_solo_pe: false, empresa: {}, defaults: {} };
   });
 
-  // Defaults de fallback desde data/empresa.js (lo que se usaba antes
-  // como hardcoded). Se mergea solo para mostrar placeholders, no se
-  // guarda salvo que el usuario escriba algo.
-  const FB_EMP = {
-    razon_social: EMISOR.razonSocial,
-    ruc: EMISOR.ruc,
-    direccion: EMISOR.direccion,
-    telefono: EMISOR.telefono,
-    email: EMISOR.email,
-    firmante_nombre: EMISOR.firmante,
-    firmante_cargo: "Gerente comercial",
-  };
+  // Defaults de fallback desde data/empresa.js (placeholders).
   const FB_DEF = {
     validez_dias: EMISOR.defaults.validezDias,
     forma_pago: EMISOR.defaults.formaPago,
@@ -50,13 +41,6 @@ export const render = async (root) => {
     condiciones: EMISOR.defaults.condiciones,
   };
 
-  const empresaInput = (key, label, placeholder) => `
-    <label class="gen-field">
-      <span>${label}</span>
-      <input class="input" data-section="empresa" data-key="${key}"
-             value="${(settings.empresa?.[key] ?? "")}"
-             placeholder="${placeholder || ""}">
-    </label>`;
   const defaultInput = (key, label, placeholder, type = "text") => `
     <label class="gen-field">
       <span>${label}</span>
@@ -84,20 +68,14 @@ export const render = async (root) => {
       </div>
 
       <div class="card" style="margin-bottom:16px">
-        <div class="card-header"><div class="card-title">${raw(icon("user", 13))} Datos del emisor</div></div>
-        <div class="card-body">
-          <p style="font-size:12px;color:var(--text-3);margin:0 0 12px">
-            Aparecen en el encabezado y al pie de cada proforma. Si dejás un campo vacío usa el default del código.
-          </p>
-          <div class="gen-form">
-            ${raw(empresaInput("razon_social", "Razón social", FB_EMP.razon_social))}
-            ${raw(empresaInput("ruc", "RUC", FB_EMP.ruc))}
-            ${raw(empresaInput("direccion", "Dirección", FB_EMP.direccion))}
-            ${raw(empresaInput("telefono", "Teléfono", FB_EMP.telefono))}
-            ${raw(empresaInput("email", "Email comercial", FB_EMP.email))}
-            ${raw(empresaInput("firmante_nombre", "Nombre del firmante", FB_EMP.firmante_nombre))}
-            ${raw(empresaInput("firmante_cargo", "Cargo del firmante", FB_EMP.firmante_cargo))}
+        <div class="card-body" style="display:flex;justify-content:space-between;align-items:center;gap:16px">
+          <div>
+            <div style="font-size:13.5px;font-weight:600">Datos del emisor</div>
+            <div style="font-size:12px;color:var(--text-3);margin-top:2px">
+              Ahora se gestionan en la sección <b>Empresas</b> — podés tener varias y elegir cuál usa cada proforma.
+            </div>
           </div>
+          <a href="#/empresas" class="btn">Ir a Empresas</a>
         </div>
       </div>
 

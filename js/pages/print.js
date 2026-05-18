@@ -88,7 +88,7 @@ export const render = async (root, ctx) => {
   }
 
   try {
-    const inner = await renderPlanilla(detail.skin?.codigo || "corporate", fromDetail(detail, CONFIG));
+    const inner = await renderPlanilla(detail.skin?.codigo || "corporate", fromDetail(detail, { defaults: CONFIG.defaults }));
     const page = root.querySelector("[data-page]");
     if (page) page.innerHTML = inner;
   } catch (err) {

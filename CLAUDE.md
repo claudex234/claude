@@ -18,13 +18,13 @@ URL deploy: `https://duecaz.github.io/test/`
 
 - **Frontend**: vanilla JS + ESM (sin frameworks). Libs externas vía `esm.sh`.
 - **Backend**: Supabase. Project id: `epyzxfchztyplrckxgku`.
-- **Storage**: bucket `productos` (público) para imágenes.
+- **Storage**: bucket `productos` (público) para imágenes de productos, `empresa-logos` (público) para logos de empresa.
 - **Auth**: email+password (admin crea desde panel Supabase).
 - **Tests**: `node --test` (29 casos del parser). `package.json` tiene `type:module`.
 
 ## Estado actual
 
-Versión: **0.14.1**
+Versión: **0.16.0**
 
 ### Hecho
 
@@ -47,7 +47,8 @@ Versión: **0.14.1**
 | ✅ | Heatmap por zona de la hoja A4 (4 franjas) + sparkline 30 días |
 | ✅ | Device fingerprint pasivo: GPU vía WebGL, deviceMemory, pixel_ratio, network (4G/Mbps/RTT), languages, do_not_track, **webdriver=true** (bot detection), arch+bitness vía UA-CH |
 | ✅ | Competidores: páginas rastreadas tipo `link`/`html`/`pixel`. Renderer público `#/t/<slug>` + `track.js` standalone ES5 para embeber snippet en sitios externos |
-| ✅ | Configuración con datos de empresa + defaults del generador + toggle solo-PE — consumidos por las planillas via RPC (visor) y `CONFIG` global (editor/print) con fallback a `EMISOR` hardcoded para campos no configurables (logo, cuentas, tagline) |
+| ✅ | Configuración: defaults del generador + toggle solo-PE en `user_settings`; datos de empresa en tabla aparte (multi-empresa, ver abajo) |
+| ✅ | **Multi-empresa**: tabla `empresas` con razón social, RUC, dirección, contacto, firmante, logo (SVG inline o upload a Storage), cuentas bancarias y tagline. Una marcada como default. Cada proforma tiene `empresa_id` (selector en el generador). Las planillas consumen vía RPC. Fallback a `EMISOR` hardcoded si el usuario no creó ninguna |
 | ✅ | **Geo server-side**: edge function `open-apertura` lee la IP real del request, geolocaliza vía ip-api.com (país/ciudad/región + flags proxy/hosting/mobile) y llama a la RPC. El cliente ya no manda país (no falsificable). Gate solo-PE bloquea solo cuando identifica país != PE positivamente |
 | ✅ | Tests del parser (29 casos, `npm test`) |
 
@@ -163,6 +164,7 @@ Versión: **0.14.1**
 | `#/templates` | Manager de skins | sí |
 | `#/competidores` | Manager páginas rastreadas | sí |
 | `#/competidores/<id>` | Detalle de una página | sí |
+| `#/empresas` | Manager multi-empresa (CRUD + logo + cuentas + default) | sí |
 | `#/stock`, `#/adjuntos` | mock placeholders | sí |
 | `#/config` | Settings | sí |
 | `#/p/<slug>` | Visor público de proforma | **no** |
@@ -178,8 +180,9 @@ Versión: **0.14.1**
 | `productos` | RLS por owner. Soft delete vía `activo=false` |
 | `stock` | placeholder |
 | `skins` | corporate + warm tienen archivos en `/planillas/`. Otras viven solo en DB |
-| `proformas` | `numero` (PRF-YYYY-NNNN), `estado` check (borrador/enviada/vista/aceptada/rechazada/vencida) |
+| `proformas` | `numero` (PRF-YYYY-NNNN), `estado` check (borrador/enviada/vista/aceptada/rechazada/vencida), `empresa_id` FK opcional a `empresas` |
 | `proforma_items` | embed con productos vía LEFT JOIN |
+| `empresas` | Multi-empresa por usuario. owner_id + nombre + razon_social + ruc + direccion + telefono + email + firmante_nombre + firmante_cargo + tagline + subtagline + ciudad + logo_svg (raw) + logo_url (Storage) + cuentas jsonb + is_default. Índice único parcial `is_default WHERE is_default` (una default por owner) |
 | `proforma_links` | `slug` único, FK a proforma |
 | `proforma_aperturas` | link_id + ip + geo + ua + dispositivo + os + duracion_s + scroll_pct + clicks + gyro_events + print_screen_attempts + descarga + impresion + reenvio + zonas_s jsonb + meta jsonb + abierta_at + ultima_actividad_at |
 | `tracking_pages` | competidores: slug + tipo (pixel/link/html) + destino_url/contenido_html |
@@ -192,7 +195,7 @@ Versión: **0.14.1**
 
 | RPC | Quién la llama | Descripción |
 |---|---|---|
-| `get_public_proforma(slug)` | anon (visor) | Devuelve proforma + cliente + items + skin + empresa + defaults del owner (de `user_settings`) |
+| `get_public_proforma(slug)` | anon (visor) | Devuelve proforma + cliente + items + skin + empresa (resolve: proforma.empresa_id → fallback a la default del owner) + defaults del owner |
 | `open_apertura(slug, ua, dispositivo, os, referrer, idioma, timezone, pais, ciudad, region, meta, ip)` | edge function `open-apertura` | Crea apertura, gate por solo_pe. `ip`/`pais` los pasa la edge function (geo server-side). Si viene `ip` lo usa; si no, cae al header `x-forwarded-for` |
 | `tick_apertura(id, duracion_s, scroll_pct, clicks, gyro_events, prntscr, descarga, impresion, zonas, ua, dispositivo, os, closing)` | anon | Heartbeat. Idempotente y monótono. `closing=true` expira la sesión |
 | `get_tracking_page(slug)` | anon | Datos mínimos para renderer de Competidores |

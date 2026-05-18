@@ -7,23 +7,32 @@
 // Todos producen el MISMO shape, así una sola planilla sirve para los 3
 // caminos sin caso especial.
 //
-// El emisor y los términos pueden venir de tres fuentes (en orden de
-// prioridad):
-//   1. user_settings.empresa / user_settings.defaults (configurables desde /config)
-//   2. Lo que cargó el usuario en el editor (override por proforma, solo terminos)
-//   3. EMISOR hardcoded en data/empresa.js (fallback histórico + cuentas/logo)
+// Emisor: viene del objeto empresa elegido para esa proforma (tabla
+// `empresas`). Si no hay empresa asignada/cargada, fallback a EMISOR
+// hardcoded (data/empresa.js). Cada empresa tiene su propio logo,
+// razón social, RUC y cuentas bancarias.
+// Términos: settings.defaults del usuario (globales, no por empresa),
+// con overrides per-proforma del editor.
 
 import { fmtMoney, fmtDate } from "./utils.js";
 import { EMISOR, BLOQUES_PANTALLA } from "../data/empresa.js";
 
 const money = (n) => fmtMoney(n).replace("S/ ", "");
 
-// Merge de settings.empresa (snake_case desde DB) con el EMISOR
-// hardcoded. La forma camelCase es la que esperan las planillas.
-// Campos NO configurables hoy (logoSvg, cuentas, tagline...) salen de
-// EMISOR; el resto, si están en settings, sobreescribe.
-const buildEmisor = (empresaFromSettings) => {
-  const s = empresaFromSettings || {};
+// Merge del objeto empresa (snake_case desde DB / RPC) con el EMISOR
+// hardcoded como último fallback. La forma camelCase es la que esperan
+// las planillas. El logo puede venir como SVG inline (logo_svg) o como
+// URL de Storage (logo_url); unificamos a `logoSvg` con un <img> en el
+// segundo caso para que los templates no cambien.
+const logoHtml = (s) => {
+  if (s.logo_svg) return s.logo_svg;
+  if (s.logo_url) return `<img src="${s.logo_url}" alt="logo" style="max-width:100%;max-height:100%;object-fit:contain">`;
+  return EMISOR.logoSvg;
+};
+
+const buildEmisor = (empresa) => {
+  const s = empresa || {};
+  const cuentas = Array.isArray(s.cuentas) && s.cuentas.length ? s.cuentas : EMISOR.cuentas;
   return {
     razonSocial: s.razon_social || EMISOR.razonSocial,
     ruc: s.ruc || EMISOR.ruc,
@@ -32,11 +41,11 @@ const buildEmisor = (empresaFromSettings) => {
     email: s.email || EMISOR.email,
     firmante: s.firmante_nombre || EMISOR.firmante,
     firmanteCargo: s.firmante_cargo || null,
-    tagline: EMISOR.tagline,
-    subtagline: EMISOR.subtagline,
-    ciudad: EMISOR.ciudad,
-    logoSvg: EMISOR.logoSvg,
-    cuentas: EMISOR.cuentas,
+    tagline: s.tagline || EMISOR.tagline,
+    subtagline: s.subtagline || EMISOR.subtagline,
+    ciudad: s.ciudad || EMISOR.ciudad,
+    logoSvg: logoHtml(s),
+    cuentas,
   };
 };
 
@@ -58,11 +67,12 @@ const baseBloques = () => ({
 });
 
 // Para el editor (PRODUCTOS catálogo en memoria, totales sobre la marcha).
-// settings = { empresa, defaults } desde CONFIG (loader.js).
-export const fromEditorState = (s, PRODUCTOS, totals, settings = {}) => ({
+// ctx = { empresa, defaults }. `empresa` es el objeto completo elegido
+// para esta proforma (desde EMPRESAS). `defaults` viene de CONFIG.
+export const fromEditorState = (s, PRODUCTOS, totals, ctx = {}) => ({
   numero: s.numero,
   fecha: fmtDate(s.emitidaIso),
-  emisor: buildEmisor(settings.empresa),
+  emisor: buildEmisor(ctx.empresa),
   cliente: {
     razon: s.cliente.razonSocial || "—",
     ruc: s.cliente.ruc,
@@ -70,7 +80,7 @@ export const fromEditorState = (s, PRODUCTOS, totals, settings = {}) => ({
     email: s.cliente.email,
     telefono: s.cliente.telefono,
   },
-  terminos: buildTerminos(settings.defaults, {
+  terminos: buildTerminos(ctx.defaults, {
     tiempoEntrega: s.terminos.tiempoEntrega,
     validez: s.terminos.validez,
   }),
@@ -136,19 +146,19 @@ export const fromRpcPayload = (payload) => {
 };
 
 // Para la vista de impresión interna — fetchProformaDetail con embed
-// de productos.codigo en cada item. settings = { empresa, defaults }.
-export const fromDetail = (detail, settings = {}) => {
+// de productos.codigo y empresas(*) en el detail. ctx = { defaults }.
+export const fromDetail = (detail, ctx = {}) => {
   const p = detail.proforma;
   const c = detail.cliente || {};
   return {
     numero: p.numero,
     fecha: fmtDate(p.emitida),
-    emisor: buildEmisor(settings.empresa),
+    emisor: buildEmisor(detail.empresa),
     cliente: {
       razon: c.razon_social || "—",
       ruc: c.ruc, contacto: c.contacto, email: c.email, telefono: c.telefono,
     },
-    terminos: buildTerminos(settings.defaults),
+    terminos: buildTerminos(ctx.defaults),
     items: (detail.items || []).map((it) => ({
       qty: it.qty,
       precio: money(it.precio_unit),

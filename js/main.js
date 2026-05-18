@@ -93,6 +93,7 @@ const boot = async () => {
   setOutlet(document.getElementById("route-outlet"));
 
   registerRoute("config", () => import("./pages/config.js"));
+  registerRoute("empresas", () => import("./pages/empresas.js"));
   registerRoute("proformas", () => import("./pages/listado.js"));
   registerRoute("generador", () => import("./pages/generador.js"));
   registerRoute("detalle", () => import("./pages/detalle.js"));

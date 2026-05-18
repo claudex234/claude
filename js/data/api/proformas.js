@@ -40,7 +40,7 @@ const buildItemRows = (proformaId, items, productoIds) =>
 // items = [{ qty, modelo, nombre, precio }]
 // cliente = { razonSocial, ruc, contacto, email, telefono }
 // skinCodigo = "corporate" | "warm" | …
-export const createProforma = async ({ estado, cliente, asunto, items, skinCodigo }) => {
+export const createProforma = async ({ estado, cliente, asunto, items, skinCodigo, empresaId = null }) => {
   if (!Array.isArray(items) || !items.length) throw new Error("Agregá al menos un ítem");
   const user = await requireUser();
   const cliente_id = await findOrCreateCliente(user.id, {
@@ -64,6 +64,7 @@ export const createProforma = async ({ estado, cliente, asunto, items, skinCodig
       emitida: today, validez,
       ...totals, moneda: "PEN",
       skin_id,
+      empresa_id: empresaId || null,
       owner_id: user.id,
     })
     .select()
@@ -95,7 +96,7 @@ export const createProforma = async ({ estado, cliente, asunto, items, skinCodig
 // Edita una proforma existente. Reemplaza todos los items (borra + inserta)
 // y actualiza cliente/totales/skin/asunto. No cambia el numero ni emitida.
 // estado: si viene, se actualiza; si no, queda como estaba.
-export const updateProforma = async (proformaId, { cliente, asunto, items, skinCodigo, estado }) => {
+export const updateProforma = async (proformaId, { cliente, asunto, items, skinCodigo, estado, empresaId }) => {
   if (!proformaId) throw new Error("Falta proformaId");
   if (!Array.isArray(items) || !items.length) throw new Error("Agregá al menos un ítem");
   const user = await requireUser();
@@ -112,6 +113,7 @@ export const updateProforma = async (proformaId, { cliente, asunto, items, skinC
 
   const patch = { cliente_id, asunto: asunto || null, ...totals, skin_id };
   if (estado) patch.estado = estado;
+  if (empresaId !== undefined) patch.empresa_id = empresaId || null;
 
   const { data: prof, error } = await supabase
     .from("proformas")
@@ -169,7 +171,7 @@ export const fetchProformaDetail = async (idOrNumero) => {
   if (error) throw error;
   if (!prof) return null;
 
-  const [clienteRes, itemsRes, linkRes, skinRes] = await Promise.all([
+  const [clienteRes, itemsRes, linkRes, skinRes, empresaRes] = await Promise.all([
     prof.cliente_id
       ? supabase.from("clientes").select("*").eq("id", prof.cliente_id).maybeSingle()
       : Promise.resolve({ data: null }),
@@ -177,6 +179,9 @@ export const fetchProformaDetail = async (idOrNumero) => {
     supabase.from("proforma_links").select("slug").eq("proforma_id", prof.id).limit(1),
     prof.skin_id
       ? supabase.from("skins").select("codigo, nombre").eq("id", prof.skin_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    prof.empresa_id
+      ? supabase.from("empresas").select("*").eq("id", prof.empresa_id).maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
 
@@ -186,5 +191,6 @@ export const fetchProformaDetail = async (idOrNumero) => {
     items: itemsRes.data || [],
     slug: linkRes.data?.[0]?.slug || null,
     skin: skinRes.data || null,
+    empresa: empresaRes.data || null,
   };
 };

@@ -22,6 +22,14 @@ export {
 } from "./api/settings.js";
 
 export {
+  fetchEmpresas,
+  upsertEmpresa,
+  deleteEmpresa,
+  setDefaultEmpresa,
+  uploadEmpresaLogo,
+} from "./api/empresas.js";
+
+export {
   fetchAperturas,
   fetchLiveProformaIds,
   isLiveApertura,
