@@ -2,7 +2,7 @@
 // hero del visitante actual + score de engagement + tag de tipo +
 // stats resumidas y tabla de aperturas.
 
-import { fmtTime, escapeHtml as e, ago } from "./utils.js";
+import { fmtTime, fmtDateTime, escapeHtml as e, ago } from "./utils.js";
 import { isLiveApertura } from "../data/api/aperturas.js";
 import { icon } from "./icons.js";
 
@@ -218,8 +218,6 @@ const aperturasTable = (aperturas) => `
   </details>`;
 
 // === Export principal ====================================================
-
-import { fmtDateTime } from "./utils.js";
 
 // Card "Sesión actual" — datos del último visitante (dispositivo, OS,
 // IP, ubicación, idioma, timezone, pantalla, CPU cores, referrer).

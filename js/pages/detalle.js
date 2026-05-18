@@ -1,5 +1,6 @@
 // Detalle de una proforma — datos reales desde Supabase. El bloque de
-// tracking (stats + sparkline + heatmap + tabla) está en lib/tracking_view.js.
+// tracking (sesión actual + resumen + tabla de aperturas) está en
+// lib/tracking_view.js.
 
 import { html, raw, el, on, fmtMoney, fmtDate, escapeHtml as e } from "../lib/utils.js";
 import { icon } from "../lib/icons.js";
