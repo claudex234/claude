@@ -14,6 +14,17 @@ const slugFromHash = () => {
   return m ? m[1] : null;
 };
 
+// Whitelist de protocolos para redirect del tipo "link". Sin esto, un
+// destino "javascript:alert(1)" guardado por accidente (o por compromiso
+// de la DB) ejecutaría código en el visitante.
+const isSafeRedirectUrl = (s) => {
+  if (!s || typeof s !== "string") return false;
+  try {
+    const u = new URL(s, location.origin);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch { return false; }
+};
+
 // Hit a la edge function track-hit. La geo (país/ciudad/región + flags
 // proxy/hosting) la resuelve la función desde la IP real del request,
 // el cliente ya no manda país. Devuelve el id del hit (o null).
@@ -92,7 +103,10 @@ export const render = async (root) => {
 
   // 3) Renderizar según tipo
   if (page.tipo === "link") {
-    // Pequeño delay para asegurar que el hit se envió.
+    if (!isSafeRedirectUrl(page.destino_url)) {
+      showError(root, "Destino inválido.");
+      return () => {};
+    }
     root.innerHTML = `
       <div style="display:grid;place-items:center;height:100vh;color:#666;font:14px system-ui">
         Redirigiendo…
