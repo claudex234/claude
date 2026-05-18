@@ -130,7 +130,14 @@ export const startTracking = async ({ slug, root, onBlocked }) => {
     descarga: false,
     impresion: false,
     zonas: {},
+    // (x, y) normalizado 0-1 sobre la hoja A4, con t = seg desde apertura.
+    // Cap a 200 para no inflar el jsonb si alguien clickea como loco.
+    clicks_xy: [],
+    // {x, y, s, t} — eventos de zoom (pinch o ctrl+wheel). Cap a 50.
+    zooms: [],
   };
+  const MAX_CLICKS_XY = 200;
+  const MAX_ZOOMS = 50;
 
   // Overlays de zonas — solo cuando hay tracking real.
   const zones = installZones(root);
@@ -169,9 +176,63 @@ export const startTracking = async ({ slug, root, onBlocked }) => {
   window.addEventListener("scroll", onScroll, { passive: true });
   onScroll();
 
-  // Clicks dentro del visor
-  const onClick = () => { state.clicks++; };
+  // Clicks dentro del visor — contador + coords normalizadas (0-1)
+  // relativas a la hoja A4. getBoundingClientRect ya devuelve coords
+  // post-transform:scale, así que (clientX - rect.left)/rect.width es
+  // exacto sin compensar por el escalado del a4_fit.
+  const onClick = (ev) => {
+    state.clicks++;
+    const page = root?.querySelector(".pv-page") || root?.querySelector(".vp-doc, .pv-doc");
+    if (page && state.clicks_xy.length < MAX_CLICKS_XY) {
+      const r = page.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) {
+        const x = (ev.clientX - r.left) / r.width;
+        const y = (ev.clientY - r.top) / r.height;
+        if (x >= 0 && x <= 1 && y >= 0 && y <= 1) {
+          state.clicks_xy.push({
+            x: +x.toFixed(4),
+            y: +y.toFixed(4),
+            t: state.duracion_s,
+          });
+        }
+      }
+    }
+  };
   if (root) root.addEventListener("click", onClick, { capture: true });
+
+  // Zoom — pinch (visualViewport.scale) y ctrl+wheel (desktop).
+  let lastScale = 1;
+  const recordZoom = (scale, clientX, clientY) => {
+    if (state.zooms.length >= MAX_ZOOMS) return;
+    const page = root?.querySelector(".pv-page") || root?.querySelector(".vp-doc, .pv-doc");
+    if (!page) return;
+    const r = page.getBoundingClientRect();
+    if (r.width <= 0 || r.height <= 0) return;
+    const x = (clientX - r.left) / r.width;
+    const y = (clientY - r.top) / r.height;
+    state.zooms.push({
+      x: +Math.max(0, Math.min(1, x)).toFixed(4),
+      y: +Math.max(0, Math.min(1, y)).toFixed(4),
+      s: +scale.toFixed(2),
+      t: state.duracion_s,
+    });
+  };
+  const onVisualViewport = () => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    if (Math.abs(vv.scale - lastScale) < 0.05) return;
+    lastScale = vv.scale;
+    // Centro del viewport visible como aproximación del foco del zoom.
+    recordZoom(vv.scale, vv.offsetLeft + vv.width / 2, vv.offsetTop + vv.height / 2);
+  };
+  window.visualViewport?.addEventListener("resize", onVisualViewport);
+  const onWheel = (ev) => {
+    if (!ev.ctrlKey) return;
+    const dir = ev.deltaY < 0 ? 1.1 : 0.9;
+    lastScale = lastScale * dir;
+    recordZoom(lastScale, ev.clientX, ev.clientY);
+  };
+  window.addEventListener("wheel", onWheel, { passive: true });
 
   // Impresión real (Ctrl+P o menu → file → print)
   const onBeforePrint = () => { state.impresion = true; flush(); };
@@ -216,6 +277,8 @@ export const startTracking = async ({ slug, root, onBlocked }) => {
       p_descarga: state.descarga,
       p_impresion: state.impresion,
       p_zonas: Object.keys(state.zonas).length ? state.zonas : null,
+      p_clicks_xy: state.clicks_xy.length ? state.clicks_xy : null,
+      p_zooms: state.zooms.length ? state.zooms : null,
       // Refrescamos device/os/UA en cada tick: si el visor se cargó
       // antes de un deploy con detección mejorada (UA-CH), una sesión
       // existente se corrige sola al próximo heartbeat.
@@ -262,6 +325,8 @@ export const startTracking = async ({ slug, root, onBlocked }) => {
       window.removeEventListener("blur", onVis);
       window.removeEventListener("scroll", onScroll);
       if (root) root.removeEventListener("click", onClick, { capture: true });
+      window.visualViewport?.removeEventListener("resize", onVisualViewport);
+      window.removeEventListener("wheel", onWheel);
       window.removeEventListener("beforeprint", onBeforePrint);
       document.removeEventListener("keydown", onKey, true);
       window.removeEventListener("pagehide", onUnload);

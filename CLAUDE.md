@@ -24,7 +24,7 @@ URL deploy: `https://duecaz.github.io/test/`
 
 ## Estado actual
 
-Versión: **0.16.1**
+Versión: **0.17.0**
 
 ### Hecho
 
@@ -45,6 +45,7 @@ Versión: **0.16.1**
 | ✅ | Live indicator "Abierta ahora" — dot verde pulsante en filas + en panel. Open detection ≤4s, close ≤3s (tick con `p_closing=true`) |
 | ✅ | Sesión actual rediseñada: **hero** (icono device + título + país + red) + **tag visitante** (bot/cliente/reenvío/extranjero/etc) + **engagement score 0-100** + **detalles colapsables** |
 | ✅ | Heatmap por zona de la hoja A4 (4 franjas) + sparkline 30 días |
+| ✅ | **Heatmap por X/Y**: cada click guarda (x,y) normalizado 0-1 sobre la hoja A4 + cada zoom (pinch o ctrl+wheel) guarda (x,y,s,t). Render en panel admin con dots translúcidos `mix-blend-mode:multiply` (overlap = hot spot) sobre mini A4 con ratio 210:297. Cap 200 clicks / 50 zooms por apertura |
 | ✅ | Device fingerprint pasivo: GPU vía WebGL, deviceMemory, pixel_ratio, network (4G/Mbps/RTT), languages, do_not_track, **webdriver=true** (bot detection), arch+bitness vía UA-CH |
 | ✅ | Competidores: páginas rastreadas tipo `link`/`html`/`pixel`. Renderer público `#/t/<slug>` + `track.js` standalone ES5 para embeber snippet en sitios externos |
 | ✅ | Configuración: defaults del generador + toggle solo-PE en `user_settings`; datos de empresa en tabla aparte (multi-empresa, ver abajo) |
@@ -60,7 +61,6 @@ Versión: **0.16.1**
 | Media | **Más planillas** (minimal/bold/editorial/tech). Hoy solo corporate + warm. Las 4 placeholder de DB se borraron — hay que crear nuevas desde la UI |
 | Media | **Mobile responsive del admin** (visor sí está optimizado). El listado/generador no testeado en mobile |
 | Media | **Bug visor: loop de resize con FancyZones/snap** — al soltar la ventana del browser en una zona de PowerToys FancyZones (Shift+drop), la hoja A4 entra en loop: agranda/achica indefinido. Causa probable: `ResizeObserver` en `lib/a4_fit.js` ping-pong contra `transform: scale` (cambio de scale → relayout → resize event → otro cambio de scale). Fix: debounce con `requestAnimationFrame` + medir el contenedor padre (no escalado), o cortar el observer cuando el scale no cambió |
-| Baja | **Heatmap por coordenadas X/Y** de clicks (hoy solo por zona) — requiere guardar coords en cada click |
 | Baja | **Movimientos del dispositivo segmentados** (vertical/horizontal/rotación/quieto/agitado) con timeline — requiere samplear gyro con timestamps |
 | Baja | **Mini mapa de ubicación**, indicador de red visual tipo señal wifi, comparativa apertura vs promedio del cliente |
 

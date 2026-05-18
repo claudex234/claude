@@ -234,6 +234,26 @@ const row = (label, val, mono = false) => {
 
 const yesNo = (v) => v === true ? "Sí" : (v === false ? "No" : null);
 
+// Heatmap mini sobre la hoja A4 (ratio 210:297). Cada click es un dot
+// translúcido con mix-blend-mode multiply — overlaps se oscurecen solos
+// sin tener que calcular densidad. Zooms se marcan con un "+" azul.
+const renderHeatmap = (clicks_xy, zooms) => {
+  const clicks = Array.isArray(clicks_xy) ? clicks_xy : [];
+  const zoomList = Array.isArray(zooms) ? zooms : [];
+  if (!clicks.length && !zoomList.length) return "";
+  const dots = clicks.map((c) =>
+    `<div class="hm-dot" style="left:${(c.x * 100).toFixed(2)}%;top:${(c.y * 100).toFixed(2)}%"></div>`
+  ).join("");
+  const marks = zoomList.map((z) =>
+    `<div class="hm-zoom" style="left:${(z.x * 100).toFixed(2)}%;top:${(z.y * 100).toFixed(2)}%" title="zoom ×${z.s} @ ${z.t}s">+</div>`
+  ).join("");
+  return `
+    <div class="heatmap-section">
+      <div class="heatmap-label">Mapa de interacción · ${clicks.length} click${clicks.length === 1 ? "" : "s"}${zoomList.length ? ` · ${zoomList.length} zoom${zoomList.length === 1 ? "" : "s"}` : ""}</div>
+      <div class="heatmap-doc">${dots}${marks}</div>
+    </div>`;
+};
+
 const sessionCard = (a) => {
   if (!a) return "";
   const live = isLiveApertura(a);
@@ -300,6 +320,12 @@ const sessionCard = (a) => {
         ${fmtTime(duracion)} · ${scroll}% scroll · ${clicks} clicks
       </span>
     </div>`;
+
+  // --- HEATMAP: clicks (x,y normalizado) + zooms sobre la hoja A4 ---
+  // Los dots usan mix-blend-mode multiply: overlap = más oscuro = hot spot
+  // sin tener que calcular densidad. Coords ya vienen en 0-1.
+  const heatmap = renderHeatmap(a.clicks_xy, a.zooms);
+
   const engagement = `
     <div class="engagement">
       <div class="engagement-label">Engagement</div>
@@ -351,6 +377,7 @@ const sessionCard = (a) => {
       ${hero}
       ${tagRow}
       ${engagement}
+      ${heatmap}
       ${details}
     </div>`;
 };
