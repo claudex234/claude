@@ -564,7 +564,7 @@ body {
 .tweaks-panel {
   position: fixed; top: 0; right: 0; bottom: 0;
   width: 320px; background: var(--surface); border-left: 1px solid var(--border);
-  box-shadow: -8px 0 24px rgba(0,0,0,.25); z-index: 50;
+  box-shadow: -8px 0 24px rgba(0,0,0,.25); z-index: 51;
   display: flex; flex-direction: column;
 }
 .tweaks-header {
@@ -1176,8 +1176,10 @@ tr.row-selected td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 /* Editor de producto: imagen 200px + form. En mobile colapsa a 1 col. */
 .prod-editor-grid { display: grid; grid-template-columns: 200px 1fr; gap: 18px; }
 
-/* Cuenta bancaria del editor de empresas: banco|moneda|numero|cci|titular|del */
-.cuenta-row { grid-template-columns: 1fr 1fr 1fr 1fr 1.2fr auto; }
+/* Cuenta bancaria del editor de empresas: banco|moneda|numero|cci|titular|del.
+   display:grid esta tambien en el inline style, pero lo declaramos aca
+   para que la clase sea suficiente si en el futuro removemos el inline. */
+.cuenta-row { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 1.2fr auto; }
 
 /* ============================================================
    RESPONSIVE — admin en tablet/mobile
@@ -1248,8 +1250,10 @@ tr.row-selected td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
   /* Forms 2-col → 1 col */
   .gen-form { grid-template-columns: 1fr; }
 
-  /* Generador: stack vertical (editor arriba, preview abajo) */
-  .gen-shell { height: auto; min-height: calc(100vh - 56px); }
+  /* Generador: stack vertical (editor arriba, preview abajo).
+     Usamos 100dvh (dynamic viewport) para que respete navbars dinamicas
+     de Android/iOS — 100vh fijo dejaba 50px de scroll al fondo. */
+  .gen-shell { height: auto; min-height: calc(100dvh - 56px); }
   .gen-bar { flex-wrap: wrap; padding: 8px 12px; gap: 8px; }
   .gen-bar-title { flex: 1 1 100%; order: 1; }
   .gen-actions { order: 2; flex: 1 1 100%; justify-content: flex-end; flex-wrap: wrap; }
