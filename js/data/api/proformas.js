@@ -7,23 +7,15 @@ import {
 } from "./helpers.js";
 
 // Próximo correlativo PRF-YYYY-NNNN para el usuario actual.
-export const nextNumero = async (userId) => {
-  const year = new Date().getFullYear();
-  const prefix = `PRF-${year}-`;
-  const { data, error } = await supabase
-    .from("proformas")
-    .select("numero")
-    .eq("owner_id", userId)
-    .like("numero", `${prefix}%`)
-    .order("numero", { ascending: false })
-    .limit(1);
+// Antes calculaba SELECT max() + 1 en cliente → race condition con dos
+// pestañas guardando concurrente (unique violation crash). Ahora la
+// RPC usa una tabla counter con UPDATE atómico.
+// El param userId queda por compatibilidad — la RPC lo resuelve via auth.uid().
+// eslint-disable-next-line no-unused-vars
+export const nextNumero = async (_userId) => {
+  const { data, error } = await supabase.rpc("next_proforma_numero");
   if (error) throw error;
-  let n = 1;
-  if (data && data.length) {
-    const last = parseInt(data[0].numero.slice(prefix.length), 10);
-    if (Number.isFinite(last)) n = last + 1;
-  }
-  return prefix + String(n).padStart(4, "0");
+  return data;
 };
 
 const buildItemRows = (proformaId, items, productoIds) =>

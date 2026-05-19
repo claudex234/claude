@@ -4,7 +4,6 @@
 // en un browser; esto sólo dificulta y deja huella.)
 import { supabase } from "../lib/supabase.js";
 import { escapeHtml as e } from "../lib/utils.js";
-import { EMISOR } from "../data/empresa.js";
 import { renderPlanilla, renderPlanillaWith } from "../lib/planillas.js";
 import { mountA4Fit } from "../lib/a4_fit.js";
 import { fromRpcPayload } from "../lib/planilla_data.js";
@@ -75,7 +74,9 @@ const renderAdjuntos = (adjuntos) => {
 };
 
 const renderViewer = async (payload, slug) => {
-  const p = payload.proforma;
+  // El visor muestra solo la hoja A4: la planilla ya tiene su propio
+  // encabezado con emisor/número/etc. La barra superior previa
+  // (.vp-bar) duplicaba info y distraia → removida.
   const data = fromRpcPayload(payload);
   const inner = (payload.skin_html || payload.skin_css)
     ? renderPlanillaWith({ html: payload.skin_html, css: payload.skin_css }, data)
@@ -89,17 +90,6 @@ const renderViewer = async (payload, slug) => {
   return `
     <div class="vp-shell">
       ${wmEnabled ? `<div class="vp-watermark" aria-hidden="true">${Array.from({ length: 60 }, () => `<span>${e(wm)}</span>`).join("")}</div>` : ""}
-      <header class="vp-bar">
-        <div class="vp-bar-emisor">
-          <div>
-            <div class="vp-bar-name">${e(EMISOR.razonSocial)}</div>
-            <div class="vp-bar-meta">Proforma ${e(p.numero)}</div>
-          </div>
-        </div>
-        <div class="vp-bar-warn" title="No se permite capturar ni descargar este documento">
-          Vista protegida · ${e(slug)}
-        </div>
-      </header>
       <main class="vp-stage">
         <div class="vp-fit">
           <div class="pv-doc">

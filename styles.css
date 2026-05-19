@@ -714,11 +714,6 @@ body {
 /* ============ Visor público (/p/<slug>) ============ */
 body.vp-public { background: #1a1d23; color: #e6e8ec; overflow: hidden; }
 .vp-shell { position: relative; width: 100vw; height: 100vh; display: flex; flex-direction: column; user-select: none; -webkit-user-select: none; }
-.vp-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 12px 24px; background: #11141a; border-bottom: 1px solid #262b35; flex: 0 0 auto; }
-.vp-bar-emisor { display: flex; gap: 12px; align-items: center; }
-.vp-bar-name { font-weight: 700; font-size: 14px; color: #fff; }
-.vp-bar-meta { font-size: 11.5px; color: #8a8f9a; font-family: var(--font-mono); }
-.vp-bar-warn { font-size: 12px; color: #fbbf24; padding: 4px 12px; background: rgba(251, 191, 36, 0.08); border: 1px solid rgba(251, 191, 36, 0.4); border-radius: 999px; font-family: var(--font-mono); }
 
 .vp-stage { flex: 1; min-height: 0; overflow: auto; scrollbar-gutter: stable; padding: 32px; display: flex; justify-content: center; }
 .vp-fit { position: relative; }

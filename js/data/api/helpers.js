@@ -15,42 +15,27 @@ export const randomSlug = () => {
   return Array.from(a, (b) => b.toString(36).padStart(2, "0")).join("").slice(0, 14);
 };
 
-// Busca un cliente por RUC (si está) o razón social. Si existe, le hace
-// patch a los campos blandos y devuelve su id. Si no, lo crea.
-export const findOrCreateCliente = async (userId, { razon_social, ruc, contacto, email, telefono }) => {
-  const rs = (razon_social || "").trim();
-  if (!rs) throw new Error("Falta el cliente");
-  const cleanRuc = (ruc || "").trim();
-  let q = supabase.from("clientes").select("id").eq("owner_id", userId);
-  q = cleanRuc ? q.eq("ruc", cleanRuc) : q.eq("razon_social", rs);
-  const { data, error } = await q.limit(1);
+// Busca un cliente por RUC (si está) o razón social. Si existe, devuelve
+// su id; si no, lo crea.
+//
+// Antes hacía SELECT → INSERT en cliente con race condition: dos
+// guardados concurrentes con mismo RUC duplicaban el cliente. Ahora la
+// RPC usa ON CONFLICT atómico contra el unique index parcial
+// clientes_owner_ruc_uq.
+//
+// _userId queda por compatibilidad de firma — la RPC resuelve owner_id
+// via auth.uid().
+// eslint-disable-next-line no-unused-vars
+export const findOrCreateCliente = async (_userId, { razon_social, ruc, contacto, email, telefono }) => {
+  const { data, error } = await supabase.rpc("find_or_create_cliente", {
+    p_razon_social: razon_social || "",
+    p_ruc: ruc || null,
+    p_contacto: contacto || null,
+    p_email: email || null,
+    p_telefono: telefono || null,
+  });
   if (error) throw error;
-  if (data && data.length) {
-    const id = data[0].id;
-    const patch = {};
-    if (contacto) patch.contacto = contacto.trim();
-    if (email) patch.email = email.trim();
-    if (telefono) patch.telefono = telefono.trim();
-    if (cleanRuc) patch.ruc = cleanRuc;
-    if (Object.keys(patch).length) {
-      await supabase.from("clientes").update(patch).eq("id", id);
-    }
-    return id;
-  }
-  const { data: ins, error: e2 } = await supabase
-    .from("clientes")
-    .insert({
-      razon_social: rs,
-      ruc: cleanRuc || null,
-      contacto: contacto?.trim() || null,
-      email: email?.trim() || null,
-      telefono: telefono?.trim() || null,
-      owner_id: userId,
-    })
-    .select("id")
-    .single();
-  if (e2) throw e2;
-  return ins.id;
+  return data;
 };
 
 // codigo (string) → uuid (de tabla productos), para escribir items.
