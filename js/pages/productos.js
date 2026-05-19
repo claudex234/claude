@@ -99,7 +99,7 @@ export const render = async (root) => {
         <button class="btn btn-sm btn-ghost" data-action="close">${icon("x", 14)}</button>
       </div>
 
-      <div style="display:grid;grid-template-columns:200px 1fr;gap:18px">
+      <div class="prod-editor-grid">
         <div>
           <div style="background:#0a1f4d;display:grid;place-items:center;height:160px;border-radius:6px;overflow:hidden;margin-bottom:8px">
             <img data-preview src="${e(f.imagen_url || FALLBACK_IMAGE)}" style="width:90%;max-height:140px;object-fit:contain">

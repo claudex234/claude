@@ -24,7 +24,7 @@ URL deploy: `https://duecaz.github.io/test/`
 
 ## Estado actual
 
-Versión: **0.19.6**
+Versión: **0.20.0**
 
 ### Hecho
 
@@ -59,7 +59,7 @@ Versión: **0.19.6**
 | Prioridad | Tarea |
 |---|---|
 | Media | **Más planillas** (minimal/bold/editorial/tech). Hoy solo corporate + warm. Las 4 placeholder de DB se borraron — hay que crear nuevas desde la UI |
-| Media | **Mobile responsive del admin** (visor sí está optimizado). El listado/generador no testeado en mobile |
+| ~~Media~~ | ~~Mobile responsive del admin~~ — hecho en 0.20.0: sidebar drawer en mobile, generador stack vertical, forms 1-col, listado aside abajo, cuenta-row + prod-row colapsan |
 | Media | **Bug visor: loop de resize con FancyZones/snap** — al soltar la ventana del browser en una zona de PowerToys FancyZones (Shift+drop), la hoja A4 entra en loop: agranda/achica indefinido. Causa probable: `ResizeObserver` en `lib/a4_fit.js` ping-pong contra `transform: scale` (cambio de scale → relayout → resize event → otro cambio de scale). Fix: debounce con `requestAnimationFrame` + medir el contenedor padre (no escalado), o cortar el observer cuando el scale no cambió |
 | Baja | **Movimientos del dispositivo segmentados** (vertical/horizontal/rotación/quieto/agitado) con timeline — requiere samplear gyro con timestamps |
 | Baja | **Mini mapa de ubicación**, indicador de red visual tipo señal wifi, comparativa apertura vs promedio del cliente |

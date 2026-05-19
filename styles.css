@@ -628,7 +628,7 @@ body {
 
 .gen-section { padding: 14px 0; border-top: 1px solid var(--border); }
 .gen-section:first-child { border-top: 0; padding-top: 12px; }
-.gen-section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.gen-section-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
 .gen-section-title { font-size: 10.5px; font-weight: 700; letter-spacing: .8px; color: var(--text-2); text-transform: uppercase; }
 .gen-section-hint { font-size: 11px; color: var(--text-mute); }
 
@@ -649,7 +649,7 @@ body {
 .gen-field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .gen-field-full { grid-column: 1 / -1; }
 .gen-field span { font-size: 10.5px; font-weight: 600; color: var(--text-mute); text-transform: uppercase; letter-spacing: .4px; }
-.gen-quick-add { display: flex; gap: 5px; }
+.gen-quick-add { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
 
 .prod-list { display: flex; flex-direction: column; gap: 6px; }
 .prod-empty { padding: 14px; text-align: center; color: var(--text-mute); font-size: 12px; border: 1px dashed var(--border); border-radius: var(--radius); }
@@ -1171,4 +1171,145 @@ tr.row-selected td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
   display: grid; place-items: center;
   transform: translate(-50%, -50%);
   pointer-events: none;
+}
+
+/* Editor de producto: imagen 200px + form. En mobile colapsa a 1 col. */
+.prod-editor-grid { display: grid; grid-template-columns: 200px 1fr; gap: 18px; }
+
+/* Cuenta bancaria del editor de empresas: banco|moneda|numero|cci|titular|del */
+.cuenta-row { grid-template-columns: 1fr 1fr 1fr 1fr 1.2fr auto; }
+
+/* ============================================================
+   RESPONSIVE — admin en tablet/mobile
+   Breakpoints:
+   - <= 1024px: sidebar pasa a drawer overlay, listado split a 1 col
+   - <= 720px: forms a 1 col, generador stack vertical, prod-row stack
+   ============================================================ */
+
+/* Hamburger oculto por default; backdrop oculto */
+.topbar-hamburger { display: none !important; }
+.drawer-backdrop {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0, 0, 0, .45);
+  z-index: 49;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 1024px) {
+  /* Sidebar como drawer: overlay con slide-in */
+  .topbar-hamburger { display: inline-flex !important; }
+  .app,
+  .app:has(.sidebar-collapsed) { grid-template-columns: 1fr; }
+
+  .sidebar {
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    z-index: 50;
+    width: 260px; max-width: 80vw;
+    transform: translateX(-100%);
+    transition: transform .22s ease;
+    box-shadow: 0 0 20px rgba(0, 0, 0, .2);
+  }
+  body.drawer-open .sidebar { transform: translateX(0); }
+  body.drawer-open .drawer-backdrop { display: block; }
+
+  /* En drawer ignoramos el modo collapsed (siempre full) */
+  .sidebar.sidebar-collapsed { padding: 20px 14px; }
+  .sidebar.sidebar-collapsed .nav-item { justify-content: flex-start; padding: 10px 12px; gap: 10px; }
+  .sidebar.sidebar-collapsed .brand { justify-content: flex-start; padding: 0 4px 4px; }
+  .sidebar.sidebar-collapsed .user-card { padding: 12px; justify-content: flex-start; }
+  /* El toggle de colapsado no tiene sentido en drawer: ocultarlo */
+  .sidebar-toggle { display: none !important; }
+
+  /* Topbar más compacto + ocultar versión */
+  .topbar { padding: 0 12px; gap: 10px; }
+  .topbar-ver { display: none; }
+
+  /* Listado: el panel tracking pasa debajo del listado (no se oculta).
+     La regla previa en @1180 escondía el aside; acá lo restauramos para
+     que se muestre al final cuando hay una proforma seleccionada. */
+  .proforma-split { grid-template-columns: 1fr; }
+  .proforma-split-aside {
+    display: block;
+    max-height: none;
+    position: static;
+    border-top: 1px solid var(--border);
+    margin-top: 12px;
+    padding-top: 12px;
+  }
+
+  .page { padding: 16px 16px 80px; }
+  .page-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+  .page-header > * { width: 100%; }
+}
+
+@media (max-width: 720px) {
+  /* Forms 2-col → 1 col */
+  .gen-form { grid-template-columns: 1fr; }
+
+  /* Generador: stack vertical (editor arriba, preview abajo) */
+  .gen-shell { height: auto; min-height: calc(100vh - 56px); }
+  .gen-bar { flex-wrap: wrap; padding: 8px 12px; gap: 8px; }
+  .gen-bar-title { flex: 1 1 100%; order: 1; }
+  .gen-actions { order: 2; flex: 1 1 100%; justify-content: flex-end; flex-wrap: wrap; }
+  .gen-split { grid-template-columns: 1fr; }
+  .gen-editor {
+    border-right: 0; border-bottom: 1px solid var(--border);
+    padding: 4px 12px 24px;
+    /* En mobile no fijamos altura del editor: que se expanda con el
+       contenido y el preview quede al final (igual que un wizard). */
+    max-height: none; overflow-y: visible;
+  }
+  .gen-preview { padding: 12px; min-height: 50vh; }
+
+  /* Prod-row: nombre arriba ocupa full, abajo qty/price/total/del */
+  .prod-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+  }
+  .prod-row .prod-name { flex: 1 1 100%; order: -1; white-space: normal; }
+  .prod-row .prod-qty { width: 60px; }
+  .prod-row .prod-price { width: 110px; flex: 1 1 auto; }
+  .prod-row .prod-total { flex: 1 1 auto; text-align: right; padding-right: 4px; }
+  .prod-row .prod-del { align-self: center; }
+
+  /* Skin grid + cards de skins a 1 col */
+  .skin-grid { grid-template-columns: 1fr; }
+
+  /* Editor de producto: imagen arriba, form abajo */
+  .prod-editor-grid { grid-template-columns: 1fr; }
+
+  /* Cuenta bancaria: 2 cols (banco|moneda en 1 fila, numero|cci en otra,
+     titular|del en la última) */
+  .cuenta-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .cuenta-row > :nth-child(5) { grid-column: 1 / -2; }  /* titular ancho */
+  .cuenta-row > :last-child { align-self: end; }
+
+  /* "Salir" más compacto pero visible — es importante poder cerrar sesión */
+  .topbar-signout { padding: 4px 8px; font-size: 11px; }
+  .crumb {
+    font-size: 12px; min-width: 0; flex: 1;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .topbar-actions { gap: 4px; }
+
+  .page { padding: 12px 12px 60px; }
+  /* card-body con padding más chico */
+  .card-body { padding: 12px; }
+
+  /* Tablas pueden hacer scroll horizontal en lugar de aplastarse */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* Tweaks panel full-width */
+  .tweaks-panel { width: 100vw !important; max-width: 100vw !important; }
+}
+
+@media (max-width: 480px) {
+  .page { padding: 10px 10px 60px; }
+  .gen-editor { padding: 4px 10px 24px; }
+  .topbar { padding: 0 8px; }
 }

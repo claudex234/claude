@@ -90,6 +90,7 @@ const boot = async () => {
         <div id="route-outlet"></div>
       </div>
       <div id="tweaks-host"></div>
+      <div class="drawer-backdrop" data-action="close-drawer" aria-hidden="true"></div>
     </div>
   `;
 
@@ -97,6 +98,12 @@ const boot = async () => {
   mountTopbar(document.getElementById("topbar-host"));
   mountTweaks(document.getElementById("tweaks-host"));
   setOutlet(document.getElementById("route-outlet"));
+
+  // Mobile drawer: cierra al click en backdrop, al navegar y con ESC.
+  const closeDrawer = () => document.body.classList.remove("drawer-open");
+  document.querySelector(".drawer-backdrop")?.addEventListener("click", closeDrawer);
+  document.addEventListener("route:change", closeDrawer);
+  document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") closeDrawer(); });
 
   registerRoute("config", () => import("./pages/config.js"));
   registerRoute("empresas", () => import("./pages/empresas.js"));

@@ -77,7 +77,7 @@ const logoPreview = (form) => {
 const cuentasEditor = (cuentas) => `
   <div data-cuentas>
     ${cuentas.map((c, i) => `
-      <div class="card" style="padding:10px;margin-bottom:8px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1.2fr auto;gap:6px;align-items:end">
+      <div class="card cuenta-row" style="padding:10px;margin-bottom:8px;display:grid;gap:6px;align-items:end">
         <label class="gen-field"><span>Banco</span>
           <input class="input" data-c-idx="${i}" data-c-key="banco" value="${e(c.banco || "")}"></label>
         <label class="gen-field"><span>Moneda</span>
