@@ -1,0 +1,20 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>EduBoard · Galería de heroes</title>
+<style>
+ body{margin:0;font-family:Arial,sans-serif;background:#0d0b12;color:#ece9f1;padding:4vh 4vw}
+ h1{font-weight:800;letter-spacing:-.02em}
+ .grid{display:grid;gap:1.4rem;grid-template-columns:repeat(auto-fit,minmax(420px,1fr));margin-top:2rem}
+ .g{display:block;text-decoration:none;color:inherit;border:1px solid rgba(255,255,255,.1);
+     border-radius:16px;overflow:hidden;background:#141022}
+ .g iframe{width:100%;height:300px;border:0;display:block;background:#0d0b12;pointer-events:none}
+ .g span{display:block;padding:.9rem 1.1rem;font-weight:700}
+ .g:hover{outline:2px solid #ff7c46}
+</style></head><body>
+<h1>EduBoard · Galería de heroes</h1>
+<p style="color:#a79fb6">Clic en cualquiera para abrirlo a pantalla completa. (Las miniaturas son iframes en vivo.)</p>
+<div class="grid">
+<a class="g" href="hero-split.html"><iframe src="hero-split.html" loading="lazy" title="Hero · Split-screen"></iframe><span>Hero · Split-screen</span></a>
+<a class="g" href="hero-bento.html"><iframe src="hero-bento.html" loading="lazy" title="Hero · Bento grid"></iframe><span>Hero · Bento grid</span></a>
+<a class="g" href="hero-apple.html"><iframe src="hero-apple.html" loading="lazy" title="Hero · Centrado (Apple-style)"></iframe><span>Hero · Centrado (Apple-style)</span></a>
+<a class="g" href="hero-glass.html"><iframe src="hero-glass.html" loading="lazy" title="Hero · Glass floating cards"></iframe><span>Hero · Glass floating cards</span></a>
+</div></body></html>
