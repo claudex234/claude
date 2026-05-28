@@ -9,12 +9,14 @@
   .hero-wrap{position:relative;display:inline-block;width:min(92vw,1100px);
              overflow:hidden;border-radius:10px;line-height:0}
   .hero{display:block;width:100%;height:auto}
-  /* Sheen: barrido de luz; solo anima transform (compositor GPU) */
-  .sheen{position:absolute;top:-25%;left:0;width:55%;height:150%;pointer-events:none;
-         background:linear-gradient(105deg,transparent,rgba(255,255,255,.16) 45%,rgba(255,255,255,.22) 50%,rgba(255,255,255,.16) 55%,transparent);
-         mix-blend-mode:screen;will-change:transform;
-         animation:sheen 7s ease-in-out infinite}
-  @keyframes sheen{0%{transform:translateX(-140%)}60%,100%{transform:translateX(320%)}}
+  /* Sheen: rayo de luz diagonal (skewX) que barre; solo anima transform */
+  .sheen{position:absolute;top:-60%;left:0;width:38%;height:220%;pointer-events:none;
+         transform:skewX(-20deg) translateX(-190%);
+         background:linear-gradient(90deg,transparent 0,rgba(255,255,255,.05) 38%,rgba(255,255,255,.18) 47%,rgba(255,255,255,.34) 50%,rgba(255,255,255,.18) 53%,rgba(255,255,255,.05) 62%,transparent 100%);
+         mix-blend-mode:screen;filter:blur(2px);will-change:transform;
+         animation:sheen 6.5s ease-in-out infinite}
+  @keyframes sheen{0%{transform:skewX(-20deg) translateX(-190%)}
+                   55%,100%{transform:skewX(-20deg) translateX(430%)}}
 
   /* transforms relativos al bbox propio de cada elemento */
   .tile,#apps-pill,#clock{transform-box:fill-box;transform-origin:center}
